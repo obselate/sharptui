@@ -1,0 +1,17 @@
+bin/
+obj/
+mine/
+
+# local AOT build of the examples; build it with `dotnet publish`
+/examples/sharptui-examples
+
+# internal working documents, not part of the public repo
+docs/plans/
+docs/superpowers/
+/WIDGET-AUDIT.md
+/ROARTUI-CONSUMER-AUDIT.md
+/STRUCTURE.md
+/perf-report.md
+/tools/
+/api/
+/benchmarks/

@@ -1,0 +1,3 @@
+# Linguist counts .gs as Apps Script, so pin the language to C#
+*.gs linguist-language=C#
+vendor/** linguist-vendored

@@ -1,0 +1,256 @@
+package SharpTui
+
+import SharpTui
+
+import System
+import System.Collections.Generic
+
+/// The palette every example draws from, so a reskin is one edit.
+public class Ink {
+  shared {
+    public let Text Color = Color.Rgb("C8CEDA")
+    public let Accent Color = Color.Rgb("478AD1")
+    public let Dim Color = Color.Rgb("555C6B")
+    public let Good Color = Color.Rgb("6CBC5F")
+    public let Warm Color = Color.Rgb("D1A047")
+    public let Bad Color = Color.Rgb("D1475F")
+    public let Back Color = Color.Rgb("0E1117")
+  }
+}
+
+/// The wordmark rows shared by the picker header and the banner view.
+func sharpLogo() List[string] {
+  return List[string]{
+    "┌─┐┬ ┬┌─┐┬─┐┌─┐┌┬┐┬ ┬┬",
+    "└─┐├─┤├─┤├┬┘├─┘ │ │ ││",
+    "└─┘┴ ┴┴ ┴┴└─┴   ┴ └─┘┴",
+  }
+}
+
+/// The markdown look shared by every preview in the set.
+func previewTheme() MarkdownTheme {
+  let theme = MarkdownTheme{}
+  theme.Body = Style{ Foreground: Ink.Text, Background: Color.Inherit }
+  theme.Heading = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
+  theme.Code = Style{ Foreground: Ink.Good, Background: Color.Inherit }
+  theme.Quote = Style{ Foreground: Color.Rgb("8A93A6"), Background: Color.Inherit, Attributes: TextAttributes.Italic }
+  theme.Link = Style{ Foreground: Ink.Warm, Background: Color.Inherit }
+  theme.Marker = Style{ Foreground: Ink.Good, Background: Color.Inherit }
+  return theme
+}
+
+/// Tabs slide a paint past a border, so foreign text is flattened first.
+func flatText(text string) string {
+  return text.Replace(char(9).ToString(), "    ").TrimEnd()
+}
+
+/// The launcher menu shown when no flag picks an app directly.
+class Pick : View {
+  private var list ListView
+  private var bar StatusBar
+  private var root Box
+  private var logo List[string]
+  private var host App?
+  private var t float64
+  private var mode int32
+
+  public prop Choice int32 { get; set; }
+
+  public init() {
+    Choice = -1
+    mode = 1
+    logo = sharpLogo()
+    list = ListView{ GrowWeight: 1, Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
+      SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent } }
+    list.Add("git     beginner-friendly git workbench & diff visualizer")
+    list.Add("files   browse and preview the filesystem")
+    list.Add("grep    search a tree with match highlighting")
+    list.Add("todo    harvest source markers by tag")
+    list.Add("watch   rerun a command and diff its output")
+    list.Add("edit    markdown editor with live preview")
+    list.Add("julia   the whole framework in 80 lines")
+    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar.LeftText = "sharptui examples"
+    bar.RightText = "enter launches - q quits"
+
+    let ink = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
+    let dim = Style{ Foreground: Ink.Dim, Background: Color.Inherit }
+    root = Column{ Children: {
+      Label{ Text: "", Height: CellLength.Cells(1) },
+      Label{ Text: logo[0], Alignment: HorizontalAlignment.Center, Style: ink },
+      Label{ Text: logo[1], Alignment: HorizontalAlignment.Center, Style: ink },
+      Label{ Text: logo[2], Alignment: HorizontalAlignment.Center, Style: ink },
+      Label{ Text: "an immediate-mode TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim },
+      Label{ Text: "", Height: CellLength.Cells(1) },
+      Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
+        Style: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
+      bar,
+    }}
+    root.Focus(list)
+  }
+
+  /// Arms the header animation. The picker owns its app so it can retune the
+  /// tick rate itself: 30 fps while a sweep or shine is live, one wakeup every
+  /// few seconds in between. `sweep` plays the full startup reveal; without it
+  /// the logo starts settled and just shines.
+  public func Animate(app App, sweep bool) {
+    host = app
+    t = 0.0
+    if sweep { mode = 0 } else { rest() }
+  }
+
+  /// Back to the settled logo, dozing until the next shine is due.
+  private func rest() {
+    mode = 1
+    if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(3400.0) }
+  }
+
+  public func Draw(screen Screen) {
+    screen.Clear()
+    root.Draw(screen)
+    if mode == 0 { intro(screen) }
+    if mode == 2 { shine(screen) }
+  }
+
+  /// A fast lightning streak through the settled logo, with a trailing echo.
+  private func shine(screen Screen) {
+    let w = screen.Size.WidthCells
+    let pos = (t - 0.3) * 34.0
+    for row in 0 ... 3 {
+      let line = logo[row]
+      for i in 0 ... line.Length {
+        let d = pos - float64(i) - 1.2 * float64(row)
+        let hot = Math.Exp(-d * d * 0.09) + 0.5 * Math.Exp(-(d - 5.0) * (d - 5.0) * 0.05)
+        screen.WriteCell((w - line.Length) / 2 + i, row + 1, line[i].ToString(),
+          Style{ Foreground: Color.Rgb(glow(71.0, 71.0, 0.0, hot), glow(138.0, 138.0, 0.0, hot), glow(209.0, 209.0, 0.0, hot)), Background: Ink.Back })
+      }
+    }
+  }
+
+  /// Repaints the header over the static labels while the light sweep is live.
+  private func intro(screen Screen) {
+    let w = screen.Size.WidthCells
+    let pos = (t - 0.45) * 16.0
+    for row in 0 ... 3 {
+      let line = logo[row]
+      for i in 0 ... line.Length {
+        let d = pos - float64(i) - 0.8 * float64(row)
+        let lit = Math.Min(Math.Max(d * 0.7, 0.0), 1.0)
+        let hot = Math.Exp(-d * d * 0.1)
+        screen.WriteCell((w - line.Length) / 2 + i, row + 1, line[i].ToString(),
+          Style{ Foreground: Color.Rgb(glow(14.0, 71.0, lit, hot), glow(17.0, 138.0, lit, hot), glow(23.0, 209.0, lit, hot)), Background: Ink.Back })
+      }
+    }
+    let sub = "an immediate-mode TUI for G#"
+    let sa = Math.Min(Math.Max((t - 1.1) * 1.4, 0.0), 1.0)
+    for i in 0 ... sub.Length {
+      screen.WriteCell((w - sub.Length) / 2 + i, 4, sub[i].ToString(),
+        Style{ Foreground: Color.Rgb(glow(14.0, 85.0, sa, 0.0), glow(17.0, 92.0, sa, 0.0), glow(23.0, 107.0, sa, 0.0)), Background: Ink.Back })
+    }
+  }
+
+  /// One channel of the sweep: base colour lifted toward full, plus the hot flash.
+  private func glow(base float64, full float64, lit float64, hot float64) int32 {
+    return int32(Math.Min(base + lit * (full - base) + hot * 230.0, 255.0))
+  }
+
+  public func Handle(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Tick {
+      if mode == 1 {
+        mode = 2
+        t = 0.0
+        if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(33.0) }
+      } else {
+        t = t + 0.033
+        if mode == 0 && t >= 2.4 { rest() }
+        if mode == 2 && t >= 1.45 { rest() }
+      }
+      return EventResult.Handled
+    }
+    // A key acts on press; Kitty terminals also report releases.
+    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Key == Key.Enter {
+      Choice = list.SelectedIndex
+      return EventResult.Exit
+    }
+    if ev.Key == Key.Character && ev.Text == "q" { return EventResult.Exit }
+    return root.Handle(ev)
+  }
+}
+
+/// The showcase applications. A flag starts one directly; no flag opens the picker.
+func Main(args []string) int32 {
+  var i = 0
+  while i < args.Length {
+    let arg = args[i]
+    let next = i + 1 < args.Length ? args[i + 1] : ""
+    i = i + 1
+
+    if arg == "--files" { return run(Files(next == "" ? "." : next)) }
+    if arg == "--grep" { return run(Hunt(next, i + 1 < args.Length ? args[i + 1] : "")) }
+    if arg == "--todo" { return run(Chores(next == "" ? "." : next, choreTagList(i + 1 < args.Length ? args[i + 1] : ""))) }
+    if arg == "--watch" { return run(Watcher(next)) }
+    if arg == "--edit" { return run(Edit(next)) }
+    if arg == "--julia" { return golf() }
+    if arg == "--git" { return run(Git(next == "" ? "." : next)) }
+    if arg == "--banner" { return banner() }
+    if arg.EndsWith(".md") { return run(Edit(arg)) }
+  }
+
+  var first = true
+  while true {
+    let picker = pick(first)
+    first = false
+    if picker.Choice == 0 { run(Git(".")) }
+    else if picker.Choice == 1 { run(Files(".")) }
+    else if picker.Choice == 2 { run(Hunt("", "")) }
+    else if picker.Choice == 3 { run(Chores(".", choreDefaultTags())) }
+    else if picker.Choice == 4 { run(Watcher("")) }
+    else if picker.Choice == 5 { run(Edit("sharptui-demo.md")) }
+    else if picker.Choice == 6 { golf() }
+    else { break }
+  }
+  return 0
+}
+
+/// Runs the picker. Only the session's first one plays the full logo reveal;
+/// after that the logo just shines every few seconds, and the picker dials its
+/// own tick rate down between shines so idling costs one wakeup per ~3.4s.
+func pick(sweep bool) Pick {
+  let picker = Pick()
+  let app = App()
+  app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
+  app.TickInterval = TimeSpan.FromMilliseconds(33.0)
+  picker.Animate(app, sweep)
+  app.Run(picker)
+  return picker
+}
+
+/// Hidden recording aid: the full-screen wordmark behind the README banner.
+func banner() int32 {
+  let app = App()
+  app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
+  app.TickInterval = TimeSpan.FromMilliseconds(33.0)
+  let view = Banner()
+  view.Arm(app)
+  app.Run(view)
+  return 0
+}
+
+/// Julia is the one app that animates, so only it gets a tick interval.
+func golf() int32 {
+  let app = App()
+  app.TickInterval = TimeSpan.FromMilliseconds(16.0)
+  app.Run(Julia())
+  return 0
+}
+
+func run(view View) int32 {
+  let app = App()
+  app.DefaultStyle = Style{
+    Foreground: Ink.Text,
+    Background: Ink.Back,
+  }
+  app.Run(view)
+  return 0
+}

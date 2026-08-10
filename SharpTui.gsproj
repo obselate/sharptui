@@ -1,0 +1,22 @@
+<Project Sdk="Gsharp.NET.Sdk/0.3.633">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SharpTui</RootNamespace>
+    <UseAppHost>false</UseAppHost>
+    <!-- Drops ICU: 66.8 MB RSS to 37.9 MB, measured. Grapheme clustering is
+         runtime data, not ICU, so the width and cluster checks still pass. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="examples/**/*.gs" />
+    <Compile Remove="mine/**/*.gs" />
+    <Compile Remove="tools/**/*.gs" />
+    <ProjectReference Include="vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj" />
+  </ItemGroup>
+
+</Project>
