@@ -37,6 +37,7 @@ internal struct WindowsInputRecord {
   var KeyDown int32
   @FieldOffset(14)
   var UnicodeChar uint16
+  // Unread, but it pads the struct to the 20 bytes ReadConsoleInput writes.
   @FieldOffset(19)
   var Tail uint8
 }
@@ -64,7 +65,6 @@ internal class WindowsConsoleNative {
     internal let WindowBufferSizeEvent uint16 = uint16(0x0004)
     internal let WaitObjectZero uint32 = uint32(0)
     internal let WaitTimeout uint32 = uint32(258)
-    internal let Infinite uint32 = uint32(0xFFFFFFFF)
     // Windows never signals the input handle on a resize, so poll the size.
     internal let ResizePoll uint32 = uint32(100)
     internal let HighSurrogateFirst uint16 = uint16(0xD800)
@@ -139,10 +139,6 @@ internal class WindowsInputTranslator {
   private var pendingHigh uint16
 
   internal init() {
-    pendingHigh = uint16(0)
-  }
-
-  internal func Reset() {
     pendingHigh = uint16(0)
   }
 
@@ -267,13 +263,11 @@ internal class WindowsTerminalHost : TerminalHost {
   }
 
   public func Columns() int32 {
-    let size = currentSize()
-    return size.X > int16(0) ? int32(size.X) : 80
+    return columnsOf(currentSize())
   }
 
   public func Rows() int32 {
-    let size = currentSize()
-    return size.Y > int16(0) ? int32(size.Y) : 24
+    return rowsOf(currentSize())
   }
 
   public func ConsumeResize() bool {
@@ -301,10 +295,10 @@ internal class WindowsTerminalHost : TerminalHost {
     if waited != WindowsConsoleNative.WaitObjectZero { return -1 }
     observeResize()
     var written = 0
-    while written + 4 <= buffer.Length {
-      var pending uint32
-      if !WindowsConsoleNative.GetNumberOfConsoleInputEvents(inputHandle, out pending) { return -1 }
-      if pending == uint32(0) { break }
+    var pending uint32
+    if !WindowsConsoleNative.GetNumberOfConsoleInputEvents(inputHandle, out pending) { return -1 }
+    while pending > uint32(0) && written + 4 <= buffer.Length {
+      pending = pending - uint32(1)
       var record = WindowsInputRecord{}
       var read uint32
       if !WindowsConsoleNative.ReadConsoleInput(inputHandle, out record, 1, out read) { return -1 }
@@ -331,6 +325,14 @@ internal class WindowsTerminalHost : TerminalHost {
     }
   }
 
+  private func columnsOf(size WindowsCoord) int32 {
+    return size.X > int16(0) ? int32(size.X) : 80
+  }
+
+  private func rowsOf(size WindowsCoord) int32 {
+    return size.Y > int16(0) ? int32(size.Y) : 24
+  }
+
   private func onCancel(sender object, args ConsoleCancelEventArgs) {
     args.Cancel = true
     Interlocked.Exchange(ref exitRequested, 1)
@@ -338,8 +340,9 @@ internal class WindowsTerminalHost : TerminalHost {
   }
 
   private func observeResize() {
-    let columns = Columns()
-    let rows = Rows()
+    let size = currentSize()
+    let columns = columnsOf(size)
+    let rows = rowsOf(size)
     if columns == savedColumns && rows == savedRows { return }
     savedColumns = columns
     savedRows = rows
