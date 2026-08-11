@@ -20,6 +20,7 @@ internal class Terminal {
   private var fallbackConfigured bool
   private var kittyEnabled bool
   private var readerFault int32
+  private var hooked bool
 
   /// Painted by the terminal itself when it clears on resize.
   public var Background int32
@@ -53,6 +54,7 @@ internal class Terminal {
     fallbackConfigured = false
     kittyEnabled = false
     readerFault = 0
+    hooked = false
     Background = -1
   }
 
@@ -88,6 +90,7 @@ internal class Terminal {
         nextReader.IsBackground = true
         reader = nextReader
         nextReader.Start()
+        hookProcessExit()
       } catch (error Exception) {
         entered = false
         Interlocked.Exchange(ref reading, 0)
@@ -129,8 +132,43 @@ internal class Terminal {
         host.Restore()
         input = nil
         kittyEnabled = false
+        unhookProcessExit()
       }
     }
+  }
+
+  /// Answers whether the process-death hooks are currently attached.
+  internal func HasFaultHook() bool {
+    return hooked
+  }
+
+  /// Puts the terminal back when the process is dying instead of returning.
+  internal func RestoreOnFault() {
+    try {
+      Restore()
+    } catch (ignored Exception) {}
+  }
+
+  private func hookProcessExit() {
+    if hooked { return }
+    hooked = true
+    AppDomain.CurrentDomain.ProcessExit += onProcessExit
+    AppDomain.CurrentDomain.UnhandledException += onUnhandledException
+  }
+
+  private func unhookProcessExit() {
+    if !hooked { return }
+    hooked = false
+    AppDomain.CurrentDomain.ProcessExit -= onProcessExit
+    AppDomain.CurrentDomain.UnhandledException -= onUnhandledException
+  }
+
+  private func onProcessExit(sender object, args EventArgs) {
+    RestoreOnFault()
+  }
+
+  private func onUnhandledException(sender object, args UnhandledExceptionEventArgs) {
+    RestoreOnFault()
   }
 
   /// Writes text straight to the terminal output, bypassing the screen's cell

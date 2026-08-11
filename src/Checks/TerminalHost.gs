@@ -136,6 +136,19 @@ internal class TerminalHostCheck {
       failed = failed + Checks.Expect(host.Entered == 2 && host.Restored == 2 && host.Woken == 2,
         "reader shutdown permits terminal re-entry")
 
+      let faultHost = TerminalHostFake()
+      let faultTerminal = Terminal(AutoResetEvent(false), faultHost)
+      faultTerminal.Enter(Input(AutoResetEvent(false)))
+      let faultHooked = faultTerminal.HasFaultHook()
+      faultTerminal.RestoreOnFault()
+      faultTerminal.RestoreOnFault()
+      faultTerminal.Restore()
+      failed = failed + Checks.Expect(faultHooked && !faultTerminal.HasFaultHook()
+          && faultHost.Restored == 1
+          && faultHost.OutputText().EndsWith(Ansi.BracketedPasteOff + Ansi.MouseOff
+            + Ansi.CursorShow + Ansi.AltScreenOff),
+        "a dying process restores the terminal exactly once")
+
       let allMotionHost = TerminalHostFake()
       let allMotionTerminal = Terminal(AutoResetEvent(false), allMotionHost)
       allMotionTerminal.Enter(Input(AutoResetEvent(false)), MouseTracking.AllMotion)
