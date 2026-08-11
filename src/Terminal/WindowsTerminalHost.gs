@@ -33,6 +33,10 @@ internal struct WindowsConsoleBufferInfo {
 internal struct WindowsInputRecord {
   @FieldOffset(0)
   var EventType uint16
+  @FieldOffset(4)
+  var KeyDown int32
+  @FieldOffset(14)
+  var UnicodeChar uint16
   @FieldOffset(19)
   var Tail uint8
 }
@@ -56,10 +60,13 @@ internal class WindowsConsoleNative {
     internal let QuickEditMode uint32 = uint32(0x0040)
     internal let ExtendedFlags uint32 = uint32(0x0080)
     internal let Utf8CodePage uint32 = uint32(65001)
+    internal let KeyEvent uint16 = uint16(0x0001)
     internal let WindowBufferSizeEvent uint16 = uint16(0x0004)
     internal let WaitObjectZero uint32 = uint32(0)
     internal let WaitTimeout uint32 = uint32(258)
     internal let Infinite uint32 = uint32(0xFFFFFFFF)
+    // Windows queues no reliable resize wake, so bound the wait and poll size.
+    internal let ResizePoll uint32 = uint32(100)
 
     @DllImport("kernel32.dll", SetLastError: true)
     public func GetStdHandle(kind int32) IntPtr;
@@ -222,17 +229,25 @@ internal class WindowsTerminalHost : TerminalHost {
 
   public func Read(buffer []uint8, timeoutMilliseconds int32) int32 {
     var handles = WindowsWaitSet{ Input: inputHandle, Wake: readerWakeHandle }
-    let timeout = timeoutMilliseconds < 0 ? WindowsConsoleNative.Infinite : uint32(timeoutMilliseconds)
+    var timeout = timeoutMilliseconds < 0 ? WindowsConsoleNative.ResizePoll : uint32(timeoutMilliseconds)
+    if timeout > WindowsConsoleNative.ResizePoll { timeout = WindowsConsoleNative.ResizePoll }
     let waited = WindowsConsoleNative.WaitForMultipleObjects(2, ref handles, false, timeout)
-    if waited == WindowsConsoleNative.WaitTimeout { return 0 }
+    if waited == WindowsConsoleNative.WaitTimeout {
+      observeResize()
+      return 0
+    }
     if waited == WindowsConsoleNative.WaitObjectZero + 1 { return 0 }
     if waited != WindowsConsoleNative.WaitObjectZero { return -1 }
+    observeResize()
     var record = WindowsInputRecord{}
     var found uint32
     if !WindowsConsoleNative.PeekConsoleInput(inputHandle, out record, 1, out found) { return -1 }
-    if found > uint32(0) && record.EventType == WindowsConsoleNative.WindowBufferSizeEvent {
+    if found == uint32(0) { return 0 }
+    // ReadFile blocks on anything that is not keyboard input, so drain the
+    // resize, mouse and focus records here instead of handing them to it.
+    if record.EventType != WindowsConsoleNative.KeyEvent || record.KeyDown == 0
+        || record.UnicodeChar == uint16(0) {
       WindowsConsoleNative.ReadConsoleInput(inputHandle, out record, 1, out found)
-      observeResize()
       return 0
     }
     let read = input.Read(buffer, 0, buffer.Length)
