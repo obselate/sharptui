@@ -121,6 +121,8 @@ internal class TerminalHostCheck {
           && Marshal.SizeOf[LinuxTermios]() == 60 && Marshal.SizeOf[LinuxPollPair]() == 16,
         "Linux raw mode policy is deterministic")
 
+      failed = failed + darwinChecks()
+
       let output = MemoryStream()
       let injected = Terminal(AutoResetEvent(false), TerminalStreamHost(output))
       injected.Write("host stream")
@@ -316,4 +318,43 @@ private func terminalEvents(input Input) List[UiEvent] {
 private func drainTerminalInput(input Input) {
   var event = UiEvent{}
   while input.TryDequeue(out event) {}
+}
+
+/// macOS ships different termios values than Linux, so pin every one of them here.
+private func darwinChecks() int32 {
+  var failed = 0
+
+  failed = failed + Checks.Expect(Marshal.SizeOf[DarwinTermios]() == DarwinTerminalNative.TermiosSize
+      && DarwinTerminalNative.TermiosSize == 72
+      && Marshal.SizeOf[DarwinPollPair]() == 16
+      && Marshal.SizeOf[DarwinWinSize]() == 8
+      && Marshal.SizeOf[DarwinPipePair]() == 8,
+    "Darwin structs match the sizes libc writes")
+
+  failed = failed + Checks.Expect(DarwinTerminalNative.TioGetWindowSize == nuint(0x40087468)
+      && DarwinTerminalNative.InputFlagsRaw == uint64(0x03EB)
+      && DarwinTerminalNative.OutputFlagsRaw == uint64(0x0001)
+      && DarwinTerminalNative.ControlFlagsClear == uint64(0x1300)
+      && DarwinTerminalNative.ControlFlagsSet == uint64(0x0300)
+      && DarwinTerminalNative.LocalFlagsRaw == uint64(0x0598)
+      && DarwinTerminalNative.Vmin == 16 && DarwinTerminalNative.Vtime == 17,
+    "Darwin termios constants carry the Apple values")
+
+  let allFlags = uint64(0xFFFFFFFFFFFFFFFF)
+  failed = failed + Checks.Expect((DarwinTerminalModePolicy.InputFlags(allFlags)
+      & DarwinTerminalNative.InputFlagsRaw) == uint64(0)
+      && (DarwinTerminalModePolicy.OutputFlags(allFlags) & DarwinTerminalNative.OutputFlagsRaw) == uint64(0)
+      && (DarwinTerminalModePolicy.LocalFlags(allFlags) & DarwinTerminalNative.LocalFlagsRaw) == uint64(0)
+      && (DarwinTerminalModePolicy.ControlFlags(allFlags) & DarwinTerminalNative.ControlFlagsClear)
+        == DarwinTerminalNative.ControlFlagsSet
+      && (DarwinTerminalModePolicy.ControlFlags(uint64(0)) & DarwinTerminalNative.ControlFlagsSet)
+        == DarwinTerminalNative.ControlFlagsSet
+      && DarwinTerminalModePolicy.HasReaderWake(0) && !DarwinTerminalModePolicy.HasReaderWake(-1),
+    "Darwin raw mode policy is deterministic")
+
+  failed = failed + Checks.Expect(DarwinTerminalModePolicy.UsesStackedIoctl(Architecture.Arm64)
+      && !DarwinTerminalModePolicy.UsesStackedIoctl(Architecture.X64),
+    "only Apple silicon takes the stacked ioctl argument")
+
+  return failed
 }

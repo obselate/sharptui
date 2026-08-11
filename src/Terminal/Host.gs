@@ -22,7 +22,8 @@ internal class TerminalHosts {
     internal func Create(wakeup AutoResetEvent) TerminalHost {
       if OperatingSystem.IsWindows() { return WindowsTerminalHost(wakeup) }
       if OperatingSystem.IsLinux() { return LinuxTerminalHost(wakeup) }
-      throw PlatformNotSupportedException("SharpTUI terminal host requires Windows or Linux.")
+      if OperatingSystem.IsMacOS() { return DarwinTerminalHost(wakeup) }
+      throw PlatformNotSupportedException("SharpTUI terminal host requires Windows, Linux or macOS.")
     }
   }
 }
