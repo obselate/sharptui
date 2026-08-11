@@ -116,7 +116,7 @@ internal class TerminalHostCheck {
           && (LinuxTerminalModePolicy.ControlFlags(uint32(0)) & LinuxTerminalNative.ControlFlagsSet)
             == LinuxTerminalNative.ControlFlagsSet
           && LinuxTerminalModePolicy.HasReaderWake(0) && !LinuxTerminalModePolicy.HasReaderWake(-1)
-          && Marshal.SizeOf(LinuxTermios{}) == 60 && Marshal.SizeOf(LinuxPollPair{}) == 16,
+          && Marshal.SizeOf[LinuxTermios]() == 60 && Marshal.SizeOf[LinuxPollPair]() == 16,
         "Linux raw mode policy is deterministic")
 
       let output = MemoryStream()
