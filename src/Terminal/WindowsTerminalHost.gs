@@ -4,6 +4,7 @@ import System
 import System.Diagnostics
 import System.IO
 import System.Runtime.InteropServices
+import System.Text
 import System.Threading
 
 @StructLayout(LayoutKind.Sequential)
@@ -137,9 +138,11 @@ internal class WindowsConsoleModePolicy {
 /// Turns console input records into the UTF-8 byte stream the parser expects.
 internal class WindowsInputTranslator {
   private var pendingHigh uint16
+  private var units []char
 
   internal init() {
     pendingHigh = uint16(0)
+    units = [2]char{}
   }
 
   /// Writes the bytes a record contributes and answers how many it wrote.
@@ -155,36 +158,14 @@ internal class WindowsInputTranslator {
     if unit >= WindowsConsoleNative.LowSurrogateFirst
         && unit <= WindowsConsoleNative.LowSurrogateLast {
       if pendingHigh == uint16(0) { return 0 }
-      let high = uint32(pendingHigh) - uint32(0xD800)
-      let low = uint32(unit) - uint32(0xDC00)
+      units[0] = char(pendingHigh)
+      units[1] = char(unit)
       pendingHigh = uint16(0)
-      return encode(uint32(0x10000) + (high << 10) + low, buffer, offset)
+      return Encoding.UTF8.GetBytes(units, 0, 2, buffer, offset)
     }
     pendingHigh = uint16(0)
-    return encode(uint32(unit), buffer, offset)
-  }
-
-  private func encode(point uint32, buffer []uint8, offset int32) int32 {
-    if point < uint32(0x80) {
-      buffer[offset] = uint8(point)
-      return 1
-    }
-    if point < uint32(0x800) {
-      buffer[offset] = uint8(uint32(0xC0) | (point >> 6))
-      buffer[offset + 1] = uint8(uint32(0x80) | (point & uint32(0x3F)))
-      return 2
-    }
-    if point < uint32(0x10000) {
-      buffer[offset] = uint8(uint32(0xE0) | (point >> 12))
-      buffer[offset + 1] = uint8(uint32(0x80) | ((point >> 6) & uint32(0x3F)))
-      buffer[offset + 2] = uint8(uint32(0x80) | (point & uint32(0x3F)))
-      return 3
-    }
-    buffer[offset] = uint8(uint32(0xF0) | (point >> 18))
-    buffer[offset + 1] = uint8(uint32(0x80) | ((point >> 12) & uint32(0x3F)))
-    buffer[offset + 2] = uint8(uint32(0x80) | ((point >> 6) & uint32(0x3F)))
-    buffer[offset + 3] = uint8(uint32(0x80) | (point & uint32(0x3F)))
-    return 4
+    units[0] = char(unit)
+    return Encoding.UTF8.GetBytes(units, 0, 1, buffer, offset)
   }
 }
 
