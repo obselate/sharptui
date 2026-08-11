@@ -1,3 +1,6 @@
 # Linguist counts .gs as Apps Script, so pin the language to C#
 *.gs linguist-language=C#
 vendor/** linguist-vendored
+
+# The API inspector compares these byte-for-byte against LF text
+api/PublicApi.* text eol=lf
