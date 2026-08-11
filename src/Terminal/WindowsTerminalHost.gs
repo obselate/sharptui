@@ -65,8 +65,12 @@ internal class WindowsConsoleNative {
     internal let WaitObjectZero uint32 = uint32(0)
     internal let WaitTimeout uint32 = uint32(258)
     internal let Infinite uint32 = uint32(0xFFFFFFFF)
-    // Windows queues no reliable resize wake, so bound the wait and poll size.
+    // Windows never signals the input handle on a resize, so poll the size.
     internal let ResizePoll uint32 = uint32(100)
+    internal let HighSurrogateFirst uint16 = uint16(0xD800)
+    internal let HighSurrogateLast uint16 = uint16(0xDBFF)
+    internal let LowSurrogateFirst uint16 = uint16(0xDC00)
+    internal let LowSurrogateLast uint16 = uint16(0xDFFF)
 
     @DllImport("kernel32.dll", SetLastError: true)
     public func GetStdHandle(kind int32) IntPtr;
@@ -91,8 +95,7 @@ internal class WindowsConsoleNative {
       timeout uint32) uint32;
 
     @DllImport("kernel32.dll", SetLastError: true)
-    public func PeekConsoleInput(handle IntPtr, out record WindowsInputRecord, length uint32,
-      out read uint32) bool;
+    public func GetNumberOfConsoleInputEvents(handle IntPtr, out pending uint32) bool;
 
     @DllImport("kernel32.dll", SetLastError: true)
     public func ReadConsoleInput(handle IntPtr, out record WindowsInputRecord, length uint32,
@@ -131,8 +134,65 @@ internal class WindowsConsoleModePolicy {
   }
 }
 
+/// Turns console input records into the UTF-8 byte stream the parser expects.
+internal class WindowsInputTranslator {
+  private var pendingHigh uint16
+
+  internal init() {
+    pendingHigh = uint16(0)
+  }
+
+  internal func Reset() {
+    pendingHigh = uint16(0)
+  }
+
+  /// Writes the bytes a record contributes and answers how many it wrote.
+  internal func Translate(record WindowsInputRecord, buffer []uint8, offset int32) int32 {
+    if record.EventType != WindowsConsoleNative.KeyEvent || record.KeyDown == 0 { return 0 }
+    let unit = record.UnicodeChar
+    if unit == uint16(0) { return 0 }
+    if unit >= WindowsConsoleNative.HighSurrogateFirst
+        && unit <= WindowsConsoleNative.HighSurrogateLast {
+      pendingHigh = unit
+      return 0
+    }
+    if unit >= WindowsConsoleNative.LowSurrogateFirst
+        && unit <= WindowsConsoleNative.LowSurrogateLast {
+      if pendingHigh == uint16(0) { return 0 }
+      let high = uint32(pendingHigh) - uint32(0xD800)
+      let low = uint32(unit) - uint32(0xDC00)
+      pendingHigh = uint16(0)
+      return encode(uint32(0x10000) + (high << 10) + low, buffer, offset)
+    }
+    pendingHigh = uint16(0)
+    return encode(uint32(unit), buffer, offset)
+  }
+
+  private func encode(point uint32, buffer []uint8, offset int32) int32 {
+    if point < uint32(0x80) {
+      buffer[offset] = uint8(point)
+      return 1
+    }
+    if point < uint32(0x800) {
+      buffer[offset] = uint8(uint32(0xC0) | (point >> 6))
+      buffer[offset + 1] = uint8(uint32(0x80) | (point & uint32(0x3F)))
+      return 2
+    }
+    if point < uint32(0x10000) {
+      buffer[offset] = uint8(uint32(0xE0) | (point >> 12))
+      buffer[offset + 1] = uint8(uint32(0x80) | ((point >> 6) & uint32(0x3F)))
+      buffer[offset + 2] = uint8(uint32(0x80) | (point & uint32(0x3F)))
+      return 3
+    }
+    buffer[offset] = uint8(uint32(0xF0) | (point >> 18))
+    buffer[offset + 1] = uint8(uint32(0x80) | ((point >> 12) & uint32(0x3F)))
+    buffer[offset + 2] = uint8(uint32(0x80) | ((point >> 6) & uint32(0x3F)))
+    buffer[offset + 3] = uint8(uint32(0x80) | (point & uint32(0x3F)))
+    return 4
+  }
+}
+
 internal class WindowsTerminalHost : TerminalHost {
-  private var input Stream
   private var output Stream
   private var inputHandle IntPtr
   private var outputHandle IntPtr
@@ -147,9 +207,9 @@ internal class WindowsTerminalHost : TerminalHost {
   private var exitRequested int32
   private var resized int32
   private var readerWakeHandle IntPtr
+  private var translator WindowsInputTranslator
 
   internal init(wakeup AutoResetEvent) {
-    input = Console.OpenStandardInput()
     output = Console.OpenStandardOutput()
     inputHandle = WindowsConsoleNative.GetStdHandle(WindowsConsoleNative.StandardInput)
     outputHandle = WindowsConsoleNative.GetStdHandle(WindowsConsoleNative.StandardOutput)
@@ -164,6 +224,7 @@ internal class WindowsTerminalHost : TerminalHost {
     exitRequested = 0
     resized = 0
     readerWakeHandle = WindowsConsoleNative.CreateEvent(IntPtr.Zero, false, false, IntPtr.Zero)
+    translator = WindowsInputTranslator()
   }
 
   public func IsTty() bool {
@@ -239,19 +300,22 @@ internal class WindowsTerminalHost : TerminalHost {
     if waited == WindowsConsoleNative.WaitObjectZero + 1 { return 0 }
     if waited != WindowsConsoleNative.WaitObjectZero { return -1 }
     observeResize()
-    var record = WindowsInputRecord{}
-    var found uint32
-    if !WindowsConsoleNative.PeekConsoleInput(inputHandle, out record, 1, out found) { return -1 }
-    if found == uint32(0) { return 0 }
-    // ReadFile blocks on anything that is not keyboard input, so drain the
-    // resize, mouse and focus records here instead of handing them to it.
-    if record.EventType != WindowsConsoleNative.KeyEvent || record.KeyDown == 0
-        || record.UnicodeChar == uint16(0) {
-      WindowsConsoleNative.ReadConsoleInput(inputHandle, out record, 1, out found)
-      return 0
+    var written = 0
+    while written + 4 <= buffer.Length {
+      var pending uint32
+      if !WindowsConsoleNative.GetNumberOfConsoleInputEvents(inputHandle, out pending) { return -1 }
+      if pending == uint32(0) { break }
+      var record = WindowsInputRecord{}
+      var read uint32
+      if !WindowsConsoleNative.ReadConsoleInput(inputHandle, out record, 1, out read) { return -1 }
+      if read == uint32(0) { break }
+      if record.EventType == WindowsConsoleNative.WindowBufferSizeEvent {
+        observeResize()
+        continue
+      }
+      written = written + translator.Translate(record, buffer, written)
     }
-    let read = input.Read(buffer, 0, buffer.Length)
-    return read <= 0 ? -1 : read
+    return written
   }
 
   public func Output() Stream {

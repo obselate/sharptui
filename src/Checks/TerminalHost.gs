@@ -108,6 +108,8 @@ internal class TerminalHostCheck {
           && !WindowsConsoleModePolicy.HasReaderWake(IntPtr.Zero),
         "Windows VT policy leaves Ctrl+C in terminal input")
 
+      failed = failed + windowsInputChecks()
+
       let allFlags = uint32(0xFFFFFFFF)
       failed = failed + Checks.Expect((LinuxTerminalModePolicy.InputFlags(allFlags)
           & LinuxTerminalNative.InputFlagsRaw) == uint32(0)
@@ -161,6 +163,49 @@ internal class TerminalHostCheck {
   }
 }
 
+internal class WindowsRecordScript {
+  shared {
+    internal func Key(unit uint16) WindowsInputRecord {
+      return WindowsInputRecord{ EventType: WindowsConsoleNative.KeyEvent, KeyDown: 1,
+        UnicodeChar: unit }
+    }
+
+    internal func Release(unit uint16) WindowsInputRecord {
+      return WindowsInputRecord{ EventType: WindowsConsoleNative.KeyEvent, KeyDown: 0,
+        UnicodeChar: unit }
+    }
+
+    internal func Other(kind uint16) WindowsInputRecord {
+      return WindowsInputRecord{ EventType: kind, KeyDown: 1, UnicodeChar: uint16(65) }
+    }
+
+    /// Runs a record script through one translator and answers the bytes it produced.
+    internal func Bytes(records []WindowsInputRecord) List[uint8] {
+      let translator = WindowsInputTranslator()
+      let buffer = [64]uint8{}
+      var written = 0
+      for i in 0 ... records.Length {
+        written = written + translator.Translate(records[i], buffer, written)
+      }
+      let result = List[uint8]()
+      var i = 0
+      while i < written {
+        result.Add(buffer[i])
+        i = i + 1
+      }
+      return result
+    }
+
+    internal func Same(actual List[uint8], expected []uint8) bool {
+      if actual.Count != expected.Length { return false }
+      for i in 0 ... expected.Length {
+        if actual[i] != expected[i] { return false }
+      }
+      return true
+    }
+  }
+}
+
 internal class TerminalHostFake : TerminalHost {
   private var output MemoryStream
   private var readerWake AutoResetEvent
@@ -202,6 +247,50 @@ internal class TerminalHostFake : TerminalHost {
   internal func OutputText() string {
     return Encoding.UTF8.GetString(output.ToArray())
   }
+}
+
+/// The Windows reader hands every record to this, so cover it on every platform.
+private func windowsInputChecks() int32 {
+  var failed = 0
+
+  failed = failed + Checks.Expect(WindowsRecordScript.Same(
+      WindowsRecordScript.Bytes([]WindowsInputRecord{
+        WindowsRecordScript.Key(uint16(27)), WindowsRecordScript.Key(uint16(91)),
+        WindowsRecordScript.Key(uint16(65)),
+      }), []uint8{ 27, 91, 65 }),
+    "key records rebuild an escape sequence byte for byte")
+
+  failed = failed + Checks.Expect(WindowsRecordScript.Same(
+      WindowsRecordScript.Bytes([]WindowsInputRecord{
+        WindowsRecordScript.Release(uint16(97)),
+        WindowsRecordScript.Key(uint16(0)),
+        WindowsRecordScript.Other(WindowsConsoleNative.WindowBufferSizeEvent),
+        WindowsRecordScript.Other(uint16(0x0002)),
+        WindowsRecordScript.Other(uint16(0x0010)),
+        WindowsRecordScript.Key(uint16(98)),
+      }), []uint8{ 98 }),
+    "releases, dead keys, resize, mouse and focus records yield no bytes")
+
+  failed = failed + Checks.Expect(WindowsRecordScript.Same(
+      WindowsRecordScript.Bytes([]WindowsInputRecord{
+        WindowsRecordScript.Key(uint16(0xD83D)), WindowsRecordScript.Key(uint16(0xDE80)),
+      }), []uint8{ 240, 159, 154, 128 }),
+    "a surrogate pair spanning two records encodes one rocket")
+
+  failed = failed + Checks.Expect(WindowsRecordScript.Same(
+      WindowsRecordScript.Bytes([]WindowsInputRecord{
+        WindowsRecordScript.Key(uint16(0xDE80)),
+        WindowsRecordScript.Key(uint16(0xD83D)), WindowsRecordScript.Key(uint16(97)),
+      }), []uint8{ 97 }),
+    "orphan surrogates never reach the parser")
+
+  failed = failed + Checks.Expect(WindowsRecordScript.Same(
+      WindowsRecordScript.Bytes([]WindowsInputRecord{
+        WindowsRecordScript.Key(uint16(0xE9)), WindowsRecordScript.Key(uint16(0x4E2D)),
+      }), []uint8{ 195, 169, 228, 184, 173 }),
+    "two and three byte code points encode as UTF-8")
+
+  return failed
 }
 
 private func terminalEvents(input Input) List[UiEvent] {
