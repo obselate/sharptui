@@ -4,7 +4,12 @@ import System
 import System.Collections.Generic
 
 /// Controls whether a binding runs before or after focused widgets.
-public enum BindingPhase { BeforeWidgets; AfterWidgets }
+public enum BindingPhase {
+  /// Offers the binding before the application view handles the event.
+  BeforeWidgets;
+  /// Offers the binding after the application view declines the event.
+  AfterWidgets;
+}
 
 /// One project-wide key binding.
 public class Bind {

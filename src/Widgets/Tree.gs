@@ -134,8 +134,8 @@ public open class TreeView : Box {
   protected override func Render(screen Screen, r CellRect, ink Style) {
     rebuild()
     FirstVisibleNodeIndex = clampScroll(FirstVisibleNodeIndex, r.HeightRows)
-    let markerStyle = resolvedStyle(NodeMarkerStyle, ink)
-    let selectedStyle = resolvedStyle(SelectedNodeStyle, ink)
+    let markerStyle = NodeMarkerStyle.MergedOver(ink)
+    let selectedStyle = SelectedNodeStyle.MergedOver(ink)
 
     var i = FirstVisibleNodeIndex
     while i < visible.Count {
@@ -258,11 +258,7 @@ public open class TreeView : Box {
     if visible.Count == 0 { return false }
     let i = clampIndex(want)
     if !setSelection(i, true) { return false }
-    if selectedIndex < FirstVisibleNodeIndex { FirstVisibleNodeIndex = selectedIndex }
-    if selectedIndex >= FirstVisibleNodeIndex + height {
-      FirstVisibleNodeIndex = selectedIndex - height + 1
-    }
-    FirstVisibleNodeIndex = clampScroll(FirstVisibleNodeIndex, height)
+    FirstVisibleNodeIndex = Selection.ScrollIntoView(visible.Count, selectedIndex, FirstVisibleNodeIndex, height)
     return true
   }
 
@@ -274,18 +270,11 @@ public open class TreeView : Box {
   }
 
   private func clampIndex(i int32) int32 {
-    if visible.Count == 0 { return 0 }
-    if i < 0 { return 0 }
-    if i >= visible.Count { return visible.Count - 1 }
-    return i
+    return Selection.ClampIndex(visible.Count, i)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    var max = visible.Count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(visible.Count, s, height)
   }
 
   private func rebuild() {
@@ -319,13 +308,6 @@ public open class TreeView : Box {
     }
   }
 
-  private func resolvedStyle(own Style, inherited Style) Style {
-    return Style{
-      Foreground: own.Foreground.IsInherited ? inherited.Foreground : own.Foreground,
-      Background: own.Background.IsInherited ? inherited.Background : own.Background,
-      Attributes: TextAttributes(int32(inherited.Attributes) | int32(own.Attributes)),
-    }
-  }
 
   private func setSelection(value int32, emit bool) bool {
     if selectedIndex == value {
@@ -345,7 +327,4 @@ public open class TreeView : Box {
     selectionChange = nil
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }

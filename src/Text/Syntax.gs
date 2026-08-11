@@ -124,26 +124,58 @@ internal func spillStyle(state int32, base Style) Style {
   return state == 1 ? commentStyle(base) : stringStyle(base)
 }
 
-internal func highlightCLike(line string, base Style, backtick bool, dash bool) List[Span] {
-  let spans = List[Span]()
+/// Data that parameterizes the shared line scanner in `scanLine`. Every
+/// field is a per-language on/off switch or table; the two bits of behaviour
+/// that are not expressible as a switch (shell's `$`-expansion and JSON's
+/// key-vs-value quote colour) are small guarded blocks inside `scanLine`
+/// itself, not copies of the scan loop.
+internal struct LineScanSpec {
+  var CommentSlash bool
+  var CommentDash bool
+  var CommentHash bool
+  var BlockComment bool
+  var Backtick bool
+  var SingleQuote bool
+  var JsonKeyQuotes bool
+  var Digits bool
+  var NegativeNumbers bool
+  var Ident bool
+  var IdentUnderscoreStart bool
+  var Keywords string
+  var UpperFallbackType bool
+  var DollarExpand bool
+}
+
+/// The one scan loop shared by every line-highlighter below. Walks `line`
+/// from `start`, appending spans to `spans`, and is driven entirely by
+/// `spec`. Comment markers, quote characters, digit/identifier scanning, and
+/// the keyword table are all data; only shell's `${...}`/`$ident` and JSON's
+/// key-quote colouring need a guarded block instead of a plain switch.
+internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Span], start int32) List[Span] {
   let n = line.Length
   var literal = ""
-  var i = 0
+  var i = start
   while i < n {
     let c = line[i]
-    if c == '/' && i + 1 < n && line[i + 1] == '/' {
+    if spec.CommentSlash && c == '/' && i + 1 < n && line[i + 1] == '/' {
       literal = flushRun(spans, literal, base)
       spans.Add(Span(line.Substring(i), commentStyle(base)))
       i = n
       continue
     }
-    if dash && c == '-' && i + 1 < n && line[i + 1] == '-' {
+    if spec.CommentDash && c == '-' && i + 1 < n && line[i + 1] == '-' {
       literal = flushRun(spans, literal, base)
       spans.Add(Span(line.Substring(i), commentStyle(base)))
       i = n
       continue
     }
-    if c == '/' && i + 1 < n && line[i + 1] == '*' {
+    if spec.CommentHash && c == '#' {
+      literal = flushRun(spans, literal, base)
+      spans.Add(Span(line.Substring(i), commentStyle(base)))
+      i = n
+      continue
+    }
+    if spec.BlockComment && c == '/' && i + 1 < n && line[i + 1] == '*' {
       let close = line.IndexOf("*/", i + 2)
       if close >= 0 {
         literal = flushRun(spans, literal, base)
@@ -153,27 +185,52 @@ internal func highlightCLike(line string, base Style, backtick bool, dash bool) 
         continue
       }
     }
-    if c == '"' || c == '\'' || (backtick && c == '`') {
+    if c == '"' || (spec.SingleQuote && c == '\'') || (spec.Backtick && c == '`') {
       literal = flushRun(spans, literal, base)
       let end = scanQuoteEnd(line, i + 1, c)
-      spans.Add(Span(line.Substring(i, end - i), stringStyle(base)))
+      let style = spec.JsonKeyQuotes ? quoteKeyStyle(line, end, base) : stringStyle(base)
+      spans.Add(Span(line.Substring(i, end - i), style))
       i = end
       continue
     }
-    if Char.IsDigit(c) {
+    if spec.DollarExpand && c == '$' && i + 1 < n && line[i + 1] == '{' {
+      literal = flushRun(spans, literal, base)
+      let close = line.IndexOf('}', i + 2)
+      let end = close >= 0 ? close + 1 : n
+      spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
+      i = end
+      continue
+    }
+    if spec.DollarExpand && c == '$' {
+      let end = scanIdentEnd(line, i + 1)
+      if end > i + 1 {
+        literal = flushRun(spans, literal, base)
+        spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
+        i = end
+        continue
+      }
+    }
+    if spec.Digits && spec.NegativeNumbers && c == '-' && i + 1 < n && Char.IsDigit(line[i + 1]) {
+      literal = flushRun(spans, literal, base)
+      let end = scanNumberEnd(line, i + 1)
+      spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
+      i = end
+      continue
+    }
+    if spec.Digits && Char.IsDigit(c) {
       literal = flushRun(spans, literal, base)
       let end = scanNumberEnd(line, i)
       spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
       i = end
       continue
     }
-    if Char.IsLetter(c) || c == '_' {
+    if spec.Ident && (Char.IsLetter(c) || (spec.IdentUnderscoreStart && c == '_')) {
       let end = scanIdentEnd(line, i)
       let word = line.Substring(i, end - i)
       literal = flushRun(spans, literal, base)
-      if SyntaxData.CKeywords.Contains(" " + word + " ") {
+      if spec.Keywords.Contains(" " + word + " ") {
         spans.Add(Span(word, keywordStyle(base)))
-      } else if Char.IsUpper(c) {
+      } else if spec.UpperFallbackType && Char.IsUpper(c) {
         spans.Add(Span(word, typeStyle(base)))
       } else {
         spans.Add(Span(word, base))
@@ -188,152 +245,63 @@ internal func highlightCLike(line string, base Style, backtick bool, dash bool) 
   return spans
 }
 
-internal func highlightShell(line string, base Style) List[Span] {
-  let spans = List[Span]()
+/// A JSON quoted string is a key (typeStyle) if the first non-space
+/// character after its closing quote is `:`, otherwise it is a value
+/// (stringStyle).
+internal func quoteKeyStyle(line string, end int32, base Style) Style {
   let n = line.Length
-  var literal = ""
-  var i = 0
-  while i < n {
-    let c = line[i]
-    if c == '#' {
-      literal = flushRun(spans, literal, base)
-      spans.Add(Span(line.Substring(i), commentStyle(base)))
-      i = n
-      continue
-    }
-    if c == '"' || c == '\'' {
-      literal = flushRun(spans, literal, base)
-      let end = scanQuoteEnd(line, i + 1, c)
-      spans.Add(Span(line.Substring(i, end - i), stringStyle(base)))
-      i = end
-      continue
-    }
-    if c == '$' && i + 1 < n && line[i + 1] == '{' {
-      literal = flushRun(spans, literal, base)
-      let close = line.IndexOf('}', i + 2)
-      let end = close >= 0 ? close + 1 : n
-      spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
-      i = end
-      continue
-    }
-    if c == '$' {
-      let end = scanIdentEnd(line, i + 1)
-      if end > i + 1 {
-        literal = flushRun(spans, literal, base)
-        spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
-        i = end
-        continue
-      }
-    }
-    if Char.IsLetter(c) || c == '_' {
-      let end = scanIdentEnd(line, i)
-      let word = line.Substring(i, end - i)
-      literal = flushRun(spans, literal, base)
-      if SyntaxData.ShellKeywords.Contains(" " + word + " ") {
-        spans.Add(Span(word, keywordStyle(base)))
-      } else {
-        spans.Add(Span(word, base))
-      }
-      i = end
-      continue
-    }
-    literal = literal + line.Substring(i, 1)
-    i = i + 1
+  var peek = end
+  while peek < n && line[peek] == ' ' {
+    peek = peek + 1
   }
-  literal = flushRun(spans, literal, base)
-  return spans
+  let isKey = peek < n && line[peek] == ':'
+  return isKey ? typeStyle(base) : stringStyle(base)
+}
+
+internal func highlightCLike(line string, base Style, backtick bool, dash bool) List[Span] {
+  var spec = LineScanSpec{}
+  spec.CommentSlash = true
+  spec.CommentDash = dash
+  spec.BlockComment = true
+  spec.Backtick = backtick
+  spec.SingleQuote = true
+  spec.Digits = true
+  spec.Ident = true
+  spec.IdentUnderscoreStart = true
+  spec.Keywords = SyntaxData.CKeywords
+  spec.UpperFallbackType = true
+  return scanLine(line, base, spec, List[Span](), 0)
+}
+
+internal func highlightShell(line string, base Style) List[Span] {
+  var spec = LineScanSpec{}
+  spec.CommentHash = true
+  spec.SingleQuote = true
+  spec.DollarExpand = true
+  spec.Ident = true
+  spec.IdentUnderscoreStart = true
+  spec.Keywords = SyntaxData.ShellKeywords
+  return scanLine(line, base, spec, List[Span](), 0)
 }
 
 internal func highlightPython(line string, base Style) List[Span] {
-  let spans = List[Span]()
-  let n = line.Length
-  var literal = ""
-  var i = 0
-  while i < n {
-    let c = line[i]
-    if c == '#' {
-      literal = flushRun(spans, literal, base)
-      spans.Add(Span(line.Substring(i), commentStyle(base)))
-      i = n
-      continue
-    }
-    if c == '"' || c == '\'' {
-      literal = flushRun(spans, literal, base)
-      let end = scanQuoteEnd(line, i + 1, c)
-      spans.Add(Span(line.Substring(i, end - i), stringStyle(base)))
-      i = end
-      continue
-    }
-    if Char.IsLetter(c) || c == '_' {
-      let end = scanIdentEnd(line, i)
-      let word = line.Substring(i, end - i)
-      literal = flushRun(spans, literal, base)
-      if SyntaxData.PyKeywords.Contains(" " + word + " ") {
-        spans.Add(Span(word, keywordStyle(base)))
-      } else {
-        spans.Add(Span(word, base))
-      }
-      i = end
-      continue
-    }
-    literal = literal + line.Substring(i, 1)
-    i = i + 1
-  }
-  literal = flushRun(spans, literal, base)
-  return spans
+  var spec = LineScanSpec{}
+  spec.CommentHash = true
+  spec.SingleQuote = true
+  spec.Ident = true
+  spec.IdentUnderscoreStart = true
+  spec.Keywords = SyntaxData.PyKeywords
+  return scanLine(line, base, spec, List[Span](), 0)
 }
 
 internal func highlightJson(line string, base Style) List[Span] {
-  let spans = List[Span]()
-  let n = line.Length
-  var literal = ""
-  var i = 0
-  while i < n {
-    let c = line[i]
-    if c == '"' {
-      literal = flushRun(spans, literal, base)
-      let end = scanQuoteEnd(line, i + 1, c)
-      var peek = end
-      while peek < n && line[peek] == ' ' {
-        peek = peek + 1
-      }
-      let isKey = peek < n && line[peek] == ':'
-      let style = isKey ? typeStyle(base) : stringStyle(base)
-      spans.Add(Span(line.Substring(i, end - i), style))
-      i = end
-      continue
-    }
-    if c == '-' && i + 1 < n && Char.IsDigit(line[i + 1]) {
-      literal = flushRun(spans, literal, base)
-      let end = scanNumberEnd(line, i + 1)
-      spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
-      i = end
-      continue
-    }
-    if Char.IsDigit(c) {
-      literal = flushRun(spans, literal, base)
-      let end = scanNumberEnd(line, i)
-      spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
-      i = end
-      continue
-    }
-    if Char.IsLetter(c) {
-      let end = scanIdentEnd(line, i)
-      let word = line.Substring(i, end - i)
-      literal = flushRun(spans, literal, base)
-      if SyntaxData.JsonKeywords.Contains(" " + word + " ") {
-        spans.Add(Span(word, keywordStyle(base)))
-      } else {
-        spans.Add(Span(word, base))
-      }
-      i = end
-      continue
-    }
-    literal = literal + line.Substring(i, 1)
-    i = i + 1
-  }
-  literal = flushRun(spans, literal, base)
-  return spans
+  var spec = LineScanSpec{}
+  spec.JsonKeyQuotes = true
+  spec.Digits = true
+  spec.NegativeNumbers = true
+  spec.Ident = true
+  spec.Keywords = SyntaxData.JsonKeywords
+  return scanLine(line, base, spec, List[Span](), 0)
 }
 
 internal func highlightKeyed(line string, base Style) List[Span] {
@@ -363,27 +331,10 @@ internal func highlightKeyed(line string, base Style) List[Span] {
     }
   }
 
-  var literal = ""
-  while i < n {
-    let c = line[i]
-    if c == '#' {
-      literal = flushRun(spans, literal, base)
-      spans.Add(Span(line.Substring(i), commentStyle(base)))
-      i = n
-      continue
-    }
-    if c == '"' || c == '\'' {
-      literal = flushRun(spans, literal, base)
-      let end = scanQuoteEnd(line, i + 1, c)
-      spans.Add(Span(line.Substring(i, end - i), stringStyle(base)))
-      i = end
-      continue
-    }
-    literal = literal + line.Substring(i, 1)
-    i = i + 1
-  }
-  literal = flushRun(spans, literal, base)
-  return spans
+  var spec = LineScanSpec{}
+  spec.CommentHash = true
+  spec.SingleQuote = true
+  return scanLine(line, base, spec, spans, i)
 }
 
 internal func findKeyDelim(line string, start int32) int32 {
@@ -422,43 +373,12 @@ internal func highlightDiff(line string, base Style) List[Span] {
 }
 
 internal func highlightGeneric(line string, base Style) List[Span] {
-  let spans = List[Span]()
-  let n = line.Length
-  var literal = ""
-  var i = 0
-  while i < n {
-    let c = line[i]
-    if c == '/' && i + 1 < n && line[i + 1] == '/' {
-      literal = flushRun(spans, literal, base)
-      spans.Add(Span(line.Substring(i), commentStyle(base)))
-      i = n
-      continue
-    }
-    if c == '#' {
-      literal = flushRun(spans, literal, base)
-      spans.Add(Span(line.Substring(i), commentStyle(base)))
-      i = n
-      continue
-    }
-    if c == '"' || c == '\'' {
-      literal = flushRun(spans, literal, base)
-      let end = scanQuoteEnd(line, i + 1, c)
-      spans.Add(Span(line.Substring(i, end - i), stringStyle(base)))
-      i = end
-      continue
-    }
-    if Char.IsDigit(c) {
-      literal = flushRun(spans, literal, base)
-      let end = scanNumberEnd(line, i)
-      spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
-      i = end
-      continue
-    }
-    literal = literal + line.Substring(i, 1)
-    i = i + 1
-  }
-  literal = flushRun(spans, literal, base)
-  return spans
+  var spec = LineScanSpec{}
+  spec.CommentSlash = true
+  spec.CommentHash = true
+  spec.SingleQuote = true
+  spec.Digits = true
+  return scanLine(line, base, spec, List[Span](), 0)
 }
 
 internal func flushRun(spans List[Span], run string, style Style) string {

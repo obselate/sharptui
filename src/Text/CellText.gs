@@ -5,6 +5,9 @@ import System.Collections.Generic
 
 /// Cell-aware text operations for terminal rendering and layout.
 public class CellText {
+  /// Creates a cell-text utility instance. All operations are shared, so callers normally use the type directly.
+  public init() {}
+
   shared {
     /// Measures text in terminal display cells.
     /// @param text The text to measure.

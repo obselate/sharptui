@@ -71,18 +71,78 @@ public class TableColumn {
   }
 }
 
+/// One table cell containing either plain text or styled text runs.
+public struct TableCell {
+  private var text string
+  private var runs List[TextRun]?
+  private var style Style
+
+  /// Plain text drawn when Runs is nil or empty.
+  public prop Text string {
+    get { return text }
+    init { text = value }
+  }
+  /// Styled text segments drawn instead of Text when the list is non-empty.
+  public prop Runs List[TextRun]? {
+    get { return runs }
+    init { runs = value }
+  }
+  /// Style merged over the row style before this cell is drawn.
+  public prop Style Style {
+    get { return style }
+    init { style = value }
+  }
+
+  /// Creates an empty plain-text cell inheriting its row's style.
+  public init() {
+    text = ""
+    runs = nil
+    style = Style()
+  }
+
+  /// Creates a plain-text cell inheriting its row's style.
+  /// @param text The text displayed in the cell.
+  public init(text string) {
+    this.text = text
+    runs = nil
+    style = Style()
+  }
+}
+
+/// One table row with stable identity, cells, style, and selection eligibility.
+public class TableRow {
+  /// Caller-supplied Id values must be unique for selection restoration across Rows replacement.
+  public prop Id string { get; set; }
+  /// Cells displayed in column order.
+  public prop Cells List[TableCell] { get; set; }
+  /// Style merged over the table's inherited style before cells are drawn.
+  public prop Style Style { get; set; }
+  /// When false, the row is skipped by keyboard and mouse selection but remains visible.
+  public prop IsSelectable bool { get; set; }
+
+  /// Creates a selectable row with a generated Id and no cells.
+  public init() {
+    Id = Guid.NewGuid().ToString("N")
+    Cells = List[TableCell]()
+    Style = Style()
+    IsSelectable = true
+  }
+}
+
 /// A scrolling table with a header row and selectable data rows.
 public open class TableView : Box {
   private var columnGapCells int32
+  private var columnSeparator string
   private var widthScratch List[int32]
-  private var rows List[List[string]]
+  private var rows List[TableRow]
   private var selectedRowIndex int32
+  private var selectedRowId string
   private var selectionChange SelectionChange?
 
   /// Column definitions in display order.
   public prop Columns List[TableColumn] { get; set; }
   /// Data rows shown by this table; setting it replaces all rows and re-resolves the selection via RefreshRows.
-  public prop Rows List[List[string]] {
+  public prop Rows List[TableRow] {
     get { return rows }
     set {
       rows = value
@@ -92,8 +152,10 @@ public open class TableView : Box {
   /// Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedRowIndex int32 {
     get { return selectedRowIndex }
-    set { setSelection(clampIndex(value), false) }
+    set { setProgrammaticSelection(value) }
   }
+  /// Id of the selected row, or empty when no row is selected.
+  public prop SelectedRowId string { get { return selectedRowId } }
   /// Index of the first data row visible in the viewport.
   public prop FirstVisibleRowIndex int32 { get; set; }
   /// Index of the first visible column in the horizontal viewport.
@@ -106,6 +168,13 @@ public open class TableView : Box {
       columnGapCells = value
     }
   }
+  /// Text drawn at the start of each inter-column gap; empty leaves the gap blank.
+  public prop ColumnSeparator string {
+    get { return columnSeparator }
+    set { columnSeparator = value }
+  }
+  /// Style merged over the current header or row style for column separators.
+  public prop ColumnSeparatorStyle Style { get; set; }
   /// Style applied to the header row.
   public prop HeaderStyle Style { get; set; }
   /// Style merged over the selected row's inherited style.
@@ -114,15 +183,18 @@ public open class TableView : Box {
   /// Creates an empty table with a one-cell column gap and CanFocus enabled.
   public init() {
     columnGapCells = 1
+    columnSeparator = ""
     widthScratch = List[int32]()
     Columns = List[TableColumn]()
-    rows = List[List[string]]()
+    rows = List[TableRow]()
     selectedRowIndex = 0
+    selectedRowId = ""
     selectionChange = nil
     FirstVisibleRowIndex = 0
     FirstVisibleColumnIndex = 0
     HeaderStyle = Style()
     SelectedRowStyle = Style()
+    ColumnSeparatorStyle = Style()
     CanFocus = true
     GrowWeight = 1
   }
@@ -137,7 +209,22 @@ public open class TableView : Box {
 
   /// Refreshes selection after direct Rows mutation.
   public func RefreshRows() {
-    normalizeSelection()
+    let previous = selectedRowIndex
+    var restored = -1
+    if selectedRowId != "" {
+      var i = 0
+      while i < Rows.Count {
+        if Rows[i].Id == selectedRowId && Rows[i].IsSelectable {
+          restored = i
+          break
+        }
+        i = i + 1
+      }
+    }
+    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
+    if restored < 0 && Rows.Count > 0 { restored = clampIndex(previous) }
+    selectedRowIndex = restored < 0 ? 0 : restored
+    selectedRowId = selectedIdAt(selectedRowIndex)
     selectionChange = nil
   }
 
@@ -164,9 +251,7 @@ public open class TableView : Box {
     FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
 
     let widths = columnWidths(r.WidthCells)
-    let headerStyle = resolvedStyle(HeaderStyle, ink)
-    let selectedStyle = resolvedStyle(SelectedRowStyle, ink)
-
+    let headerStyle = HeaderStyle.MergedOver(ink)
     drawHeader(screen, r, widths, headerStyle)
 
     var i = FirstVisibleRowIndex
@@ -174,7 +259,9 @@ public open class TableView : Box {
       let row = i - FirstVisibleRowIndex
       if row >= height { break }
       let selected = i == selectedRowIndex
-      drawRow(screen, r, row + 1, Columns.Count, widths, Rows[i], selected ? selectedStyle : ink)
+      var rowStyle = Rows[i].Style.MergedOver(ink)
+      if selected { rowStyle = SelectedRowStyle.MergedOver(rowStyle) }
+      drawRow(screen, r, row + 1, Columns.Count, widths, Rows[i].Cells, rowStyle)
       i = i + 1
     }
   }
@@ -207,6 +294,7 @@ public open class TableView : Box {
         if hit == 0 { return EventResult.Continue }
         let row = FirstVisibleRowIndex + hit - 1
         if row < 0 || row >= Rows.Count { return EventResult.Continue }
+        if !Rows[row].IsSelectable { return EventResult.Continue }
         return result(moveTo(row, height))
       }
     }
@@ -261,27 +349,50 @@ public open class TableView : Box {
     var x = 0
     var i = FirstVisibleColumnIndex
     while i < Columns.Count {
-      drawCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].Alignment, ink)
-      x = x + widths[i] + ColumnGapCells
+      drawTextCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].Alignment, ink)
+      x = x + widths[i]
+      if i + 1 < Columns.Count {
+        drawSeparator(screen, r, x, 0, ink)
+        x = x + ColumnGapCells
+      }
       if x >= r.WidthCells { break }
       i = i + 1
     }
   }
 
-  private func drawRow(screen Screen, r CellRect, row int32, count int32, widths List[int32], cells List[string], ink Style) {
+  private func drawRow(screen Screen, r CellRect, row int32, count int32, widths List[int32], cells List[TableCell], ink Style) {
     var x = 0
     var i = FirstVisibleColumnIndex
     while i < count {
       let w = widths[i]
-      let cell = i < cells.Count ? cells[i] : ""
-      drawCell(screen, r, x, row, w, cell, Columns[i].Alignment, ink)
-      x = x + w + ColumnGapCells
+      if i < cells.Count {
+        drawTableCell(screen, r, x, row, w, cells[i], Columns[i].Alignment, ink)
+      }
+      x = x + w
+      if i + 1 < count {
+        drawSeparator(screen, r, x, row, ink)
+        x = x + ColumnGapCells
+      }
       if x >= r.WidthCells { break }
       i = i + 1
     }
   }
 
-  private func drawCell(screen Screen, r CellRect, x int32, row int32, width int32,
+  private func drawTableCell(screen Screen, r CellRect, x int32, row int32, width int32,
+    cell TableCell, alignment HorizontalAlignment, inherited Style) {
+    let ink = cell.Style.MergedOver(inherited)
+    guard let runs = cell.Runs else {
+      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ink)
+      return
+    }
+    if runs.Count == 0 {
+      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ink)
+      return
+    }
+    drawRunCell(screen, r, x, row, width, runs, alignment, ink)
+  }
+
+  private func drawTextCell(screen Screen, r CellRect, x int32, row int32, width int32,
     text string, alignment HorizontalAlignment, ink Style) {
     if width <= 0 { return }
     var dx = x
@@ -296,6 +407,67 @@ public open class TableView : Box {
       WidthCells: width,
       HeightRows: 1,
     }, dx - x, 0, text, ink)
+  }
+
+  private func drawRunCell(screen Screen, r CellRect, x int32, row int32, width int32,
+    runs List[TextRun], alignment HorizontalAlignment, ink Style) {
+    if width <= 0 { return }
+    let contentWidth = clippedRunsWidth(runs, width)
+    var offset = 0
+    if alignment == HorizontalAlignment.Center { offset = (width - contentWidth) / 2 }
+    if alignment == HorizontalAlignment.Right { offset = width - contentWidth }
+    let cellRect = CellRect{
+      Column: r.Column + x,
+      Row: r.Row + row,
+      WidthCells: width,
+      HeightRows: 1,
+    }
+    var i = 0
+    while i < runs.Count && offset < width {
+      let run = runs[i]
+      let remaining = width - offset
+      screen.WriteClipped(cellRect, offset, 0, run.Text, run.Style.MergedOver(ink))
+      let runWidth = boundedWidth(run.Text, remaining)
+      if runWidth >= remaining { return }
+      offset = offset + runWidth
+      i = i + 1
+    }
+  }
+
+  private func drawSeparator(screen Screen, r CellRect, x int32, row int32, inherited Style) {
+    if ColumnGapCells <= 0 || ColumnSeparator == "" || x >= r.WidthCells { return }
+    var width = ColumnGapCells
+    if x + width > r.WidthCells { width = r.WidthCells - x }
+    screen.WriteClipped(CellRect{
+      Column: r.Column + x,
+      Row: r.Row + row,
+      WidthCells: width,
+      HeightRows: 1,
+    }, 0, 0, ColumnSeparator, ColumnSeparatorStyle.MergedOver(inherited))
+  }
+
+  private func clippedRunsWidth(runs List[TextRun], width int32) int32 {
+    var used = 0
+    var i = 0
+    while i < runs.Count && used < width {
+      for cluster in Glyph.Elements(runs[i].Text) {
+        let next = Glyph.Of(cluster)
+        if used + next > width { return width }
+        used = used + next
+      }
+      i = i + 1
+    }
+    return used
+  }
+
+  private func boundedWidth(text string, width int32) int32 {
+    var used = 0
+    for cluster in Glyph.Elements(text) {
+      let next = Glyph.Of(cluster)
+      if used + next > width { return width }
+      used = used + next
+    }
+    return used
   }
 
   private func clippedWidth(text string, width int32) int32 {
@@ -328,13 +500,10 @@ public open class TableView : Box {
 
   private func moveTo(want int32, height int32) bool {
     if Rows.Count == 0 { return false }
-    let i = clampIndex(want)
+    let i = nearestSelectable(clampIndex(want), directionFor(want))
+    if i < 0 { return false }
     if !setSelection(i, true) { return false }
-    if selectedRowIndex < FirstVisibleRowIndex { FirstVisibleRowIndex = selectedRowIndex }
-    if selectedRowIndex >= FirstVisibleRowIndex + height {
-      FirstVisibleRowIndex = selectedRowIndex - height + 1
-    }
-    FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
+    FirstVisibleRowIndex = Selection.ScrollIntoView(Rows.Count, selectedRowIndex, FirstVisibleRowIndex, height)
     return true
   }
 
@@ -346,47 +515,74 @@ public open class TableView : Box {
   }
 
   private func clampIndex(i int32) int32 {
-    if Rows.Count == 0 { return 0 }
-    if i < 0 { return 0 }
-    if i >= Rows.Count { return Rows.Count - 1 }
-    return i
+    return Selection.ClampIndex(Rows.Count, i)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    var max = Rows.Count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(Rows.Count, s, height)
   }
 
   private func setSelection(value int32, emit bool) bool {
     if selectedRowIndex == value {
+      selectedRowId = selectedIdAt(value)
       if !emit { selectionChange = nil }
       return false
     }
     let previous = selectedRowIndex
     selectedRowIndex = value
+    selectedRowId = selectedIdAt(value)
     selectionChange = emit ? SelectionChange(previous, value) : nil
     return true
   }
 
   private func normalizeSelection() {
-    let normalized = clampIndex(selectedRowIndex)
-    if normalized == selectedRowIndex { return }
+    if Rows.Count == 0 {
+      if selectedRowIndex != 0 || selectedRowId != "" {
+        selectedRowIndex = 0
+        selectedRowId = ""
+        selectionChange = nil
+      }
+      return
+    }
+    var normalized = nearestSelectable(clampIndex(selectedRowIndex), directionFor(selectedRowIndex))
+    if normalized < 0 { normalized = clampIndex(selectedRowIndex) }
+    let normalizedId = selectedIdAt(normalized)
+    if normalized == selectedRowIndex && normalizedId == selectedRowId { return }
     selectedRowIndex = normalized
+    selectedRowId = normalizedId
     selectionChange = nil
   }
 
-  private func resolvedStyle(own Style, inherited Style) Style {
-    return Style{
-      Foreground: own.Foreground.IsInherited ? inherited.Foreground : own.Foreground,
-      Background: own.Background.IsInherited ? inherited.Background : own.Background,
-      Attributes: TextAttributes(int32(inherited.Attributes) | int32(own.Attributes)),
+  private func setProgrammaticSelection(want int32) {
+    if Rows.Count == 0 {
+      setSelection(0, false)
+      return
     }
+    let selected = nearestSelectable(clampIndex(want), directionFor(want))
+    setSelection(selected < 0 ? clampIndex(want) : selected, false)
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
+  private func selectedIdAt(index int32) string {
+    if index < 0 || index >= Rows.Count { return "" }
+    return Rows[index].Id
   }
+
+  private func directionFor(want int32) int32 {
+    return Selection.DirectionFor(want, selectedRowIndex)
+  }
+
+  private func nearestSelectable(start int32, direction int32) int32 {
+    var i = start
+    while i >= 0 && i < Rows.Count {
+      if Rows[i].IsSelectable { return i }
+      i = i + direction
+    }
+    i = start - direction
+    while i >= 0 && i < Rows.Count {
+      if Rows[i].IsSelectable { return i }
+      i = i - direction
+    }
+    return -1
+  }
+
 }

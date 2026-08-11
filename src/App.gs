@@ -16,6 +16,8 @@ public interface View {
   func Draw(screen Screen);
 
   /// Handles one typed user-interface event.
+  /// @param ev The event to handle.
+  /// @returns Handled when the view consumed the event, Exit to stop the app, otherwise Continue.
   func Handle(ev UiEvent) EventResult {
     return EventResult.Continue
   }

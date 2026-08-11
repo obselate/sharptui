@@ -80,11 +80,7 @@ public open class Tabs : Box {
     if r.HeightRows <= 0 || Titles.Count == 0 { return }
     let lefts = starts()
     let off = offset(r, lefts)
-    let selectedStyle = Style{
-      Foreground: SelectedStyle.Foreground.IsInherited ? ink.Foreground : SelectedStyle.Foreground,
-      Background: SelectedStyle.Background.IsInherited ? ink.Background : SelectedStyle.Background,
-      Attributes: TextAttributes(int32(ink.Attributes) | int32(SelectedStyle.Attributes)),
-    }
+    let selectedStyle = SelectedStyle.MergedOver(ink)
 
     for i in 0 ... Titles.Count {
       let x = lefts[i] - off
@@ -115,10 +111,7 @@ public open class Tabs : Box {
 
   private func moveTo(want int32) bool {
     if Titles.Count == 0 { return false }
-    var i = want
-    if i < 0 { i = 0 }
-    if i >= Titles.Count { i = Titles.Count - 1 }
-    return setSelection(i, true)
+    return setSelection(Selection.ClampIndex(Titles.Count, want), true)
   }
 
   /// Left edge of each title, laid end to end with GapCells between.
@@ -184,9 +177,6 @@ public open class Tabs : Box {
     return true
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }
 
 /// A one row bar with a left, centred, and right segment.

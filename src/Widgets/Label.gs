@@ -45,7 +45,10 @@ public open class Label : Box {
   /// @param availableHeight The available height in rows, or nil when unconstrained.
   /// @returns The measured size.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
-    let width = Width.IsAuto ? textWidth : Width.CellCount
+    var width = Width.IsAuto ? textWidth : Width.CellCount
+    if Width.IsAuto && availableWidth != nil && width > availableWidth!! {
+      width = availableWidth!!
+    }
     return CellSize{ WidthCells: width, HeightRows: 1 }
   }
 

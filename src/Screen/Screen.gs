@@ -77,6 +77,17 @@ public struct Style {
     return Style{ Foreground: background, Background: foreground, Attributes: attributes }
   }
 
+  /// Merges this style over inherited: this style's explicit Foreground/Background win, IsInherited falls back to inherited, and Attributes combine with OR.
+  /// @param inherited The style to fall back to.
+  /// @returns The merged style.
+  internal func MergedOver(inherited Style) Style {
+    return Style{
+      Foreground: foreground.IsInherited ? inherited.Foreground : foreground,
+      Background: background.IsInherited ? inherited.Background : background,
+      Attributes: TextAttributes(int32(inherited.Attributes) | int32(attributes)),
+    }
+  }
+
 }
 
 internal struct Cell {

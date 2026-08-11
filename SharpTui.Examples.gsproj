@@ -14,6 +14,7 @@
     <Compile Remove="src/**/*.gs" />
     <Compile Remove="mine/**/*.gs" />
     <Compile Remove="tools/**/*.gs" />
+    <Compile Remove="agent-testing/**/*.gs" />
     <ProjectReference Include="SharpTui.Framework.gsproj" />
   </ItemGroup>
 

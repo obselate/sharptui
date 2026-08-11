@@ -137,14 +137,7 @@ public open class TextBlock : Box {
   }
 
   private func clamp(s int32, count int32, height int32) int32 {
-    var max = count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(count, s, height)
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }

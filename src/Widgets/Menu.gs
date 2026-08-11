@@ -100,18 +100,9 @@ public open class Select : Box {
     screen.DrawBorder(list, ink)
     let inner = list.Inset(CellInsets.All(1))
     let rows = inner.HeightRows
-    let selectedStyle = Style{
-      Foreground: SelectedStyle.Foreground.IsInherited ? ink.Foreground : SelectedStyle.Foreground,
-      Background: SelectedStyle.Background.IsInherited ? ink.Background : SelectedStyle.Background,
-      Attributes: TextAttributes(int32(ink.Attributes) | int32(SelectedStyle.Attributes)),
-    }
+    let selectedStyle = SelectedStyle.MergedOver(ink)
 
-    if highlightIndex < top { top = highlightIndex }
-    if highlightIndex >= top + rows { top = highlightIndex - rows + 1 }
-    var maxTop = Options.Count - rows
-    if maxTop < 0 { maxTop = 0 }
-    if top < 0 { top = 0 }
-    if top > maxTop { top = maxTop }
+    top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, rows)
 
     var i = 0
     while i < rows && top + i < Options.Count {
@@ -222,9 +213,6 @@ public open class Select : Box {
   }
 
   private func clampIndex(value int32) int32 {
-    if Options.Count == 0 { return 0 }
-    if value < 0 { return 0 }
-    if value >= Options.Count { return Options.Count - 1 }
-    return value
+    return Selection.ClampIndex(Options.Count, value)
   }
 }

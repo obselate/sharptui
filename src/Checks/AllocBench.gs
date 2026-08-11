@@ -141,6 +141,7 @@ public class AllocBench {
       uiBenchTableVerticalScroll()
       uiBenchTableHorizontalScroll()
       uiBenchTableCleanRedraw()
+      uiBenchCleanRedraw("rich table unchanged redraw", uiBenchRichTable(8, 1000, w, h), w, h)
       uiBenchTreeSelection()
       uiBenchTreeExpandCollapse()
       uiBenchTreeCleanRedraw()
@@ -178,8 +179,6 @@ public class AllocBench {
       uiBenchVisibilityChange()
       uiBenchCleanRedraw("toggle unchanged redraw", uiBenchToggle(w), w, h)
       uiBenchToggleChange()
-      uiBenchCleanRedraw("radio button unchanged redraw", uiBenchRadioButton(w), w, h)
-      uiBenchRadioButtonChange()
       uiBenchCleanRedraw("radio group unchanged redraw", uiBenchRadioGroup(w), w, h)
       uiBenchRadioGroupChange()
       uiBenchCleanRedraw("progress bar unchanged redraw", uiBenchProgressBar(w), w, h)
@@ -203,8 +202,6 @@ public class AllocBench {
 func uiBenchSelection() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchList(200, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -212,33 +209,17 @@ func uiBenchSelection() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     uiBenchDraw(list, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
-    uiBenchDraw(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
-    Console.WriteLine("SharpTUI selection validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(list, screen, sink)
-  uiBenchResult("selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
+      Console.WriteLine("SharpTUI selection validation failed")
+    }
+    list.Handle(uiBenchKey(Key.Down))
+    return uiBenchDraw(list, screen, sink)
+  })
 }
 
 func uiBenchScroll() {
@@ -253,40 +234,22 @@ func uiBenchScroll() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     list.Handle(uiBenchKey(Key.Down))
     uiBenchDraw(list, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("scroll one row", warm, frames, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if list.SelectedIndex != h - 1 + warm + frames || list.FirstVisibleItemIndex != warm + frames {
+      Console.WriteLine("SharpTUI scroll validation failed")
+    }
     list.Handle(uiBenchKey(Key.Down))
-    uiBenchDraw(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if list.SelectedIndex != h - 1 + warm + frames || list.FirstVisibleItemIndex != warm + frames {
-    Console.WriteLine("SharpTUI scroll validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(list, screen, sink)
-  uiBenchResult("scroll one row", sw, before, after, genBefore, genAfter, frames, bytes)
+    return uiBenchDraw(list, screen, sink)
+  })
 }
 
 func uiBenchListCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchList(1000, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -294,41 +257,23 @@ func uiBenchListCleanRedraw() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(list, screen, sink) != 0 { Console.WriteLine("SharpTUI list clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
-    Console.WriteLine("SharpTUI list clean redraw validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI list clean redraw change failed") }
-  let bytes = uiBenchDrawClean(list, screen, sink)
-  if bytes != 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI list clean redraw final validation failed") }
-  uiBenchResult("list unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("list unchanged redraw", "list", 64, 500,
+    func() int32 { return uiBenchDrawClean(list, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
+        Console.WriteLine("SharpTUI list clean redraw validation failed")
+      }
+      list.Handle(uiBenchKey(Key.Down))
+      if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI list clean redraw change failed") }
+      let bytes = uiBenchDrawClean(list, screen, sink)
+      if bytes != 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI list clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchDefaultMarkerListSelection() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchDefaultMarkerList(200, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -336,41 +281,24 @@ func uiBenchDefaultMarkerListSelection() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     uiBenchDraw(list, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
-    uiBenchDraw(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 || list.SelectionMarker != "> " {
-    Console.WriteLine("SharpTUI default marker selection validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(list, screen, sink)
-  if bytes == 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI default marker selection final validation failed") }
-  uiBenchResult("list default marker selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("list default marker selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 || list.SelectionMarker != "> " {
+      Console.WriteLine("SharpTUI default marker selection validation failed")
+    }
+    list.Handle(uiBenchKey(Key.Down))
+    let bytes = uiBenchDraw(list, screen, sink)
+    if bytes == 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI default marker selection final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchDefaultMarkerListCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchDefaultMarkerList(1000, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -378,41 +306,23 @@ func uiBenchDefaultMarkerListCleanRedraw() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(list, screen, sink) != 0 { Console.WriteLine("SharpTUI default marker clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 || list.SelectionMarker != "> " {
-    Console.WriteLine("SharpTUI default marker clean redraw validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI default marker clean redraw change failed") }
-  let bytes = uiBenchDrawClean(list, screen, sink)
-  if bytes != 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI default marker clean redraw final validation failed") }
-  uiBenchResult("list default marker unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("list default marker unchanged redraw", "default marker", 64, 500,
+    func() int32 { return uiBenchDrawClean(list, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 || list.SelectionMarker != "> " {
+        Console.WriteLine("SharpTUI default marker clean redraw validation failed")
+      }
+      list.Handle(uiBenchKey(Key.Down))
+      if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI default marker clean redraw change failed") }
+      let bytes = uiBenchDrawClean(list, screen, sink)
+      if bytes != 0 || list.SelectedIndex != 21 { Console.WriteLine("SharpTUI default marker clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchPresentedListSelection10k() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchPresentedList(10000, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -420,43 +330,30 @@ func uiBenchPresentedListSelection10k() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let warmupStep = func(i int32) {
     list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection warmup failed") }
     uiBenchDraw(list, screen, sink)
-    i = i + 1
   }
-
-  let sw = Stopwatch()
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  sw.Start()
-  i = 0
-  while i < frames {
+  let measureStep = func(i int32) {
     list.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection measurement failed") }
     uiBenchDraw(list, screen, sink)
-    i = i + 1
   }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if after != before || genAfter != genBefore || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
-    Console.WriteLine("SharpTUI presented list selection allocation validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection final consume failed") }
-  let bytes = uiBenchDraw(list, screen, sink)
-  uiBenchResult("list presented 10k selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("list presented 10k selection move", 64, 500, warmupStep, measureStep,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if after != before || genAfter != genBefore || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
+        Console.WriteLine("SharpTUI presented list selection allocation validation failed")
+      }
+      list.Handle(uiBenchKey(Key.Down))
+      if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection final consume failed") }
+      return uiBenchDraw(list, screen, sink)
+    })
 }
 
 func uiBenchPresentedListCleanRedraw10k() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let list = uiBenchPresentedList(10000, w, h)
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -464,42 +361,24 @@ func uiBenchPresentedListCleanRedraw10k() {
   list.Focus(list)
   uiBenchDraw(list, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(list, screen, sink) != 0 { Console.WriteLine("SharpTUI presented list clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  let sw = Stopwatch()
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(list, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || after != before || genAfter != genBefore || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
-    Console.WriteLine("SharpTUI presented list clean redraw allocation validation failed")
-  }
-  list.Handle(uiBenchKey(Key.Down))
-  if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list clean redraw final consume failed") }
-  if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI presented list clean redraw change failed") }
-  let bytes = uiBenchDrawClean(list, screen, sink)
-  if bytes != 0 { Console.WriteLine("SharpTUI presented list clean redraw final validation failed") }
-  uiBenchResult("list presented 10k unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("list presented 10k unchanged redraw", "presented list", 64, 500,
+    func() int32 { return uiBenchDrawClean(list, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || after != before || genAfter != genBefore || list.SelectedIndex != 20 || list.FirstVisibleItemIndex != 0 {
+        Console.WriteLine("SharpTUI presented list clean redraw allocation validation failed")
+      }
+      list.Handle(uiBenchKey(Key.Down))
+      if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list clean redraw final consume failed") }
+      if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI presented list clean redraw change failed") }
+      let bytes = uiBenchDrawClean(list, screen, sink)
+      if bytes != 0 { Console.WriteLine("SharpTUI presented list clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchEdit() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let initial = "the quick brown fox jumps over the lazy dog"
   let entry = TextInput()
   entry.Width = CellLength.Cells(w)
@@ -510,40 +389,22 @@ func uiBenchEdit() {
   entry.Focus(entry)
   uiBenchDraw(entry, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     entry.Handle((i % 2) == 0 ? uiBenchChar("x") : uiBenchKey(Key.Backspace))
     uiBenchDraw(entry, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    entry.Handle((i % 2) == 0 ? uiBenchChar("x") : uiBenchKey(Key.Backspace))
-    uiBenchDraw(entry, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if entry.Text != initial || entry.CaretGraphemeIndex != initial.Length {
-    Console.WriteLine("SharpTUI edit validation failed")
-  }
-  entry.Handle(uiBenchChar("x"))
-  let bytes = uiBenchDraw(entry, screen, sink)
-  uiBenchResult("edit one character", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("edit one character", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if entry.Text != initial || entry.CaretGraphemeIndex != initial.Length {
+      Console.WriteLine("SharpTUI edit validation failed")
+    }
+    entry.Handle(uiBenchChar("x"))
+    return uiBenchDraw(entry, screen, sink)
+  })
 }
 
 func uiBenchDamage() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let a = "status: frame A"
   let b = "status: frame B"
   let label = Label()
@@ -553,40 +414,22 @@ func uiBenchDamage() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(label, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     label.Text = (i % 2) == 0 ? b : a
     uiBenchDraw(label, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    label.Text = (i % 2) == 0 ? b : a
-    uiBenchDraw(label, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if label.Text != a {
-    Console.WriteLine("SharpTUI damage validation failed")
-  }
-  label.Text = b
-  let bytes = uiBenchDraw(label, screen, sink)
-  uiBenchResult("update one line", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("update one line", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if label.Text != a {
+      Console.WriteLine("SharpTUI damage validation failed")
+    }
+    label.Text = b
+    return uiBenchDraw(label, screen, sink)
+  })
 }
 
 func uiBenchTableSelection() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let table = uiBenchTable(8, 200, w, h)
   table.SelectedRowIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -594,33 +437,17 @@ func uiBenchTableSelection() {
   table.Focus(table)
   uiBenchDraw(table, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     table.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     uiBenchDraw(table, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    table.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
-    uiBenchDraw(table, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 {
-    Console.WriteLine("SharpTUI table selection validation failed")
-  }
-  table.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(table, screen, sink)
-  uiBenchResult("table selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("table selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 {
+      Console.WriteLine("SharpTUI table selection validation failed")
+    }
+    table.Handle(uiBenchKey(Key.Down))
+    return uiBenchDraw(table, screen, sink)
+  })
 }
 
 func uiBenchTableVerticalScroll() {
@@ -635,80 +462,44 @@ func uiBenchTableVerticalScroll() {
   table.Focus(table)
   uiBenchDraw(table, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     table.Handle(uiBenchKey(Key.Down))
     uiBenchDraw(table, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("table scroll one row", warm, frames, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if table.SelectedRowIndex != h - 2 + warm + frames || table.FirstVisibleRowIndex != warm + frames {
+      Console.WriteLine("SharpTUI table vertical scroll validation failed")
+    }
     table.Handle(uiBenchKey(Key.Down))
-    uiBenchDraw(table, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if table.SelectedRowIndex != h - 2 + warm + frames || table.FirstVisibleRowIndex != warm + frames {
-    Console.WriteLine("SharpTUI table vertical scroll validation failed")
-  }
-  table.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(table, screen, sink)
-  uiBenchResult("table scroll one row", sw, before, after, genBefore, genAfter, frames, bytes)
+    return uiBenchDraw(table, screen, sink)
+  })
 }
 
 func uiBenchTableHorizontalScroll() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let table = uiBenchTable(8, 100, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   table.Focus(table)
   uiBenchDraw(table, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     table.Handle(uiBenchKey((i % 2) == 0 ? Key.Right : Key.Left))
     uiBenchDraw(table, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    table.Handle(uiBenchKey((i % 2) == 0 ? Key.Right : Key.Left))
-    uiBenchDraw(table, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if table.FirstVisibleColumnIndex != 0 {
-    Console.WriteLine("SharpTUI table horizontal scroll validation failed")
-  }
-  table.Handle(uiBenchKey(Key.Right))
-  let bytes = uiBenchDraw(table, screen, sink)
-  uiBenchResult("table scroll one column", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("table scroll one column", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if table.FirstVisibleColumnIndex != 0 {
+      Console.WriteLine("SharpTUI table horizontal scroll validation failed")
+    }
+    table.Handle(uiBenchKey(Key.Right))
+    return uiBenchDraw(table, screen, sink)
+  })
 }
 
 func uiBenchTableCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let table = uiBenchTable(8, 1000, w, h)
   table.SelectedRowIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -716,41 +507,23 @@ func uiBenchTableCleanRedraw() {
   table.Focus(table)
   uiBenchDraw(table, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(table, screen, sink) != 0 { Console.WriteLine("SharpTUI table clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(table, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 {
-    Console.WriteLine("SharpTUI table clean redraw validation failed")
-  }
-  table.Handle(uiBenchKey(Key.Down))
-  if uiBenchDraw(table, screen, sink) == 0 { Console.WriteLine("SharpTUI table clean redraw change failed") }
-  let bytes = uiBenchDrawClean(table, screen, sink)
-  if bytes != 0 || table.SelectedRowIndex != 21 { Console.WriteLine("SharpTUI table clean redraw final validation failed") }
-  uiBenchResult("table unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("table unchanged redraw", "table", 64, 500,
+    func() int32 { return uiBenchDrawClean(table, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 {
+        Console.WriteLine("SharpTUI table clean redraw validation failed")
+      }
+      table.Handle(uiBenchKey(Key.Down))
+      if uiBenchDraw(table, screen, sink) == 0 { Console.WriteLine("SharpTUI table clean redraw change failed") }
+      let bytes = uiBenchDrawClean(table, screen, sink)
+      if bytes != 0 || table.SelectedRowIndex != 21 { Console.WriteLine("SharpTUI table clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchTreeSelection() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let tree = uiBenchTree(1000, true, w, h)
   tree.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -758,80 +531,44 @@ func uiBenchTreeSelection() {
   tree.Focus(tree)
   uiBenchDraw(tree, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     tree.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     uiBenchDraw(tree, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    tree.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
-    uiBenchDraw(tree, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if tree.SelectedIndex != 20 || tree.FirstVisibleNodeIndex != 0 {
-    Console.WriteLine("SharpTUI tree selection validation failed")
-  }
-  tree.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(tree, screen, sink)
-  uiBenchResult("tree selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("tree selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if tree.SelectedIndex != 20 || tree.FirstVisibleNodeIndex != 0 {
+      Console.WriteLine("SharpTUI tree selection validation failed")
+    }
+    tree.Handle(uiBenchKey(Key.Down))
+    return uiBenchDraw(tree, screen, sink)
+  })
 }
 
 func uiBenchTreeExpandCollapse() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let tree = uiBenchTree(200, false, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   tree.Focus(tree)
   uiBenchDraw(tree, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     tree.Handle(uiBenchKey(Key.Enter))
     uiBenchDraw(tree, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("tree expand/collapse", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if tree.Roots[0].IsExpanded || tree.SelectedIndex != 0 || tree.FirstVisibleNodeIndex != 0 {
+      Console.WriteLine("SharpTUI tree expand/collapse validation failed")
+    }
     tree.Handle(uiBenchKey(Key.Enter))
-    uiBenchDraw(tree, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if tree.Roots[0].IsExpanded || tree.SelectedIndex != 0 || tree.FirstVisibleNodeIndex != 0 {
-    Console.WriteLine("SharpTUI tree expand/collapse validation failed")
-  }
-  tree.Handle(uiBenchKey(Key.Enter))
-  let bytes = uiBenchDraw(tree, screen, sink)
-  uiBenchResult("tree expand/collapse", sw, before, after, genBefore, genAfter, frames, bytes)
+    return uiBenchDraw(tree, screen, sink)
+  })
 }
 
 func uiBenchTreeCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let tree = uiBenchTree(1000, true, w, h)
   tree.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
@@ -839,34 +576,18 @@ func uiBenchTreeCleanRedraw() {
   tree.Focus(tree)
   uiBenchDraw(tree, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(tree, screen, sink) != 0 { Console.WriteLine("SharpTUI tree clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(tree, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || tree.SelectedIndex != 20 || tree.FirstVisibleNodeIndex != 0 {
-    Console.WriteLine("SharpTUI tree clean redraw validation failed")
-  }
-  tree.Handle(uiBenchKey(Key.Down))
-  if uiBenchDraw(tree, screen, sink) == 0 { Console.WriteLine("SharpTUI tree clean redraw change failed") }
-  let bytes = uiBenchDrawClean(tree, screen, sink)
-  if bytes != 0 || tree.SelectedIndex != 21 { Console.WriteLine("SharpTUI tree clean redraw final validation failed") }
-  uiBenchResult("tree unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("tree unchanged redraw", "tree", 64, 500,
+    func() int32 { return uiBenchDrawClean(tree, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || tree.SelectedIndex != 20 || tree.FirstVisibleNodeIndex != 0 {
+        Console.WriteLine("SharpTUI tree clean redraw validation failed")
+      }
+      tree.Handle(uiBenchKey(Key.Down))
+      if uiBenchDraw(tree, screen, sink) == 0 { Console.WriteLine("SharpTUI tree clean redraw change failed") }
+      let bytes = uiBenchDrawClean(tree, screen, sink)
+      if bytes != 0 || tree.SelectedIndex != 21 { Console.WriteLine("SharpTUI tree clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchTreeScrollbarScroll() {
@@ -882,289 +603,167 @@ func uiBenchTreeScrollbarScroll() {
   tree.Focus(tree)
   uiBenchDraw(tree, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     tree.Handle(uiBenchKey(Key.Down))
     uiBenchDraw(tree, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("tree scrollbar scroll one row", warm, frames, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if tree.SelectedIndex != h - 1 + warm + frames || tree.FirstVisibleNodeIndex != warm + frames {
+      Console.WriteLine("SharpTUI tree scrollbar scroll validation failed")
+    }
     tree.Handle(uiBenchKey(Key.Down))
-    uiBenchDraw(tree, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if tree.SelectedIndex != h - 1 + warm + frames || tree.FirstVisibleNodeIndex != warm + frames {
-    Console.WriteLine("SharpTUI tree scrollbar scroll validation failed")
-  }
-  tree.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(tree, screen, sink)
-  if bytes == 0 || tree.SelectedIndex != h + warm + frames {
-    Console.WriteLine("SharpTUI tree scrollbar scroll final validation failed")
-  }
-  uiBenchResult("tree scrollbar scroll one row", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(tree, screen, sink)
+    if bytes == 0 || tree.SelectedIndex != h + warm + frames {
+      Console.WriteLine("SharpTUI tree scrollbar scroll final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchStatusCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let bar = uiBenchStatus(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(bar, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(bar, screen, sink) != 0 { Console.WriteLine("SharpTUI status clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(bar, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || bar.LeftText != "^C quit" || bar.CenterText != "widget audit" || bar.RightText != "200 items" {
-    Console.WriteLine("SharpTUI status clean redraw validation failed")
-  }
-  bar.RightText = "201 items"
-  if uiBenchDraw(bar, screen, sink) == 0 { Console.WriteLine("SharpTUI status clean redraw change failed") }
-  let bytes = uiBenchDrawClean(bar, screen, sink)
-  if bytes != 0 || bar.RightText != "201 items" { Console.WriteLine("SharpTUI status clean redraw final validation failed") }
-  uiBenchResult("status unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("status unchanged redraw", "status", 64, 500,
+    func() int32 { return uiBenchDrawClean(bar, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || bar.LeftText != "^C quit" || bar.CenterText != "widget audit" || bar.RightText != "200 items" {
+        Console.WriteLine("SharpTUI status clean redraw validation failed")
+      }
+      bar.RightText = "201 items"
+      if uiBenchDraw(bar, screen, sink) == 0 { Console.WriteLine("SharpTUI status clean redraw change failed") }
+      let bytes = uiBenchDrawClean(bar, screen, sink)
+      if bytes != 0 || bar.RightText != "201 items" { Console.WriteLine("SharpTUI status clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchStatusTextChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let bar = uiBenchStatus(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(bar, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     uiBenchStatusText(bar, (i % 2) == 0)
     uiBenchDraw(bar, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    uiBenchStatusText(bar, (i % 2) == 0)
-    uiBenchDraw(bar, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if bar.LeftText != "^C quit" || bar.CenterText != "widget audit" || bar.RightText != "200 items" {
-    Console.WriteLine("SharpTUI status text validation failed")
-  }
-  uiBenchStatusText(bar, true)
-  let bytes = uiBenchDraw(bar, screen, sink)
-  if bytes == 0 || bar.LeftText != "^F filter" || bar.CenterText != "filter: error" || bar.RightText != "17 matches" {
-    Console.WriteLine("SharpTUI status text final validation failed")
-  }
-  uiBenchResult("status text change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("status text change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if bar.LeftText != "^C quit" || bar.CenterText != "widget audit" || bar.RightText != "200 items" {
+      Console.WriteLine("SharpTUI status text validation failed")
+    }
+    uiBenchStatusText(bar, true)
+    let bytes = uiBenchDraw(bar, screen, sink)
+    if bytes == 0 || bar.LeftText != "^F filter" || bar.CenterText != "filter: error" || bar.RightText != "17 matches" {
+      Console.WriteLine("SharpTUI status text final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchTextBlockScroll() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let text = uiBenchTextBlock(w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   text.Focus(text)
   uiBenchDraw(text, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     text.ScrollToLine((i % 2) == 0 ? 20 : 21)
     uiBenchDraw(text, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    text.ScrollToLine((i % 2) == 0 ? 20 : 21)
-    uiBenchDraw(text, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if text.FirstVisibleLine != 21 {
-    Console.WriteLine("SharpTUI text block scroll validation failed")
-  }
-  text.ScrollToLine(22)
-  let bytes = uiBenchDraw(text, screen, sink)
-  if bytes == 0 || text.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI text block scroll final validation failed") }
-  uiBenchResult("text block scroll one line", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("text block scroll one line", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if text.FirstVisibleLine != 21 {
+      Console.WriteLine("SharpTUI text block scroll validation failed")
+    }
+    text.ScrollToLine(22)
+    let bytes = uiBenchDraw(text, screen, sink)
+    if bytes == 0 || text.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI text block scroll final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchTextBlockCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let text = uiBenchTextBlock(w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   text.Focus(text)
   uiBenchDraw(text, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(text, screen, sink) != 0 { Console.WriteLine("SharpTUI text block clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(text, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || text.FirstVisibleLine != 0 {
-    Console.WriteLine("SharpTUI text block clean redraw validation failed")
-  }
-  text.ScrollToLine(20)
-  if uiBenchDraw(text, screen, sink) == 0 { Console.WriteLine("SharpTUI text block clean redraw change failed") }
-  let bytes = uiBenchDrawClean(text, screen, sink)
-  if bytes != 0 || text.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI text block clean redraw final validation failed") }
-  uiBenchResult("text block unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("text block unchanged redraw", "text block", 64, 500,
+    func() int32 { return uiBenchDrawClean(text, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || text.FirstVisibleLine != 0 {
+        Console.WriteLine("SharpTUI text block clean redraw validation failed")
+      }
+      text.ScrollToLine(20)
+      if uiBenchDraw(text, screen, sink) == 0 { Console.WriteLine("SharpTUI text block clean redraw change failed") }
+      let bytes = uiBenchDrawClean(text, screen, sink)
+      if bytes != 0 || text.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI text block clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchRichTextBlockScroll() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let rich = uiBenchRichTextBlock(600, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   rich.Focus(rich)
   uiBenchDraw(rich, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     rich.ScrollToLine((i % 2) == 0 ? 20 : 21)
     uiBenchDraw(rich, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    rich.ScrollToLine((i % 2) == 0 ? 20 : 21)
-    uiBenchDraw(rich, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if rich.LineCount() <= h + 22 || rich.FirstVisibleLine != 21 {
-    Console.WriteLine("SharpTUI rich text block scroll validation failed")
-  }
-  rich.ScrollToLine(22)
-  let bytes = uiBenchDraw(rich, screen, sink)
-  if bytes == 0 || rich.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI rich text block scroll final validation failed") }
-  uiBenchResult("rich text block scroll one line", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("rich text block scroll one line", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if rich.LineCount() <= h + 22 || rich.FirstVisibleLine != 21 {
+      Console.WriteLine("SharpTUI rich text block scroll validation failed")
+    }
+    rich.ScrollToLine(22)
+    let bytes = uiBenchDraw(rich, screen, sink)
+    if bytes == 0 || rich.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI rich text block scroll final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchRichTextBlockCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let rich = uiBenchRichTextBlock(600, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   rich.Focus(rich)
   uiBenchDraw(rich, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(rich, screen, sink) != 0 { Console.WriteLine("SharpTUI rich text block clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(rich, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || rich.LineCount() <= h + 20 || rich.FirstVisibleLine != 0 {
-    Console.WriteLine("SharpTUI rich text block clean redraw validation failed")
-  }
-  rich.ScrollToLine(20)
-  if uiBenchDraw(rich, screen, sink) == 0 { Console.WriteLine("SharpTUI rich text block clean redraw change failed") }
-  let bytes = uiBenchDrawClean(rich, screen, sink)
-  if bytes != 0 || rich.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI rich text block clean redraw final validation failed") }
-  uiBenchResult("rich text block unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("rich text block unchanged redraw", "rich text block", 64, 500,
+    func() int32 { return uiBenchDrawClean(rich, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || rich.LineCount() <= h + 20 || rich.FirstVisibleLine != 0 {
+        Console.WriteLine("SharpTUI rich text block clean redraw validation failed")
+      }
+      rich.ScrollToLine(20)
+      if uiBenchDraw(rich, screen, sink) == 0 { Console.WriteLine("SharpTUI rich text block clean redraw change failed") }
+      let bytes = uiBenchDrawClean(rich, screen, sink)
+      if bytes != 0 || rich.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI rich text block clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchRichTextBlockFollowEnd() {
   let w = 200
   let h = 50
-  let warm = 32
-  let frames = 200
   let rich = uiBenchRichTextBlock(600, w, h)
   let tail = TextRun("follow-end appended row alpha bravo charlie delta\n", Style())
   let screen = uiBenchScreen(w, h)
@@ -1172,44 +771,26 @@ func uiBenchRichTextBlockFollowEnd() {
   rich.ScrollToEnd()
   uiBenchDraw(rich, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     if (i % 2) == 0 { rich.Runs.Add(tail) }
     else { rich.Runs.RemoveAt(rich.Runs.Count - 1) }
     uiBenchDraw(rich, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    if (i % 2) == 0 { rich.Runs.Add(tail) }
-    else { rich.Runs.RemoveAt(rich.Runs.Count - 1) }
-    uiBenchDraw(rich, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  let end = rich.LineCount() - h
-  if rich.FirstVisibleLine != (end < 0 ? 0 : end) {
-    Console.WriteLine("SharpTUI rich text follow-end validation failed")
-  }
-  rich.Runs.Add(tail)
-  let bytes = uiBenchDraw(rich, screen, sink)
-  if bytes == 0 { Console.WriteLine("SharpTUI rich text follow-end final validation failed") }
-  uiBenchResult("rich text block follow-end append", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("rich text block follow-end append", 32, 200, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    let end = rich.LineCount() - h
+    if rich.FirstVisibleLine != (end < 0 ? 0 : end) {
+      Console.WriteLine("SharpTUI rich text follow-end validation failed")
+    }
+    rich.Runs.Add(tail)
+    let bytes = uiBenchDraw(rich, screen, sink)
+    if bytes == 0 { Console.WriteLine("SharpTUI rich text follow-end final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchRichTextBlockPrependAnchor() {
   let w = 200
   let h = 50
-  let warm = 16
-  let frames = 100
   let rich = uiBenchRichTextBlock(600, w, h)
   let added = List[TextRun]()
   added.Add(TextRun("prepended row alpha bravo charlie delta\n", Style()))
@@ -1218,124 +799,71 @@ func uiBenchRichTextBlockPrependAnchor() {
   rich.ScrollToLine(20)
   uiBenchDraw(rich, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     rich.PrependRuns(added)
     uiBenchDraw(rich, screen, sink)
     rich.Runs.RemoveAt(0)
     rich.ScrollToLine(20)
     uiBenchDraw(rich, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("rich text block prepend anchor", 16, 100, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if rich.FirstVisibleLine != 20 {
+      Console.WriteLine("SharpTUI rich text prepend anchor validation failed")
+    }
     rich.PrependRuns(added)
-    uiBenchDraw(rich, screen, sink)
-    rich.Runs.RemoveAt(0)
-    rich.ScrollToLine(20)
-    uiBenchDraw(rich, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if rich.FirstVisibleLine != 20 {
-    Console.WriteLine("SharpTUI rich text prepend anchor validation failed")
-  }
-  rich.PrependRuns(added)
-  let bytes = uiBenchDraw(rich, screen, sink)
-  if bytes != 0 || rich.FirstVisibleLine <= 20 {
-    Console.WriteLine("SharpTUI rich text prepend anchor final validation failed")
-  }
-  uiBenchResult("rich text block prepend anchor", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(rich, screen, sink)
+    if bytes != 0 || rich.FirstVisibleLine <= 20 {
+      Console.WriteLine("SharpTUI rich text prepend anchor final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchMarkdownViewScroll() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let markdown = uiBenchMarkdownView(200, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   markdown.Focus(markdown)
   uiBenchDraw(markdown, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     markdown.ScrollToLine((i % 2) == 0 ? 20 : 21)
     uiBenchDraw(markdown, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    markdown.ScrollToLine((i % 2) == 0 ? 20 : 21)
-    uiBenchDraw(markdown, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if markdown.LineCount() <= h + 22 || markdown.FirstVisibleLine != 21 {
-    Console.WriteLine("SharpTUI markdown view scroll validation failed")
-  }
-  markdown.ScrollToLine(22)
-  let bytes = uiBenchDraw(markdown, screen, sink)
-  if bytes == 0 || markdown.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI markdown view scroll final validation failed") }
-  uiBenchResult("markdown view scroll one line", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("markdown view scroll one line", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if markdown.LineCount() <= h + 22 || markdown.FirstVisibleLine != 21 {
+      Console.WriteLine("SharpTUI markdown view scroll validation failed")
+    }
+    markdown.ScrollToLine(22)
+    let bytes = uiBenchDraw(markdown, screen, sink)
+    if bytes == 0 || markdown.FirstVisibleLine != 22 { Console.WriteLine("SharpTUI markdown view scroll final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchMarkdownViewCleanRedraw() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let markdown = uiBenchMarkdownView(200, w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   markdown.Focus(markdown)
   uiBenchDraw(markdown, screen, sink)
 
-  var i = 0
-  while i < warm {
-    if uiBenchDrawClean(markdown, screen, sink) != 0 { Console.WriteLine("SharpTUI markdown view clean redraw warmup failed") }
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  var cleanBytes = 0
-  while i < frames {
-    cleanBytes = cleanBytes + uiBenchDrawClean(markdown, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if cleanBytes != 0 || markdown.LineCount() <= h + 20 || markdown.FirstVisibleLine != 0 {
-    Console.WriteLine("SharpTUI markdown view clean redraw validation failed")
-  }
-  markdown.ScrollToLine(20)
-  if uiBenchDraw(markdown, screen, sink) == 0 { Console.WriteLine("SharpTUI markdown view clean redraw change failed") }
-  let bytes = uiBenchDrawClean(markdown, screen, sink)
-  if bytes != 0 || markdown.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI markdown view clean redraw final validation failed") }
-  uiBenchResult("markdown view unchanged redraw", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRunClean("markdown view unchanged redraw", "markdown view", 64, 500,
+    func() int32 { return uiBenchDrawClean(markdown, screen, sink) },
+    func(cleanBytes int32, before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if cleanBytes != 0 || markdown.LineCount() <= h + 20 || markdown.FirstVisibleLine != 0 {
+        Console.WriteLine("SharpTUI markdown view clean redraw validation failed")
+      }
+      markdown.ScrollToLine(20)
+      if uiBenchDraw(markdown, screen, sink) == 0 { Console.WriteLine("SharpTUI markdown view clean redraw change failed") }
+      let bytes = uiBenchDrawClean(markdown, screen, sink)
+      if bytes != 0 || markdown.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI markdown view clean redraw final validation failed") }
+      return bytes
+    })
 }
 
 func uiBenchCleanRedraw(name string, root Box, width int32, height int32) {
@@ -1370,49 +898,90 @@ func uiBenchCleanRedraw(name string, root Box, width int32, height int32) {
   uiBenchResult(name, sw, before, after, genBefore, genAfter, frames, bytes)
 }
 
-func uiBenchLayoutReflow() {
-  let w = 200
-  let h = 50
-  let warm = 64
-  let frames = 500
-  let root = uiBenchNestedLayout(w, h)
-  let screen = uiBenchScreen(w, h)
-  let sink = Terminal(AutoResetEvent(false), Stream.Null)
-  uiBenchDraw(root, screen, sink)
-
+/// Shared warmup/measure/report harness for interactive benchmarks. `warmup`
+/// and `measure` run once per frame in each phase (often the same callback);
+/// `finish` runs once after the timed loop to validate, apply the final
+/// change, and return the terminal byte count for uiBenchResult.
+func uiBenchRun(name string, warm int32, frames int32,
+    warmup (int32) -> void, measure (int32) -> void,
+    finish (int64, int64, int32, int32) -> int32) {
   var i = 0
   while i < warm {
-    root.GapCells = (i % 2) == 0 ? 1 : 2
-    uiBenchDraw(root, screen, sink)
+    warmup(i)
     i = i + 1
   }
 
+  let sw = Stopwatch()
   uiBenchCollect()
   let genBefore = GC.CollectionCount(0)
   let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
   sw.Start()
   i = 0
   while i < frames {
-    root.GapCells = (i % 2) == 0 ? 1 : 2
-    uiBenchDraw(root, screen, sink)
+    measure(i)
     i = i + 1
   }
   sw.Stop()
   let after = GC.GetAllocatedBytesForCurrentThread()
   let genAfter = GC.CollectionCount(0)
-  if root.GapCells != 2 { Console.WriteLine("SharpTUI layout reflow validation failed") }
-  root.GapCells = 1
-  let bytes = uiBenchDraw(root, screen, sink)
-  if bytes == 0 || root.GapCells != 1 { Console.WriteLine("SharpTUI layout reflow final validation failed") }
-  uiBenchResult("box row column gap reflow", sw, before, after, genBefore, genAfter, frames, bytes)
+  let bytes = finish(before, after, genBefore, genAfter)
+  uiBenchResult(name, sw, before, after, genBefore, genAfter, frames, bytes)
+}
+
+/// Like uiBenchRun but for the "unchanged redraw" shape: `draw` runs every
+/// frame in both phases, warmup checks it stays clean, and measure sums the
+/// per-frame bytes into `cleanBytes` for `finish` to validate and report.
+func uiBenchRunClean(name string, label string, warm int32, frames int32,
+    draw () -> int32,
+    finish (int32, int64, int64, int32, int32) -> int32) {
+  var i = 0
+  while i < warm {
+    if draw() != 0 { Console.WriteLine("SharpTUI " + label + " clean redraw warmup failed") }
+    i = i + 1
+  }
+
+  let sw = Stopwatch()
+  uiBenchCollect()
+  let genBefore = GC.CollectionCount(0)
+  let before = GC.GetAllocatedBytesForCurrentThread()
+  sw.Start()
+  i = 0
+  var cleanBytes = 0
+  while i < frames {
+    cleanBytes = cleanBytes + draw()
+    i = i + 1
+  }
+  sw.Stop()
+  let after = GC.GetAllocatedBytesForCurrentThread()
+  let genAfter = GC.CollectionCount(0)
+  let bytes = finish(cleanBytes, before, after, genBefore, genAfter)
+  uiBenchResult(name, sw, before, after, genBefore, genAfter, frames, bytes)
+}
+
+func uiBenchLayoutReflow() {
+  let w = 200
+  let h = 50
+  let root = uiBenchNestedLayout(w, h)
+  let screen = uiBenchScreen(w, h)
+  let sink = Terminal(AutoResetEvent(false), Stream.Null)
+  uiBenchDraw(root, screen, sink)
+
+  let step = func(i int32) {
+    root.GapCells = (i % 2) == 0 ? 1 : 2
+    uiBenchDraw(root, screen, sink)
+  }
+  uiBenchRun("box row column gap reflow", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if root.GapCells != 2 { Console.WriteLine("SharpTUI layout reflow validation failed") }
+    root.GapCells = 1
+    let bytes = uiBenchDraw(root, screen, sink)
+    if bytes == 0 || root.GapCells != 1 { Console.WriteLine("SharpTUI layout reflow final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchTextAreaEdit() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let firstLine = "line 0000 alpha bravo charlie delta echo foxtrot golf hotel"
   let area = uiBenchTextArea(200, w, h)
   let initial = area.Text
@@ -1422,38 +991,23 @@ func uiBenchTextAreaEdit() {
   area.Focus(area)
   uiBenchDraw(area, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     area.Handle((i % 2) == 0 ? uiBenchChar("x") : uiBenchKey(Key.Backspace))
     uiBenchDraw(area, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    area.Handle((i % 2) == 0 ? uiBenchChar("x") : uiBenchKey(Key.Backspace))
+  uiBenchRun("text area edit in 200 lines", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if area.Text != initial || area.Caret.GraphemeIndex != firstLine.Length {
+      Console.WriteLine("SharpTUI text area edit validation failed")
+    }
+    area.Caret = TextPosition{ LineIndex: 0, GraphemeIndex: 0 }
     uiBenchDraw(area, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if area.Text != initial || area.Caret.GraphemeIndex != firstLine.Length {
-    Console.WriteLine("SharpTUI text area edit validation failed")
-  }
-  area.Caret = TextPosition{ LineIndex: 0, GraphemeIndex: 0 }
-  uiBenchDraw(area, screen, sink)
-  area.Handle(uiBenchChar("x"))
-  let bytes = uiBenchDraw(area, screen, sink)
-  if bytes == 0 || area.Text == initial || area.Caret.GraphemeIndex != 1 {
-    Console.WriteLine("SharpTUI text area edit final validation failed")
-  }
-  uiBenchResult("text area edit in 200 lines", sw, before, after, genBefore, genAfter, frames, bytes)
+    area.Handle(uiBenchChar("x"))
+    let bytes = uiBenchDraw(area, screen, sink)
+    if bytes == 0 || area.Text == initial || area.Caret.GraphemeIndex != 1 {
+      Console.WriteLine("SharpTUI text area edit final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchTextAreaScroll() {
@@ -1469,123 +1023,72 @@ func uiBenchTextAreaScroll() {
   area.Caret = TextPosition{ LineIndex: h - 1, GraphemeIndex: 0 }
   uiBenchDraw(area, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     area.Handle(uiBenchKey(Key.Down))
     uiBenchDraw(area, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("text area scroll one row", warm, frames, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if area.Caret.LineIndex != h - 1 + warm + frames || area.FirstVisibleRowIndex <= 0 {
+      Console.WriteLine("SharpTUI text area scroll validation failed")
+    }
     area.Handle(uiBenchKey(Key.Down))
-    uiBenchDraw(area, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if area.Caret.LineIndex != h - 1 + warm + frames || area.FirstVisibleRowIndex <= 0 {
-    Console.WriteLine("SharpTUI text area scroll validation failed")
-  }
-  area.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(area, screen, sink)
-  if bytes == 0 || area.Caret.LineIndex != h + warm + frames {
-    Console.WriteLine("SharpTUI text area scroll final validation failed")
-  }
-  uiBenchResult("text area scroll one row", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(area, screen, sink)
+    if bytes == 0 || area.Caret.LineIndex != h + warm + frames {
+      Console.WriteLine("SharpTUI text area scroll final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchTabsSelection() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let tabs = uiBenchTabs(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   tabs.Focus(tabs)
   uiBenchDraw(tabs, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     tabs.Handle(uiBenchKey((i % 2) == 0 ? Key.Right : Key.Left))
     uiBenchDraw(tabs, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    tabs.Handle(uiBenchKey((i % 2) == 0 ? Key.Right : Key.Left))
-    uiBenchDraw(tabs, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if tabs.SelectedIndex != 0 { Console.WriteLine("SharpTUI tabs selection validation failed") }
-  tabs.Handle(uiBenchKey(Key.Right))
-  let bytes = uiBenchDraw(tabs, screen, sink)
-  if bytes == 0 || tabs.SelectedIndex != 1 { Console.WriteLine("SharpTUI tabs selection final validation failed") }
-  uiBenchResult("tabs selection move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("tabs selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if tabs.SelectedIndex != 0 { Console.WriteLine("SharpTUI tabs selection validation failed") }
+    tabs.Handle(uiBenchKey(Key.Right))
+    let bytes = uiBenchDraw(tabs, screen, sink)
+    if bytes == 0 || tabs.SelectedIndex != 1 { Console.WriteLine("SharpTUI tabs selection final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchSelectChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let picker = uiBenchSelect(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   picker.Focus(picker)
   uiBenchDraw(picker, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     uiBenchSelectMove(picker, (i % 2) == 0)
     uiBenchDraw(picker, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    uiBenchSelectMove(picker, (i % 2) == 0)
-    uiBenchDraw(picker, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if picker.SelectedIndex != 0 || picker.IsOpen { Console.WriteLine("SharpTUI select change validation failed") }
-  uiBenchSelectMove(picker, true)
-  let bytes = uiBenchDraw(picker, screen, sink)
-  if bytes == 0 || picker.SelectedIndex != 1 || picker.IsOpen {
-    Console.WriteLine("SharpTUI select change final validation failed")
-  }
-  uiBenchResult("select commit change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("select commit change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if picker.SelectedIndex != 0 || picker.IsOpen { Console.WriteLine("SharpTUI select change validation failed") }
+    uiBenchSelectMove(picker, true)
+    let bytes = uiBenchDraw(picker, screen, sink)
+    if bytes == 0 || picker.SelectedIndex != 1 || picker.IsOpen {
+      Console.WriteLine("SharpTUI select change final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchSelectOpenMove() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let picker = uiBenchSelect(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
@@ -1594,34 +1097,19 @@ func uiBenchSelectOpenMove() {
   picker.Handle(uiBenchKey(Key.Enter))
   uiBenchDraw(picker, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     picker.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
     uiBenchDraw(picker, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    picker.Handle(uiBenchKey((i % 2) == 0 ? Key.Down : Key.Up))
-    uiBenchDraw(picker, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if picker.SelectedIndex != 0 || !picker.IsOpen { Console.WriteLine("SharpTUI open select validation failed") }
-  picker.Handle(uiBenchKey(Key.Down))
-  let bytes = uiBenchDraw(picker, screen, sink)
-  if bytes == 0 || picker.SelectedIndex != 0 || !picker.IsOpen {
-    Console.WriteLine("SharpTUI open select final validation failed")
-  }
-  uiBenchResult("select open highlight move", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("select open highlight move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if picker.SelectedIndex != 0 || !picker.IsOpen { Console.WriteLine("SharpTUI open select validation failed") }
+    picker.Handle(uiBenchKey(Key.Down))
+    let bytes = uiBenchDraw(picker, screen, sink)
+    if bytes == 0 || picker.SelectedIndex != 0 || !picker.IsOpen {
+      Console.WriteLine("SharpTUI open select final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchSelectMove(picker Select, forward bool) {
@@ -1633,175 +1121,88 @@ func uiBenchSelectMove(picker Select, forward bool) {
 func uiBenchButtonPress() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let button = uiBenchButton(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   button.Focus(button)
   uiBenchDraw(button, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let warmupStep = func(i int32) {
     button.Handle(uiBenchKey(Key.Enter))
     uiBenchDraw(button, screen, sink)
     if !button.ConsumePress() { Console.WriteLine("SharpTUI button press warmup failed") }
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  let measureStep = func(i int32) {
     button.Handle(uiBenchKey(Key.Enter))
     uiBenchDraw(button, screen, sink)
     if !button.ConsumePress() { Console.WriteLine("SharpTUI button press measurement failed") }
-    i = i + 1
   }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if button.IsPressed { Console.WriteLine("SharpTUI button press validation failed") }
-  button.Handle(uiBenchKey(Key.Enter))
-  let bytes = uiBenchDraw(button, screen, sink)
-  if bytes != 0 || !button.IsPressed || !button.ConsumePress() || button.IsPressed {
-    Console.WriteLine("SharpTUI button press final validation failed")
-  }
-  uiBenchResult("button press and consume", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("button press and consume", 64, 500, warmupStep, measureStep,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if button.IsPressed { Console.WriteLine("SharpTUI button press validation failed") }
+      button.Handle(uiBenchKey(Key.Enter))
+      let bytes = uiBenchDraw(button, screen, sink)
+      if bytes != 0 || !button.IsPressed || !button.ConsumePress() || button.IsPressed {
+        Console.WriteLine("SharpTUI button press final validation failed")
+      }
+      return bytes
+    })
 }
 
 func uiBenchDialogNavigation() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let dialog = uiBenchDialog()
   let root = uiBenchDialogScene(dialog)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(root, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     root.Handle(uiBenchKey(Key.Tab))
     uiBenchDraw(root, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("dialog action navigation", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if dialog.FocusedElement == nil || dialog.Result != nil { Console.WriteLine("SharpTUI dialog navigation validation failed") }
     root.Handle(uiBenchKey(Key.Tab))
-    uiBenchDraw(root, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if dialog.FocusedElement == nil || dialog.Result != nil { Console.WriteLine("SharpTUI dialog navigation validation failed") }
-  root.Handle(uiBenchKey(Key.Tab))
-  let bytes = uiBenchDraw(root, screen, sink)
-  if bytes == 0 || dialog.FocusedElement == nil || dialog.Result != nil {
-    Console.WriteLine("SharpTUI dialog navigation final validation failed")
-  }
-  uiBenchResult("dialog action navigation", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(root, screen, sink)
+    if bytes == 0 || dialog.FocusedElement == nil || dialog.Result != nil {
+      Console.WriteLine("SharpTUI dialog navigation final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchToggleChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let toggle = uiBenchToggle(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   toggle.Focus(toggle)
   uiBenchDraw(toggle, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     toggle.Handle(uiBenchKey(Key.Enter))
     uiBenchDraw(toggle, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("toggle change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if toggle.IsChecked { Console.WriteLine("SharpTUI toggle change validation failed") }
     toggle.Handle(uiBenchKey(Key.Enter))
-    uiBenchDraw(toggle, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if toggle.IsChecked { Console.WriteLine("SharpTUI toggle change validation failed") }
-  toggle.Handle(uiBenchKey(Key.Enter))
-  let bytes = uiBenchDraw(toggle, screen, sink)
-  if bytes == 0 || !toggle.IsChecked { Console.WriteLine("SharpTUI toggle change final validation failed") }
-  uiBenchResult("toggle change", sw, before, after, genBefore, genAfter, frames, bytes)
-}
-
-func uiBenchRadioButtonChange() {
-  let w = 200
-  let h = 50
-  let warm = 64
-  let frames = 500
-  let button = uiBenchRadioButton(w)
-  let screen = uiBenchScreen(w, h)
-  let sink = Terminal(AutoResetEvent(false), Stream.Null)
-  button.Focus(button)
-  uiBenchDraw(button, screen, sink)
-
-  var i = 0
-  while i < warm {
-    button.IsSelected = (i % 2) == 0
-    uiBenchDraw(button, screen, sink)
-    i = i + 1
-  }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    button.IsSelected = (i % 2) == 0
-    uiBenchDraw(button, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if button.IsSelected { Console.WriteLine("SharpTUI radio button change validation failed") }
-  button.IsSelected = true
-  let bytes = uiBenchDraw(button, screen, sink)
-  if bytes == 0 || !button.IsSelected { Console.WriteLine("SharpTUI radio button change final validation failed") }
-  uiBenchResult("radio button change", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(toggle, screen, sink)
+    if bytes == 0 || !toggle.IsChecked { Console.WriteLine("SharpTUI toggle change final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchRadioGroupChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let group = RadioGroup()
   group.Width = CellLength.Cells(w)
   group.Height = CellLength.Cells(3)
-  let first = RadioButton{ Text: "automatic scale", Width: CellLength.Cells(w) }
-  let second = RadioButton{ Text: "fixed scale", Width: CellLength.Cells(w) }
+  let first = Toggle{ Text: "automatic scale", Width: CellLength.Cells(w) }
+  let second = Toggle{ Text: "fixed scale", Width: CellLength.Cells(w) }
   group.Add(first)
   group.Add(second)
   group.Select(first)
@@ -1810,86 +1211,50 @@ func uiBenchRadioGroupChange() {
   group.Focus(first)
   uiBenchDraw(group, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     let target = (i % 2) == 0 ? second : first
     group.Focus(target)
     group.Handle(uiBenchKey(Key.Enter))
     uiBenchDraw(group, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    let target = (i % 2) == 0 ? second : first
-    group.Focus(target)
+  uiBenchRun("radio group selection change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if !first.IsChecked || second.IsChecked || !Object.ReferenceEquals(group.SelectedToggle, first) {
+      Console.WriteLine("SharpTUI radio group change validation failed")
+    }
+    group.Focus(second)
     group.Handle(uiBenchKey(Key.Enter))
-    uiBenchDraw(group, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if !first.IsSelected || second.IsSelected || !Object.ReferenceEquals(group.SelectedButton, first) {
-    Console.WriteLine("SharpTUI radio group change validation failed")
-  }
-  group.Focus(second)
-  group.Handle(uiBenchKey(Key.Enter))
-  let bytes = uiBenchDraw(group, screen, sink)
-  if bytes == 0 || first.IsSelected || !second.IsSelected || !Object.ReferenceEquals(group.SelectedButton, second) {
-    Console.WriteLine("SharpTUI radio group change final validation failed")
-  }
-  uiBenchResult("radio group selection change", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(group, screen, sink)
+    if bytes == 0 || first.IsChecked || !second.IsChecked || !Object.ReferenceEquals(group.SelectedToggle, second) {
+      Console.WriteLine("SharpTUI radio group change final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchProgressBarChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let bar = uiBenchProgressBar(w)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(bar, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     bar.Value = (i % 2) == 0 ? 25.0 : 75.0
     uiBenchDraw(bar, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    bar.Value = (i % 2) == 0 ? 25.0 : 75.0
-    uiBenchDraw(bar, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if bar.Value != 75.0 { Console.WriteLine("SharpTUI progress bar change validation failed") }
-  bar.Value = 25.0
-  let bytes = uiBenchDraw(bar, screen, sink)
-  if bytes == 0 || bar.Value != 25.0 { Console.WriteLine("SharpTUI progress bar change final validation failed") }
-  uiBenchResult("progress bar value change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("progress bar value change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if bar.Value != 75.0 { Console.WriteLine("SharpTUI progress bar change validation failed") }
+    bar.Value = 25.0
+    let bytes = uiBenchDraw(bar, screen, sink)
+    if bytes == 0 || bar.Value != 25.0 { Console.WriteLine("SharpTUI progress bar change final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchSparklineChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let spark = uiBenchSparkline(w)
   let low = 0.0
   let high = 100.0
@@ -1897,36 +1262,21 @@ func uiBenchSparklineChange() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(spark, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     spark.Values[0] = (i % 2) == 0 ? high : low
     uiBenchDraw(spark, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    spark.Values[0] = (i % 2) == 0 ? high : low
-    uiBenchDraw(spark, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if spark.Values[0] != low {
-    Console.WriteLine("SharpTUI sparkline change validation failed")
-  }
-  spark.Values[0] = high
-  let bytes = uiBenchDraw(spark, screen, sink)
-  if bytes == 0 || spark.Values[0] != high {
-    Console.WriteLine("SharpTUI sparkline change final validation failed")
-  }
-  uiBenchResult("sparkline value change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("sparkline value change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if spark.Values[0] != low {
+      Console.WriteLine("SharpTUI sparkline change validation failed")
+    }
+    spark.Values[0] = high
+    let bytes = uiBenchDraw(spark, screen, sink)
+    if bytes == 0 || spark.Values[0] != high {
+      Console.WriteLine("SharpTUI sparkline change final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchSpinnerAdvance() {
@@ -1940,41 +1290,24 @@ func uiBenchSpinnerAdvance() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(spinner, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     spinner.Advance()
     uiBenchDraw(spinner, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
+  uiBenchRun("spinner advance", warm, frames, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if spinner.FrameIndex != (warm + frames) % frameCount { Console.WriteLine("SharpTUI spinner advance validation failed") }
     spinner.Advance()
-    uiBenchDraw(spinner, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if spinner.FrameIndex != (warm + frames) % frameCount { Console.WriteLine("SharpTUI spinner advance validation failed") }
-  spinner.Advance()
-  let bytes = uiBenchDraw(spinner, screen, sink)
-  if bytes == 0 || spinner.FrameIndex != (warm + frames + 1) % frameCount {
-    Console.WriteLine("SharpTUI spinner advance final validation failed")
-  }
-  uiBenchResult("spinner advance", sw, before, after, genBefore, genAfter, frames, bytes)
+    let bytes = uiBenchDraw(spinner, screen, sink)
+    if bytes == 0 || spinner.FrameIndex != (warm + frames + 1) % frameCount {
+      Console.WriteLine("SharpTUI spinner advance final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchBadgeChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let badge = uiBenchBadge(w)
   let a = "build passed"
   let b = "build failed"
@@ -1982,81 +1315,47 @@ func uiBenchBadgeChange() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(badge, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     badge.Text = (i % 2) == 0 ? b : a
     uiBenchDraw(badge, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    badge.Text = (i % 2) == 0 ? b : a
-    uiBenchDraw(badge, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if badge.Text != a { Console.WriteLine("SharpTUI badge change validation failed") }
-  badge.Text = b
-  let bytes = uiBenchDraw(badge, screen, sink)
-  if bytes == 0 || badge.Text != b { Console.WriteLine("SharpTUI badge change final validation failed") }
-  uiBenchResult("badge text change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("badge text change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if badge.Text != a { Console.WriteLine("SharpTUI badge change validation failed") }
+    badge.Text = b
+    let bytes = uiBenchDraw(badge, screen, sink)
+    if bytes == 0 || badge.Text != b { Console.WriteLine("SharpTUI badge change final validation failed") }
+    return bytes
+  })
 }
 
 func uiBenchSeparatorChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let separator = uiBenchSeparator(w, h)
   let screen = uiBenchScreen(w, h)
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(separator, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     separator.Orientation = (i % 2) == 0 ? SeparatorOrientation.Vertical : SeparatorOrientation.Horizontal
     uiBenchDraw(separator, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    separator.Orientation = (i % 2) == 0 ? SeparatorOrientation.Vertical : SeparatorOrientation.Horizontal
-    uiBenchDraw(separator, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if separator.Orientation != SeparatorOrientation.Horizontal {
-    Console.WriteLine("SharpTUI separator orientation validation failed")
-  }
-  separator.Orientation = SeparatorOrientation.Vertical
-  let bytes = uiBenchDraw(separator, screen, sink)
-  if bytes == 0 || separator.Orientation != SeparatorOrientation.Vertical {
-    Console.WriteLine("SharpTUI separator orientation final validation failed")
-  }
-  uiBenchResult("separator orientation change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("separator orientation change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if separator.Orientation != SeparatorOrientation.Horizontal {
+      Console.WriteLine("SharpTUI separator orientation validation failed")
+    }
+    separator.Orientation = SeparatorOrientation.Vertical
+    let bytes = uiBenchDraw(separator, screen, sink)
+    if bytes == 0 || separator.Orientation != SeparatorOrientation.Vertical {
+      Console.WriteLine("SharpTUI separator orientation final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchSplitterChangedVsDirect() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
 
   let target = Column{
     Width: CellLength.Cells(60),
@@ -2085,33 +1384,18 @@ func uiBenchSplitterChangedVsDirect() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(root, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     splitter.ResizeBy((i % 2) == 0 ? 1 : -1)
     uiBenchDraw(root, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    splitter.ResizeBy((i % 2) == 0 ? 1 : -1)
-    uiBenchDraw(root, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  splitter.ResizeBy(1)
-  let bytes = uiBenchDraw(root, screen, sink)
-  if !Object.ReferenceEquals(children, root.Children) || bytes == 0 {
-    Console.WriteLine("SharpTUI splitter changed-cell validation failed")
-  }
-  uiBenchResult("splitter changed cell", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("splitter changed cell", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    splitter.ResizeBy(1)
+    let bytes = uiBenchDraw(root, screen, sink)
+    if !Object.ReferenceEquals(children, root.Children) || bytes == 0 {
+      Console.WriteLine("SharpTUI splitter changed-cell validation failed")
+    }
+    return bytes
+  })
 
   let directTarget = Column{
     Width: CellLength.Cells(60),
@@ -2144,36 +1428,20 @@ func uiBenchSplitterChangedVsDirect() {
   let directSink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(directRoot, directScreen, directSink)
 
-  i = 0
-  while i < warm {
+  let directStep = func(i int32) {
     let current = directTarget.Width.CellCount
     directTarget.Width = CellLength.Cells(current + ((i % 2) == 0 ? 1 : -1))
     uiBenchDraw(directRoot, directScreen, directSink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let directGenBefore = GC.CollectionCount(0)
-  let directBefore = GC.GetAllocatedBytesForCurrentThread()
-  let directSw = Stopwatch()
-  directSw.Start()
-  i = 0
-  while i < frames {
-    let current = directTarget.Width.CellCount
-    directTarget.Width = CellLength.Cells(current + ((i % 2) == 0 ? 1 : -1))
-    uiBenchDraw(directRoot, directScreen, directSink)
-    i = i + 1
-  }
-  directSw.Stop()
-  let directAfter = GC.GetAllocatedBytesForCurrentThread()
-  let directGenAfter = GC.CollectionCount(0)
-  directTarget.Width = CellLength.Cells(directTarget.Width.CellCount + 1)
-  let directBytes = uiBenchDraw(directRoot, directScreen, directSink)
-  if !Object.ReferenceEquals(directChildren, directRoot.Children) || directBytes == 0 {
-    Console.WriteLine("SharpTUI direct changed-cell validation failed")
-  }
-  uiBenchResult("direct target width reflow", directSw, directBefore, directAfter,
-    directGenBefore, directGenAfter, frames, directBytes)
+  uiBenchRun("direct target width reflow", 64, 500, directStep, directStep,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      directTarget.Width = CellLength.Cells(directTarget.Width.CellCount + 1)
+      let directBytes = uiBenchDraw(directRoot, directScreen, directSink)
+      if !Object.ReferenceEquals(directChildren, directRoot.Children) || directBytes == 0 {
+        Console.WriteLine("SharpTUI direct changed-cell validation failed")
+      }
+      return directBytes
+    })
 }
 
 func uiBenchBoxLayout(width int32, height int32) Box {
@@ -2357,8 +1625,6 @@ func uiBenchOverlayScene() Box {
 func uiBenchVisibilityChange() {
   let w = 200
   let h = 50
-  let warm = 64
-  let frames = 500
   let optional = Label{ Text: "optional pane", GrowWeight: 1 }
   let root = Row{
     Width: CellLength.Cells(w),
@@ -2373,36 +1639,21 @@ func uiBenchVisibilityChange() {
   let sink = Terminal(AutoResetEvent(false), Stream.Null)
   uiBenchDraw(root, screen, sink)
 
-  var i = 0
-  while i < warm {
+  let step = func(i int32) {
     optional.IsVisible = (i % 2) == 0
     uiBenchDraw(root, screen, sink)
-    i = i + 1
   }
-
-  uiBenchCollect()
-  let genBefore = GC.CollectionCount(0)
-  let before = GC.GetAllocatedBytesForCurrentThread()
-  let sw = Stopwatch()
-  sw.Start()
-  i = 0
-  while i < frames {
-    optional.IsVisible = (i % 2) == 0
-    uiBenchDraw(root, screen, sink)
-    i = i + 1
-  }
-  sw.Stop()
-  let after = GC.GetAllocatedBytesForCurrentThread()
-  let genAfter = GC.CollectionCount(0)
-  if optional.IsVisible {
-    Console.WriteLine("SharpTUI visibility change validation failed")
-  }
-  optional.IsVisible = true
-  let bytes = uiBenchDraw(root, screen, sink)
-  if bytes == 0 || !optional.IsVisible {
-    Console.WriteLine("SharpTUI visibility change final validation failed")
-  }
-  uiBenchResult("layout visibility change", sw, before, after, genBefore, genAfter, frames, bytes)
+  uiBenchRun("layout visibility change", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+    if optional.IsVisible {
+      Console.WriteLine("SharpTUI visibility change validation failed")
+    }
+    optional.IsVisible = true
+    let bytes = uiBenchDraw(root, screen, sink)
+    if bytes == 0 || !optional.IsVisible {
+      Console.WriteLine("SharpTUI visibility change final validation failed")
+    }
+    return bytes
+  })
 }
 
 func uiBenchToggle(width int32) Toggle {
@@ -2412,19 +1663,12 @@ func uiBenchToggle(width int32) Toggle {
   return toggle
 }
 
-func uiBenchRadioButton(width int32) RadioButton {
-  let button = RadioButton()
-  button.Width = CellLength.Cells(width)
-  button.Text = "automatic scale"
-  return button
-}
-
 func uiBenchRadioGroup(width int32) RadioGroup {
   let group = RadioGroup()
   group.Width = CellLength.Cells(width)
   group.Height = CellLength.Cells(3)
-  let first = RadioButton{ Text: "automatic scale", Width: CellLength.Cells(width) }
-  let second = RadioButton{ Text: "fixed scale", Width: CellLength.Cells(width) }
+  let first = Toggle{ Text: "automatic scale", Width: CellLength.Cells(width) }
+  let second = Toggle{ Text: "fixed scale", Width: CellLength.Cells(width) }
   group.Add(first)
   group.Add(second)
   group.Select(first)
@@ -2484,13 +1728,32 @@ func uiBenchTable(columns int32, rows int32, width int32, height int32) TableVie
   }
   var r = 0
   while r < rows {
-    let row = List[string]()
+    let row = TableRow{ Id: "row-" + r.ToString("D4") }
     c = 0
     while c < columns {
-      row.Add("row-" + r.ToString("D4") + " column-" + c.ToString("D2") + " value")
+      row.Cells.Add(TableCell("row-" + r.ToString("D4") + " column-" + c.ToString("D2") + " value"))
       c = c + 1
     }
     table.Rows.Add(row)
+    r = r + 1
+  }
+  return table
+}
+
+func uiBenchRichTable(columns int32, rows int32, width int32, height int32) TableView {
+  let table = uiBenchTable(columns, rows, width, height)
+  table.ColumnSeparator = "│"
+  table.ColumnSeparatorStyle = Style{ Foreground: Color.Rgb("555C6B") }
+  let alert = Style{ Foreground: Color.Rgb("E5484D") }
+  let plain = Style{ Foreground: Color.Rgb("C8CEDA") }
+  var r = 0
+  while r < table.Rows.Count {
+    table.Rows[r].Cells[0] = TableCell{
+      Runs: List[TextRun]{
+        TextRun{ Text: "●", Style: alert },
+        TextRun{ Text: " row-" + r.ToString("D4"), Style: plain },
+      },
+    }
     r = r + 1
   }
   return table

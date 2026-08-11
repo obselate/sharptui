@@ -12,6 +12,15 @@ docs/superpowers/
 /ROARTUI-CONSUMER-AUDIT.md
 /STRUCTURE.md
 /perf-report.md
-/tools/
-/api/
+/tools/*
+!/tools/SharpTui.ApiSurface/
+!/tools/SharpTui.ApiSurface/Program.cs
+!/tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
+/api/*
+!/api/PublicApi.allowlist.txt
+!/api/PublicApi.documentation.xml
+!/api/PublicApi.snapshot.txt
+!/api/PublicApi.symbols.sha256
+!/api/README.md
 /benchmarks/
+/agent-testing/

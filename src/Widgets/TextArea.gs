@@ -677,17 +677,11 @@ public open class TextArea : Box {
 
   private func follow(height int32) {
     let here = visualOf(row, col)
-    if here < firstVisibleRowIndex { firstVisibleRowIndex = here }
-    if here >= firstVisibleRowIndex + height { firstVisibleRowIndex = here - height + 1 }
-    firstVisibleRowIndex = clampScroll(firstVisibleRowIndex, height)
+    firstVisibleRowIndex = Selection.ScrollIntoView(ScrollExtentRows(), here, firstVisibleRowIndex, height)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    var max = ScrollExtentRows() - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(ScrollExtentRows(), s, height)
   }
 
   private func mark() {
@@ -868,11 +862,7 @@ public open class TextArea : Box {
       x = 0
     }
     if x >= textWidth { return }
-    let selectionStyle = Style{
-      Foreground: selectedTextStyle.Foreground.IsInherited ? ink.Background : selectedTextStyle.Foreground,
-      Background: selectedTextStyle.Background.IsInherited ? ink.Foreground : selectedTextStyle.Background,
-      Attributes: TextAttributes(int32(ink.Attributes) | int32(selectedTextStyle.Attributes)),
-    }
+    let selectionStyle = selectedTextStyle.MergedOver(ink.Inverted())
     screen.WriteClipped(r, gutterWidth + x, row, CellText.Clip(run, textWidth - x), selectionStyle)
   }
 
@@ -945,9 +935,6 @@ public open class TextArea : Box {
     if horizontalCellOffset < 0 { horizontalCellOffset = 0 }
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }
 
 internal class Snapshot {

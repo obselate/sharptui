@@ -218,3 +218,8 @@ internal func inputWithModifiers(ev UiEvent, modifiers KeyModifiers) UiEvent {
 internal func inputIsRelease(ev UiEvent) bool {
   return ev.Kind == UiEventKind.Key && ev.Phase == KeyPhase.Release
 }
+
+/// Maps a handled flag to the matching EventResult, shared by widget Accept overrides.
+internal func result(handled bool) EventResult {
+  return handled ? EventResult.Handled : EventResult.Continue
+}

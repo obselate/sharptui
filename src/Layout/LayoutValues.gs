@@ -228,7 +228,9 @@ public struct Placement {
   shared {
     /// Participates in flex layout alongside its siblings.
     public prop InFlow Placement { get { return Placement{} } }
-    /// Positioned centered over the layout, outside the flex flow.
+    /// Positioned centered over the layout, outside the flex flow. Centering does not shrink a
+    /// fixed-size element to its parent, so an element larger than the viewport can extend beyond
+    /// the available rectangle.
     public prop Centered Placement { get { return Placement{ kind: PlacementKind.Centered } } }
 
     /// Positions an element at a fixed point, outside the flex flow.

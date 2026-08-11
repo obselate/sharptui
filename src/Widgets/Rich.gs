@@ -23,6 +23,8 @@ private struct RichWrapState {
   public var WordWidth int32
 }
 
+/// Word-wraps styled runs into packed TextRun lines. Shared by RichTextBlock's incremental cache
+/// (via AttachOpen/DetachOpen/CaptureState/RestoreState) and one-shot prepend wrapping (via Complete).
 private class RichRunWrapper {
   private var width int32
   private var lines List[List[TextRun]]
@@ -42,13 +44,49 @@ private class RichRunWrapper {
     wordWidth = 0
   }
 
+  /// The packed lines committed so far, including any attached open (trailing, still-open) line.
+  internal prop Lines List[List[TextRun]] { get { return lines } }
+
   internal func Append(run TextRun) {
     for cluster in Glyph.Elements(run.Text) { appendGlyph(cluster, run.Style) }
   }
 
+  /// Packs and appends the still-open trailing line, then returns Lines.
   internal func Complete() List[List[TextRun]] {
-    lines.Add(pack(start, pending.Count))
+    AttachOpen()
     return lines
+  }
+
+  /// Packs and appends the still-open trailing line as a line of its own.
+  internal func AttachOpen() {
+    lines.Add(pack(start, pending.Count))
+  }
+
+  /// Removes the trailing open line previously added by AttachOpen, so appending can resume.
+  internal func DetachOpen() {
+    if lines.Count > 0 { lines.RemoveAt(lines.Count - 1) }
+  }
+
+  /// Snapshots the wrap position so RestoreState can undo appends back to this point.
+  internal func CaptureState() RichWrapState {
+    return RichWrapState{
+      CacheCount: lines.Count,
+      OpenCount: pending.Count,
+      OpenStart: start,
+      WordAt: wordAt,
+      Used: used,
+      WordWidth: wordWidth,
+    }
+  }
+
+  /// Truncates committed lines and pending glyphs back to a previously captured state.
+  internal func RestoreState(state RichWrapState) {
+    while lines.Count > state.CacheCount { lines.RemoveAt(lines.Count - 1) }
+    while pending.Count > state.OpenCount { pending.RemoveAt(pending.Count - 1) }
+    start = state.OpenStart
+    wordAt = state.WordAt
+    used = state.Used
+    wordWidth = state.WordWidth
   }
 
   private func appendGlyph(text string, style Style) {
@@ -125,14 +163,10 @@ public open class RichTextBlock : Box {
   private var firstVisibleLine int32
 
   private var cache List[List[TextRun]]
+  private var wrapper RichRunWrapper
   private var cachedRuns List[TextRun]
   private var cachedWidth int32
   private var dirty bool
-  private var pending List[RichGlyph]
-  private var openStart int32
-  private var wordAt int32
-  private var used int32
-  private var wordWidth int32
   private var states List[RichWrapState]
   private var frontRuns List[TextRun]
   private var frontLineCount int32
@@ -164,15 +198,11 @@ public open class RichTextBlock : Box {
   public init() {
     runs = List[TextRun]()
     firstVisibleLine = 0
-    cache = List[List[TextRun]]()
+    wrapper = RichRunWrapper(0)
+    cache = wrapper.Lines
     cachedRuns = List[TextRun]()
     cachedWidth = -1
     dirty = true
-    pending = List[RichGlyph]()
-    openStart = 0
-    wordAt = 0
-    used = 0
-    wordWidth = 0
     states = List[RichWrapState]()
     frontRuns = List[TextRun]()
     frontLineCount = 0
@@ -261,11 +291,7 @@ public open class RichTextBlock : Box {
       var part = 0
       while part < line.Count {
         let run = line[part]
-        let style = Style{
-          Foreground: run.Style.Foreground.IsInherited ? ink.Foreground : run.Style.Foreground,
-          Background: run.Style.Background.IsInherited ? ink.Background : run.Style.Background,
-          Attributes: TextAttributes(int32(ink.Attributes) | int32(run.Style.Attributes)),
-        }
+        let style = run.Style.MergedOver(ink)
         screen.WriteClipped(r, x, row, run.Text, style)
         x = x + Glyph.WidthOf(run.Text)
         part = part + 1
@@ -320,11 +346,7 @@ public open class RichTextBlock : Box {
   }
 
   private func clamp(s int32, height int32) int32 {
-    var max = cache.Count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(cache.Count, s, height)
   }
 
   private func runsChanged() bool {
@@ -358,60 +380,50 @@ public open class RichTextBlock : Box {
   }
 
   private func rebuildCache(width int32) {
-    cache.Clear()
+    wrapper = RichRunWrapper(width)
+    cache = wrapper.Lines
     cachedRuns.Clear()
     states.Clear()
     frontRuns.Clear()
     frontLineCount = 0
     canUndoTail = true
-    pending.Clear()
-    openStart = 0
-    wordAt = 0
-    used = 0
-    wordWidth = 0
     cachedWidth = width
     dirty = false
     if width <= 0 { return }
 
-    states.Add(captureState())
+    states.Add(wrapper.CaptureState())
     for run in runs {
-      appendRun(run, width)
+      wrapper.Append(run)
       cachedRuns.Add(run)
-      states.Add(captureState())
+      states.Add(wrapper.CaptureState())
     }
-    attachOpen()
+    wrapper.AttachOpen()
   }
 
   private func appendRuns(from int32) {
-    detachOpen()
+    wrapper.DetachOpen()
     var i = from
     while i < runs.Count {
-      appendRun(runs[i], cachedWidth)
+      wrapper.Append(runs[i])
       cachedRuns.Add(runs[i])
-      if canUndoTail && frontRuns.Count == 0 { states.Add(captureState()) }
+      if canUndoTail && frontRuns.Count == 0 { states.Add(wrapper.CaptureState()) }
       i = i + 1
     }
-    attachOpen()
+    wrapper.AttachOpen()
   }
 
   private func undoTail(count int32) {
-    detachOpen()
-    let state = states[count]
-    truncateCache(state.CacheCount)
-    truncateGlyphs(state.OpenCount)
-    openStart = state.OpenStart
-    wordAt = state.WordAt
-    used = state.Used
-    wordWidth = state.WordWidth
+    wrapper.DetachOpen()
+    wrapper.RestoreState(states[count])
     truncateRuns(count)
     truncateStates(count + 1)
-    attachOpen()
+    wrapper.AttachOpen()
   }
 
   private func prependCached(added List[TextRun]) {
-    let wrapper = RichRunWrapper(cachedWidth)
-    for run in added { wrapper.Append(run) }
-    let prefix = wrapper.Complete()
+    let prefixWrapper = RichRunWrapper(cachedWidth)
+    for run in added { prefixWrapper.Append(run) }
+    let prefix = prefixWrapper.Complete()
     let lines = prefix.Count - 1
     var i = 0
     while i < added.Count {
@@ -461,94 +473,6 @@ public open class RichTextBlock : Box {
     canUndoTail = true
   }
 
-  private func appendRun(run TextRun, width int32) {
-    for cluster in Glyph.Elements(run.Text) {
-      appendGlyph(cluster, run.Style, width)
-    }
-  }
-
-  private func appendGlyph(text string, style Style, width int32) {
-    if text == "\n" {
-      commit(openStart, pending.Count)
-      openStart = pending.Count
-      wordAt = pending.Count
-      used = 0
-      wordWidth = 0
-      return
-    }
-
-    let glyphWidth = Glyph.Of(text)
-    if text != " " {
-      if wordWidth + glyphWidth > width {
-        commit(openStart, pending.Count)
-        openStart = pending.Count
-        wordAt = pending.Count
-        used = 0
-        wordWidth = 0
-      }
-      if used + wordWidth + glyphWidth > width {
-        commit(openStart, wordAt)
-        openStart = wordAt
-        used = 0
-      }
-    }
-
-    pending.Add(RichGlyph(text, style))
-    if text == " " {
-      used = used + wordWidth + glyphWidth
-      wordAt = pending.Count
-      wordWidth = 0
-    } else {
-      wordWidth = wordWidth + glyphWidth
-    }
-  }
-
-  private func commit(from int32, to int32) {
-    cache.Add(packOpen(from, to))
-  }
-
-  private func attachOpen() {
-    cache.Add(packOpen(openStart, pending.Count))
-  }
-
-  private func detachOpen() {
-    if cache.Count > 0 { cache.RemoveAt(cache.Count - 1) }
-  }
-
-  private func packOpen(from int32, to int32) List[TextRun] {
-    let line = List[TextRun]()
-    var end = to
-    while end > from && pending[end - 1].Text == " " { end = end - 1 }
-    if end <= from { return line }
-
-    var style = pending[from].Style
-    let text = StringBuilder()
-    var i = from
-    while i < end {
-      let glyph = pending[i]
-      if !sameStyle(style, glyph.Style) {
-        line.Add(TextRun(text.ToString(), style))
-        text.Clear()
-        style = glyph.Style
-      }
-      text.Append(glyph.Text)
-      i = i + 1
-    }
-    if text.Length > 0 { line.Add(TextRun(text.ToString(), style)) }
-    return line
-  }
-
-  private func captureState() RichWrapState {
-    return RichWrapState{
-      CacheCount: cache.Count,
-      OpenCount: pending.Count,
-      OpenStart: openStart,
-      WordAt: wordAt,
-      Used: used,
-      WordWidth: wordWidth,
-    }
-  }
-
   private func isPrefix(count int32) bool {
     if count > cachedRuns.Count || count > runs.Count { return false }
     var i = 0
@@ -577,14 +501,6 @@ public open class RichTextBlock : Box {
     return richSameStyle(a, b)
   }
 
-  private func truncateCache(count int32) {
-    while cache.Count > count { cache.RemoveAt(cache.Count - 1) }
-  }
-
-  private func truncateGlyphs(count int32) {
-    while pending.Count > count { pending.RemoveAt(pending.Count - 1) }
-  }
-
   private func truncateRuns(count int32) {
     while cachedRuns.Count > count { cachedRuns.RemoveAt(cachedRuns.Count - 1) }
   }
@@ -593,7 +509,4 @@ public open class RichTextBlock : Box {
     while states.Count > count { states.RemoveAt(states.Count - 1) }
   }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }

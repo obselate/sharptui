@@ -101,7 +101,7 @@ public open class ListView : Box {
   protected override func Render(screen Screen, r CellRect, ink Style) {
     normalizeSelection()
     FirstVisibleItemIndex = clampScroll(FirstVisibleItemIndex, r.HeightRows)
-    let selectedStyle = resolvedStyle(SelectedStyle, ink)
+    let selectedStyle = SelectedStyle.MergedOver(ink)
     let markerWidth = Glyph.WidthOf(SelectionMarker)
     let visibleMarkerWidth = markerWidth < r.WidthCells ? markerWidth : r.WidthCells
     var i = FirstVisibleItemIndex
@@ -110,8 +110,8 @@ public open class ListView : Box {
       if row >= r.HeightRows { break }
       let item = Items[i]
       let selected = i == SelectedIndex
-      let itemStyle = resolvedStyle(item.Style, ink)
-      let rowStyle = selected ? resolvedStyle(SelectedStyle, itemStyle) : itemStyle
+      let itemStyle = item.Style.MergedOver(ink)
+      let rowStyle = selected ? SelectedStyle.MergedOver(itemStyle) : itemStyle
       if markerWidth > 0 {
         if selected { screen.WriteClipped(r, 0, row, SelectionMarker, rowStyle) }
         else if visibleMarkerWidth > 0 {
@@ -169,22 +169,14 @@ public open class ListView : Box {
     if Items.Count == 0 { return false }
     let i = nearestSelectable(clampIndex(want), directionFor(want))
     if i < 0 || !setSelection(i, true) { return false }
-    if selectedIndex < FirstVisibleItemIndex { FirstVisibleItemIndex = selectedIndex }
-    if selectedIndex >= FirstVisibleItemIndex + height {
-      FirstVisibleItemIndex = selectedIndex - height + 1
-    }
-    FirstVisibleItemIndex = clampScroll(FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selectedIndex, FirstVisibleItemIndex, height)
     return true
   }
 
   private func selectAt(want int32, height int32) bool {
     if want < 0 || want >= Items.Count || !Items[want].IsSelectable { return false }
     if !setSelection(want, true) { return false }
-    if selectedIndex < FirstVisibleItemIndex { FirstVisibleItemIndex = selectedIndex }
-    if selectedIndex >= FirstVisibleItemIndex + height {
-      FirstVisibleItemIndex = selectedIndex - height + 1
-    }
-    FirstVisibleItemIndex = clampScroll(FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selectedIndex, FirstVisibleItemIndex, height)
     return true
   }
 
@@ -196,18 +188,11 @@ public open class ListView : Box {
   }
 
   private func clampIndex(i int32) int32 {
-    if Items.Count == 0 { return 0 }
-    if i < 0 { return 0 }
-    if i >= Items.Count { return Items.Count - 1 }
-    return i
+    return Selection.ClampIndex(Items.Count, i)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    var max = Items.Count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(Items.Count, s, height)
   }
 
   private func setProgrammaticSelection(want int32) {
@@ -253,7 +238,7 @@ public open class ListView : Box {
   }
 
   private func directionFor(want int32) int32 {
-    return want < selectedIndex ? -1 : 1
+    return Selection.DirectionFor(want, selectedIndex)
   }
 
   private func nearestSelectable(start int32, direction int32) int32 {
@@ -275,21 +260,10 @@ public open class ListView : Box {
     var i = 0
     while i < runs.Count && offset < r.WidthCells {
       let run = runs[i]
-      screen.WriteClipped(r, offset, row, run.Text, resolvedStyle(run.Style, inherited))
+      screen.WriteClipped(r, offset, row, run.Text, run.Style.MergedOver(inherited))
       offset = offset + Glyph.WidthOf(run.Text)
       i = i + 1
     }
   }
 
-  private func resolvedStyle(own Style, inherited Style) Style {
-    return Style{
-      Foreground: own.Foreground.IsInherited ? inherited.Foreground : own.Foreground,
-      Background: own.Background.IsInherited ? inherited.Background : own.Background,
-      Attributes: TextAttributes(int32(inherited.Attributes) | int32(own.Attributes)),
-    }
-  }
-
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }

@@ -91,11 +91,7 @@ public open class TextInput : Box {
     clampCaret(clusters.Count)
 
     if Text == "" && !IsFocused {
-      let style = Style{
-        Foreground: PlaceholderStyle.Foreground.IsInherited ? ink.Foreground : PlaceholderStyle.Foreground,
-        Background: PlaceholderStyle.Background.IsInherited ? ink.Background : PlaceholderStyle.Background,
-        Attributes: TextAttributes(int32(ink.Attributes) | int32(PlaceholderStyle.Attributes)),
-      }
+      let style = PlaceholderStyle.MergedOver(ink)
       screen.WriteClipped(r, 0, 0, Placeholder, style)
       return
     }
@@ -250,10 +246,6 @@ public open class TextInput : Box {
   private func clampCaret(count int32) {
     if caretGraphemeIndex < 0 { caretGraphemeIndex = 0 }
     if caretGraphemeIndex > count { caretGraphemeIndex = count }
-  }
-
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
   }
 
   private func singleLinePaste(value string) string {

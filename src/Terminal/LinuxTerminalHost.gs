@@ -1,11 +1,6 @@
 package SharpTui
 
-import System
-import System.Collections.Generic
-import System.IO
 import System.Runtime.InteropServices
-import System.Threading
-import Microsoft.Win32.SafeHandles
 
 @StructLayout(LayoutKind.Sequential)
 internal struct LinuxWinSize {
@@ -105,50 +100,37 @@ internal class LinuxTerminalModePolicy {
   }
 }
 
-internal class LinuxTerminalHost : TerminalHost {
-  private var input Stream
-  private var inputAvailable bool
-  private var output Stream
+internal class LinuxPosixDriver : PosixTerminalDriver {
   private var saved LinuxTermios
   private var haveSaved bool
-  private var entered bool
-  private var wake AutoResetEvent
-  private var signals List[PosixSignalRegistration]
-  private var resized int32
-  private var exitRequested int32
   private var readerWakeDescriptor int32
 
-  internal init(wakeup AutoResetEvent) {
-    input = Stream.Null
-    inputAvailable = false
-    let inputDescriptor = LinuxTerminalNative.dup(0)
-    if inputDescriptor >= 0 {
-      input = FileStream(SafeFileHandle(IntPtr(inputDescriptor), true), FileAccess.Read)
-      inputAvailable = true
-    }
-    output = Console.OpenStandardOutput()
+  internal init() {
     saved = LinuxTermios{}
     haveSaved = false
-    entered = false
-    wake = wakeup
-    signals = List[PosixSignalRegistration]()
-    resized = 0
-    exitRequested = 0
     readerWakeDescriptor = LinuxTerminalNative.eventfd(uint32(0),
       LinuxTerminalNative.EventFdNonBlock | LinuxTerminalNative.EventFdCloseOnExec)
+  }
+
+  public func Dup(descriptor int32) int32 {
+    return LinuxTerminalNative.dup(descriptor)
   }
 
   public func IsTty() bool {
     return LinuxTerminalNative.isatty(0) == 1 && LinuxTerminalNative.isatty(1) == 1
   }
 
-  public func Enter() bool {
-    if entered { return true }
-    if !inputAvailable { return false }
-    if !IsTty() { return false }
-    if !LinuxTerminalModePolicy.HasReaderWake(readerWakeDescriptor) { return false }
+  public func HasReaderWake() bool {
+    return LinuxTerminalModePolicy.HasReaderWake(readerWakeDescriptor)
+  }
+
+  public func Snapshot() bool {
     if LinuxTerminalNative.tcgetattr(0, out saved) != 0 { return false }
     haveSaved = true
+    return true
+  }
+
+  public func ApplyRaw() bool {
     var raw = saved
     raw.InputFlags = LinuxTerminalModePolicy.InputFlags(raw.InputFlags)
     raw.OutputFlags = LinuxTerminalModePolicy.OutputFlags(raw.OutputFlags)
@@ -160,16 +142,10 @@ internal class LinuxTerminalHost : TerminalHost {
       haveSaved = false
       return false
     }
-    entered = true
-    registerSignals()
     return true
   }
 
-  public func Restore() {
-    if !entered { return }
-    entered = false
-    for signal in signals { signal.Dispose() }
-    signals.Clear()
+  public func RestoreAttr() {
     if haveSaved {
       LinuxTerminalNative.tcsetattr(0, 0, ref saved)
       haveSaved = false
@@ -192,21 +168,13 @@ internal class LinuxTerminalHost : TerminalHost {
     return 24
   }
 
-  public func ConsumeResize() bool {
-    return Interlocked.Exchange(ref resized, 0) != 0
-  }
-
-  public func ConsumeExit() bool {
-    return Interlocked.Exchange(ref exitRequested, 0) != 0
-  }
-
   public func WakeReader() {
     if readerWakeDescriptor < 0 { return }
     var value uint64 = 1
     LinuxTerminalNative.write(readerWakeDescriptor, ref value, 8)
   }
 
-  public func Read(buffer []uint8, timeoutMilliseconds int32) int32 {
+  public func PollReadable(timeoutMilliseconds int32) bool {
     var descriptors = LinuxPollPair{
       InputDescriptor: 0,
       InputEvents: LinuxTerminalNative.PollInput,
@@ -214,37 +182,12 @@ internal class LinuxTerminalHost : TerminalHost {
       WakeEvents: LinuxTerminalNative.PollInput,
     }
     let ready = LinuxTerminalNative.poll(ref descriptors, 2, timeoutMilliseconds)
-    if ready <= 0 { return 0 }
+    if ready <= 0 { return false }
     if (descriptors.WakeReturnedEvents & LinuxTerminalNative.PollInput) != 0 {
       var value uint64 = 0
       LinuxTerminalNative.read(readerWakeDescriptor, ref value, 8)
-      return 0
+      return false
     }
-    let count = input.Read(buffer, 0, buffer.Length)
-    return count <= 0 ? -1 : count
-  }
-
-  public func Output() Stream {
-    return output
-  }
-
-  private func registerSignals() {
-    signals.Add(PosixSignalRegistration.Create(PosixSignal.SIGWINCH, func(context PosixSignalContext) {
-      context.Cancel = true
-      Interlocked.Exchange(ref resized, 1)
-      wake.Set()
-    }))
-    signals.Add(exitSignal(PosixSignal.SIGINT))
-    signals.Add(exitSignal(PosixSignal.SIGTERM))
-    signals.Add(exitSignal(PosixSignal.SIGQUIT))
-    signals.Add(exitSignal(PosixSignal.SIGHUP))
-  }
-
-  private func exitSignal(signal PosixSignal) PosixSignalRegistration {
-    return PosixSignalRegistration.Create(signal, func(context PosixSignalContext) {
-      context.Cancel = true
-      Interlocked.Exchange(ref exitRequested, 1)
-      wake.Set()
-    })
+    return true
   }
 }

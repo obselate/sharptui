@@ -18,5 +18,6 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet build SharpTui.Framework.gsproj -c Release
+      - run: dotnet run -c Release --project tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
       - run: dotnet build SharpTui.Examples.gsproj -c Release
       - run: dotnet run -c Release --project SharpTui.gsproj -- --selfcheck

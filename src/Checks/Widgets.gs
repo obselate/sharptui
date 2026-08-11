@@ -21,10 +21,10 @@ func mouseEv(column int32, row int32) UiEvent {
   }
 }
 
-func tblRow(a string, b string) List[string] {
-  let r = List[string]()
-  r.Add(a)
-  r.Add(b)
+func tblRow(a string, b string) TableRow {
+  let r = TableRow{ Id: a }
+  r.Cells.Add(TableCell(a))
+  r.Cells.Add(TableCell(b))
   return r
 }
 
@@ -108,6 +108,17 @@ public class WidgetCheck {
       lroot.Draw(lscr)
       failed = failed + Checks.Expect(lscr.Probe(0, 0) == "日" && lscr.Probe(2, 0) == "本",
         "Label refreshes cached Unicode graphemes when Text changes")
+
+      let boundedLabel = Label{ Text: "longer than its parent" }
+      let boundedRoot = Column{
+        Width: CellLength.Cells(5),
+        Children: { boundedLabel },
+      }
+      let boundedScreen = Screen(12, 2)
+      boundedRoot.Draw(boundedScreen)
+      failed = failed + Checks.Expect(boundedLabel.Bounds.WidthCells == 5
+        && boundedScreen.Probe(4, 0) == "e" && boundedScreen.Probe(5, 0) == " ",
+        "auto-width Label respects available width and clips at its parent")
 
       let list = ListView{
         Width: CellLength.Cells(8),
@@ -207,26 +218,26 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(troot.Handle(mouseEv(2, 5)) == EventResult.Continue, "a click outside is ignored")
       failed = failed + Checks.Expect(toggle.IsChecked, "the outside click left Toggle.IsChecked alone")
 
-      let one = RadioButton{ Text: "one" }
-      let two = RadioButton{ Text: "two" }
+      let one = Toggle{ Text: "one" }
+      let two = Toggle{ Text: "two" }
       let group = RadioGroup{}
       group.Add(one)
       group.Add(two)
       let rroot = Box{ Children: { group } }
       rroot.Draw(Screen(20, 3))
       rroot.Focus(one)
-      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled, "Enter selects a RadioButton")
-      failed = failed + Checks.Expect(one.IsSelected && Object.ReferenceEquals(group.SelectedButton, one),
-        "RadioGroup exposes its selected button")
+      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled, "Enter selects a Toggle in a RadioGroup")
+      failed = failed + Checks.Expect(one.IsChecked && Object.ReferenceEquals(group.SelectedToggle, one),
+        "RadioGroup exposes its selected toggle")
       rroot.Focus(two)
-      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled, "Enter selects another RadioButton")
-      failed = failed + Checks.Expect(two.IsSelected && !one.IsSelected && Object.ReferenceEquals(group.SelectedButton, two),
+      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled, "Enter selects another Toggle")
+      failed = failed + Checks.Expect(two.IsChecked && !one.IsChecked && Object.ReferenceEquals(group.SelectedToggle, two),
         "RadioGroup clears the previous selection")
-      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled && two.IsSelected && !one.IsSelected,
-        "pressing the selected RadioButton keeps the group selection")
+      failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled && two.IsChecked && !one.IsChecked,
+        "pressing the selected Toggle keeps the group selection")
 
-      let declaredOne = RadioButton{ Text: "declared one" }
-      let declaredTwo = RadioButton{ Text: "declared two" }
+      let declaredOne = Toggle{ Text: "declared one" }
+      let declaredTwo = Toggle{ Text: "declared two" }
       let declaredGroup = RadioGroup{ Children: { declaredOne, declaredTwo } }
       let declaredRoot = Box{ Children: { declaredGroup } }
       declaredRoot.Draw(Screen(30, 4))
@@ -234,8 +245,8 @@ public class WidgetCheck {
       declaredRoot.Handle(keyEv(Key.Enter))
       declaredRoot.Focus(declaredTwo)
       declaredRoot.Handle(keyEv(Key.Enter))
-      failed = failed + Checks.Expect(declaredTwo.IsSelected && !declaredOne.IsSelected
-        && Object.ReferenceEquals(declaredGroup.SelectedButton, declaredTwo),
+      failed = failed + Checks.Expect(declaredTwo.IsChecked && !declaredOne.IsChecked
+        && Object.ReferenceEquals(declaredGroup.SelectedToggle, declaredTwo),
         "RadioGroup attaches declarative Children before selection handling")
 
       let button = Button{ Text: "apply" }
@@ -327,7 +338,7 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(table.ConsumeSelectionChange() == nil,
         "programmatic TableView selection clears pending output")
       tabroot.Handle(keyEv(Key.Down))
-      table.Rows = List[List[string]]{ tblRow("replacement", "0") }
+      table.Rows = List[TableRow]{ tblRow("replacement", "0") }
       failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && table.ConsumeSelectionChange() == nil,
         "TableView Rows replacement normalizes selection and clears pending output")
       table.Rows.Add(tblRow("second", "1"))
@@ -336,6 +347,23 @@ public class WidgetCheck {
       table.RefreshRows()
       failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && table.ConsumeSelectionChange() == nil,
         "TableView.RefreshRows clears pending output after direct Rows mutation")
+
+      let stable = makeTable()
+      stable.SelectedRowIndex = 3
+      stable.Rows = List[TableRow]{ tblRow("item8", "8"), tblRow("item3", "3"), tblRow("item9", "9") }
+      failed = failed + Checks.Expect(stable.SelectedRowIndex == 1 && stable.SelectedRowId == "item3",
+        "TableView restores selection by stable row Id after filtering or sorting")
+
+      let skipped = makeTable()
+      skipped.Rows[1].IsSelectable = false
+      skipped.RefreshRows()
+      skipped.SelectedRowIndex = 0
+      let skippedRoot = Box{ Children: { skipped } }
+      skippedRoot.Draw(Screen(20, 10))
+      skippedRoot.Focus(skipped)
+      skippedRoot.Handle(keyEv(Key.Down))
+      failed = failed + Checks.Expect(skipped.SelectedRowIndex == 2,
+        "TableView keyboard navigation skips non-selectable rows")
 
       let table2 = makeTable()
       let tab2root = Box{ Children: { table2 } }
@@ -375,6 +403,40 @@ public class WidgetCheck {
       alignedRoot.Draw(alignedScreen)
       failed = failed + Checks.Expect(alignedScreen.Probe(3, aligned.Bounds.Row + 1) == "7",
         "TableColumn.Alignment positions a cell")
+
+      let richTable = TableView{
+        GrowWeight: 0,
+        Height: CellLength.Cells(3),
+        ColumnSeparator: "│",
+        ColumnSeparatorStyle: Style{ Foreground: Color.Rgb("E5484D") },
+      }
+      richTable.Columns.Add(TableColumn{ Header: "State", ColumnWidth: ColumnWidth.Cells(6) })
+      richTable.Columns.Add(TableColumn{
+        Header: "ID",
+        ColumnWidth: ColumnWidth.Cells(8),
+        Alignment: HorizontalAlignment.Right,
+      })
+      richTable.Rows.Add(TableRow{
+        Id: "V-1",
+        Cells: {
+          TableCell{
+            Runs: List[TextRun]{
+              TextRun{ Text: "●", Style: Style{ Foreground: Color.Rgb("E5484D") } },
+              TextRun{ Text: " open", Style: Style{ Foreground: Color.Rgb("FFFFFF") } },
+            },
+          },
+          TableCell{ Text: "V-1", Style: Style{ Foreground: Color.Rgb("FFFFFF") } },
+        },
+      })
+      let richTableRoot = Box{ Children: { richTable } }
+      let richTableScreen = Screen(20, 5)
+      richTableRoot.Draw(richTableScreen)
+      let richY = richTable.Bounds.Row + 1
+      failed = failed + Checks.Expect(richTableScreen.Probe(0, richY) == "●"
+          && richTableScreen.Probe(6, richY) == "│" && richTableScreen.Probe(12, richY) == "V",
+        "TableView draws styled runs, column separators, and aligned structured cells")
+      failed = failed + Checks.Expect(richTableScreen.Flush().Contains("[38;2;229;72;77m"),
+        "TableView emits cell and separator colors")
 
       let tabs = Tabs{ Titles: { "aa", "bb", "cc" } }
       let tsroot = Box{ Children: { tabs } }

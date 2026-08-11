@@ -129,7 +129,7 @@ public open class MarkdownView : Box {
       var part = 0
       while part < line.Count {
         let run = line[part]
-        let style = resolvedStyle(run.Style, ink)
+        let style = run.Style.MergedOver(ink)
         screen.WriteClipped(r, x, row, run.Text, style)
         x = x + Glyph.WidthOf(run.Text)
         part = part + 1
@@ -167,11 +167,7 @@ public open class MarkdownView : Box {
   }
 
   private func clamp(s int32, height int32) int32 {
-    var max = cache.Count - height
-    if max < 0 { max = 0 }
-    if s > max { return max }
-    if s < 0 { return 0 }
-    return s
+    return Selection.ClampScroll(cache.Count, s, height)
   }
 
   private func constrainedWidth(available int32) int32 {
@@ -388,15 +384,5 @@ public open class MarkdownView : Box {
     }
   }
 
-  private func resolvedStyle(own Style, inherited Style) Style {
-    return Style{
-      Foreground: own.Foreground.IsInherited ? inherited.Foreground : own.Foreground,
-      Background: own.Background.IsInherited ? inherited.Background : own.Background,
-      Attributes: TextAttributes(int32(inherited.Attributes) | int32(own.Attributes)),
-    }
-  }
 
-  private func result(handled bool) EventResult {
-    return handled ? EventResult.Handled : EventResult.Continue
-  }
 }

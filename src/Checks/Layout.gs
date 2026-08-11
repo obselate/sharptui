@@ -152,7 +152,7 @@ internal class LayoutCheck {
       let label = Label{ Text: "日本" }
       let entry = TextInput{ Text: "é" }
       let toggle = Toggle{ Text: flag }
-      let radio = RadioButton{ Text: "🦀" }
+      let radio = Toggle{ Text: "🦀" }
       let tabs = Tabs{ Titles: { "a", "日本" } }
       let status = StatusBar{ LeftText: "L", CenterText: "MM", RightText: "R" }
       let gauge = ProgressBar{ OverlayText: "日本" }
@@ -189,7 +189,7 @@ internal class LayoutCheck {
       let labelRow = Label{ Text: "a" }
       let entryRow = TextInput{}
       let toggleRow = Toggle{}
-      let radioRow = RadioButton{}
+      let radioRow = Toggle{}
       let tabsRow = Tabs{}
       let statusRow = StatusBar{}
       let gaugeRow = ProgressBar{}

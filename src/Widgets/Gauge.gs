@@ -47,11 +47,7 @@ public open class ProgressBar : Box {
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
     if r.HeightRows <= 0 || r.WidthCells <= 0 { return }
-    let fillStyle = Style{
-      Foreground: FillStyle.Foreground.IsInherited ? ink.Foreground : FillStyle.Foreground,
-      Background: FillStyle.Background.IsInherited ? ink.Background : FillStyle.Background,
-      Attributes: TextAttributes(int32(ink.Attributes) | int32(FillStyle.Attributes)),
-    }
+    let fillStyle = FillStyle.MergedOver(ink)
 
     var filled = 0
     if Maximum > 0.0 {

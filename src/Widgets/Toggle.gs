@@ -3,12 +3,15 @@ package SharpTui
 import System
 import System.Collections.Generic
 
-/// A checkbox that flips its checked state on Enter, space, or a click.
+/// A checkbox that flips its checked state on Enter, space, or a click. A Toggle added to a
+/// RadioGroup behaves as a radio button: selecting it deselects the group's other toggles, and
+/// activating the already-checked one leaves it checked.
 public open class Toggle : Box {
   private var text string
   private var isChecked bool
   private var checkedGlyph string
   private var uncheckedGlyph string
+  private var owner RadioGroup?
 
   /// The label drawn after the checkbox glyph.
   public prop Text string {
@@ -40,6 +43,7 @@ public open class Toggle : Box {
     isChecked = false
     checkedGlyph = "[x] "
     uncheckedGlyph = "[ ] "
+    owner = nil
     CanFocus = true
   }
 
@@ -68,115 +72,22 @@ public open class Toggle : Box {
     screen.WriteClipped(r, Glyph.WidthOf(mark), 0, Text, style)
   }
 
-  /// Flips IsChecked on Enter, space, or a click within the box.
+  /// Flips IsChecked on Enter, space, or a click within the box; under a RadioGroup, activation
+  /// selects this toggle instead of unchecking an already-checked one.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
-      IsChecked = !IsChecked
+      activate()
       return EventResult.Handled
     }
     if ev.Key == Key.Character && ev.Text == " " {
-      IsChecked = !IsChecked
+      activate()
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
-      IsChecked = !IsChecked
-      return EventResult.Handled
-    }
-    return EventResult.Continue
-  }
-}
-
-/// One selectable option. A RadioGroup owns radio buttons and keeps them exclusive.
-public open class RadioButton : Box {
-  private var text string
-  private var isSelected bool
-  private var selectedGlyph string
-  private var unselectedGlyph string
-  private var owner RadioGroup?
-
-  /// The label drawn after the radio glyph.
-  public prop Text string {
-    get { return text }
-    set { text = value }
-  }
-
-  /// The selected state. Setting it true deselects the other buttons in the owning RadioGroup, if any.
-  public prop IsSelected bool {
-    get { return isSelected }
-    set { setSelected(value) }
-  }
-
-  /// The glyph drawn when IsSelected is true.
-  public prop SelectedGlyph string {
-    get { return selectedGlyph }
-    set { selectedGlyph = value }
-  }
-
-  /// The glyph drawn when IsSelected is false.
-  public prop UnselectedGlyph string {
-    get { return unselectedGlyph }
-    set { unselectedGlyph = value }
-  }
-
-  /// Creates an unselected, focusable, unowned radio button with default parenthesis glyphs.
-  public init() {
-    text = ""
-    isSelected = false
-    selectedGlyph = "(o) "
-    unselectedGlyph = "( ) "
-    owner = nil
-    CanFocus = true
-  }
-
-  /// Always true, so this button sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
-
-  /// Measures the button as the current glyph width plus the text width.
-  /// @param availableWidth The available width in cells, or nil when unconstrained.
-  /// @param availableHeight The available height in rows, or nil when unconstrained.
-  /// @returns The measured size in cells.
-  protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
-    let mark = IsSelected ? SelectedGlyph : UnselectedGlyph
-    return CellSize{ WidthCells: Glyph.WidthOf(mark) + Glyph.WidthOf(Text), HeightRows: 1 }
-  }
-
-  /// Paints the current glyph followed by Text, filling the row with inverted ink when focused.
-  /// @param screen The screen to paint into.
-  /// @param r The rect to paint within.
-  /// @param ink The inherited style.
-  protected override func Render(screen Screen, r CellRect, ink Style) {
-    if r.HeightRows <= 0 { return }
-    let mark = IsSelected ? SelectedGlyph : UnselectedGlyph
-    let style = IsFocused ? ink.Inverted() : ink
-    if IsFocused { screen.Fill(r, style) }
-    screen.WriteClipped(r, 0, 0, mark, style)
-    screen.WriteClipped(r, Glyph.WidthOf(mark), 0, Text, style)
-  }
-
-  /// Selects this button on Enter, space, or a click; already-selected buttons swallow the same inputs without changing state.
-  /// @param ev The input event to handle.
-  /// @returns Handled when the event was consumed, Continue otherwise.
-  protected override func Accept(ev UiEvent) EventResult {
-    if inputIsRelease(ev) { return EventResult.Continue }
-    if IsSelected {
-      if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter { return EventResult.Handled }
-      if ev.Key == Key.Character && ev.Text == " " { return EventResult.Handled }
-      if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) { return EventResult.Handled }
-      return EventResult.Continue
-    }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
-      IsSelected = true
-      return EventResult.Handled
-    }
-    if ev.Key == Key.Character && ev.Text == " " {
-      IsSelected = true
-      return EventResult.Handled
-    }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
-      IsSelected = true
+      activate()
       return EventResult.Handled
     }
     return EventResult.Continue
@@ -188,48 +99,48 @@ public open class RadioButton : Box {
     owner = group
   }
 
-  internal func SetSelectedFromGroup(value bool) {
-    isSelected = value
+  internal func SetCheckedFromGroup(value bool) {
+    isChecked = value
   }
 
-  private func setSelected(value bool) {
+  private func activate() {
     if let group = owner {
-      group.SetSelection(this, value)
+      if !isChecked { group.Select(this) }
       return
     }
-    isSelected = value
+    isChecked = !isChecked
   }
 }
 
-/// Owns radio buttons and keeps one selected button at a time.
+/// Owns Toggle children and keeps at most one checked at a time, radio-button style.
 public open class RadioGroup : Box {
-  private var buttons List[RadioButton]
-  private var selectedButton RadioButton?
+  private var toggles List[Toggle]
+  private var selectedToggle Toggle?
 
-  /// The currently selected button, or nil when none is selected.
-  public prop SelectedButton RadioButton? {
+  /// The currently selected toggle, or nil when none is selected.
+  public prop SelectedToggle Toggle? {
     get {
       synchronize()
-      return selectedButton
+      return selectedToggle
     }
   }
 
   /// Creates an empty radio group with no selection.
   public init() {
-    buttons = List[RadioButton]()
-    selectedButton = nil
+    toggles = List[Toggle]()
+    selectedToggle = nil
   }
 
-  /// Adds a radio button as a child and attaches it to this group. Throws if the button already belongs to another group.
-  /// @param button The button to add.
-  public func Add(button RadioButton) {
+  /// Adds a toggle as a child and attaches it to this group. Throws if the toggle already belongs to another group.
+  /// @param toggle The toggle to add.
+  public func Add(toggle Toggle) {
     synchronize()
-    if contains(button) { return }
-    Children.Add(button)
-    attach(button)
+    if contains(toggle) { return }
+    Children.Add(toggle)
+    attach(toggle)
   }
 
-  /// Attaches any RadioButton children added directly rather than through Add.
+  /// Attaches any Toggle children added directly rather than through Add.
   /// @param screen The screen to paint into.
   /// @param r The rect to paint within.
   /// @param ink The inherited style.
@@ -237,33 +148,33 @@ public open class RadioGroup : Box {
     synchronize()
   }
 
-  /// Selects button, deselecting every other button in the group. Throws if button does not belong to this group.
-  /// @param button The button to select.
-  public func Select(button RadioButton) {
+  /// Selects toggle, deselecting every other toggle in the group. Throws if toggle does not belong to this group.
+  /// @param toggle The toggle to select.
+  public func Select(toggle Toggle) {
     synchronize()
-    selectButton(button)
+    selectToggle(toggle)
   }
 
-  /// Deselects every button in the group.
+  /// Deselects every toggle in the group.
   public func ClearSelection() {
     synchronize()
     var i = 0
-    while i < buttons.Count {
-      buttons[i].SetSelectedFromGroup(false)
+    while i < toggles.Count {
+      toggles[i].SetCheckedFromGroup(false)
       i = i + 1
     }
-    selectedButton = nil
+    selectedToggle = nil
   }
 
-  internal func SetSelection(button RadioButton, value bool) {
+  internal func SetSelection(toggle Toggle, value bool) {
     synchronize()
     if value {
-      selectButton(button)
+      selectToggle(toggle)
       return
     }
-    button.SetSelectedFromGroup(false)
-    if let selected = selectedButton {
-      if Object.ReferenceEquals(selected, button) { selectedButton = nil }
+    toggle.SetCheckedFromGroup(false)
+    if let selected = selectedToggle {
+      if Object.ReferenceEquals(selected, toggle) { selectedToggle = nil }
     }
   }
 
@@ -271,36 +182,36 @@ public open class RadioGroup : Box {
     var i = 0
     while i < Children.Count {
       let child = Children[i]
-      if child is RadioButton { attach(child) }
+      if child is Toggle { attach(child) }
       i = i + 1
     }
   }
 
-  private func attach(button RadioButton) {
-    if contains(button) { return }
-    if let group = button.Owner {
-      throw InvalidOperationException("button already belongs to a RadioGroup")
+  private func attach(toggle Toggle) {
+    if contains(toggle) { return }
+    if let group = toggle.Owner {
+      throw InvalidOperationException("toggle already belongs to a RadioGroup")
     }
-    buttons.Add(button)
-    button.Attach(this)
-    if button.IsSelected { selectButton(button) }
+    toggles.Add(toggle)
+    toggle.Attach(this)
+    if toggle.IsChecked { selectToggle(toggle) }
   }
 
-  private func selectButton(button RadioButton) {
-    if !contains(button) { throw ArgumentException("button") }
+  private func selectToggle(toggle Toggle) {
+    if !contains(toggle) { throw ArgumentException("toggle") }
     var i = 0
-    while i < buttons.Count {
-      let candidate = buttons[i]
-      candidate.SetSelectedFromGroup(Object.ReferenceEquals(candidate, button))
+    while i < toggles.Count {
+      let candidate = toggles[i]
+      candidate.SetCheckedFromGroup(Object.ReferenceEquals(candidate, toggle))
       i = i + 1
     }
-    selectedButton = button
+    selectedToggle = toggle
   }
 
-  private func contains(button RadioButton) bool {
+  private func contains(toggle Toggle) bool {
     var i = 0
-    while i < buttons.Count {
-      if Object.ReferenceEquals(buttons[i], button) { return true }
+    while i < toggles.Count {
+      if Object.ReferenceEquals(toggles[i], toggle) { return true }
       i = i + 1
     }
     return false

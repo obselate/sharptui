@@ -61,7 +61,10 @@ public open class Box {
     }
   }
 
-  /// Flex-grow weight used to distribute leftover space among siblings. Must be non-negative; defaults to 0.
+  /// Flex-grow weight used by the immediate in-flow parent to distribute leftover space among
+  /// siblings. It does not make this box's ancestors grow: each auto-sized ancestor on a path
+  /// that should receive spare width or height needs its own GrowWeight (or an explicit size).
+  /// Must be non-negative; defaults to 0.
   public prop GrowWeight int32 {
     get { return growWeight }
     set {
@@ -106,7 +109,9 @@ public open class Box {
     set { style = value }
   }
 
-  /// The style merged over Style while this box is focused. Foreground and background marked
+  /// The style merged over Style while this exact box is focused. Focus held by a descendant does
+  /// not activate an ancestor's FocusedStyle; use FocusedElement to observe descendant focus when
+  /// pane chrome must reflect which nested control is active. Foreground and background marked
   /// IsInherited fall back to the unfocused resolved style.
   public prop FocusedStyle Style {
     get { return focusedStyle }
@@ -717,19 +722,9 @@ public open class Box {
 
   private func paintTree(screen Screen, inherited Style) {
     if !IsVisible { return }
-    let resolvedStyle = Style{
-      Foreground: Style.Foreground.IsInherited ? inherited.Foreground : Style.Foreground,
-      Background: Style.Background.IsInherited ? inherited.Background : Style.Background,
-      Attributes: TextAttributes(int32(inherited.Attributes) | int32(Style.Attributes)),
-    }
+    let resolvedStyle = Style.MergedOver(inherited)
 
-    let chrome = IsFocused
-      ? Style{
-        Foreground: FocusedStyle.Foreground.IsInherited ? resolvedStyle.Foreground : FocusedStyle.Foreground,
-        Background: FocusedStyle.Background.IsInherited ? resolvedStyle.Background : FocusedStyle.Background,
-        Attributes: TextAttributes(int32(resolvedStyle.Attributes) | int32(FocusedStyle.Attributes)),
-      }
-      : resolvedStyle
+    let chrome = IsFocused ? FocusedStyle.MergedOver(resolvedStyle) : resolvedStyle
 
     let frame = Bounds
     if !Style.Background.IsInherited || ShowBorder {
