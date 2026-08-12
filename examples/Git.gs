@@ -97,30 +97,20 @@ public class GitResult {
 /// diff or error can never wedge the child on a full pipe buffer.
 func gitRun(dir string, args List[string]) GitResult {
   let r = GitResult{}
-  try {
-    let psi = ProcessStartInfo("git")
-    psi.WorkingDirectory = dir
-    psi.Environment["GIT_TERMINAL_PROMPT"] = "0"
-    // Stable English messages: the status bar shows them and push sniffs --set-upstream.
-    psi.Environment["LC_ALL"] = "C"
-    for a in args { psi.ArgumentList.Add(a) }
-    psi.RedirectStandardOutput = true
-    psi.RedirectStandardError = true
-    psi.UseShellExecute = false
-    let started = Process.Start(psi)
-    guard let p = started else {
-      r.Error = "could not start git"
-      return r
-    }
-    r.Output = p.StandardOutput.ReadToEnd()
-    r.Error = p.StandardError.ReadToEnd().Trim()
-    p.WaitForExit()
-    r.Ok = p.ExitCode == 0
-    return r
-  } catch (e Exception) {
-    r.Error = e.Message
+  // Stable English messages: the status bar shows them and push sniffs --set-upstream.
+  let core = procRun("git", args, dir, List[string]{ "GIT_TERMINAL_PROMPT=0", "LC_ALL=C" })
+  if core.Crashed {
+    r.Error = core.Error
     return r
   }
+  if !core.Started {
+    r.Error = "could not start git"
+    return r
+  }
+  r.Output = core.Output
+  r.Error = core.Error.Trim()
+  r.Ok = core.ExitCode == 0
+  return r
 }
 
 /// Runs git and returns stdout, empty when it fails.
@@ -443,16 +433,6 @@ class Git : View {
       items.Add(ListItem{ Id: "empty", IsSelectable: false, Text: "  no snapshots yet - stage files with [space], then press [c]", Style: dimInherit() })
     }
     historyList.Items = items
-  }
-
-  private func looksBinary(bytes []uint8) bool {
-    var i = 0
-    let n = bytes.Length < 512 ? bytes.Length : 512
-    while i < n {
-      if bytes[i] == 0 { return true }
-      i = i + 1
-    }
-    return false
   }
 
   /// Appends a new file's lines as an all-added diff. Returns the rendered

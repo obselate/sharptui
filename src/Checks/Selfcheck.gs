@@ -14,54 +14,54 @@ public class Selfcheck {
     public func Run() int32 {
       var failed = 0
 
-      failed = failed + expect(CellText.MeasureWidth("abc") == 3, "ascii width")
-      failed = failed + expect(CellText.MeasureWidth("日本語") == 6, "cjk is double width")
-      failed = failed + expect(CellText.MeasureWidth("é") == 1, "combining mark is zero width")
-      failed = failed + expect(CellText.Graphemes("é").Count == 1, "combining mark is one cluster")
-      failed = failed + expect(CellText.MeasureWidth("") == 0, "empty string")
+      failed = failed + Checks.Expect(CellText.MeasureWidth("abc") == 3, "ascii width")
+      failed = failed + Checks.Expect(CellText.MeasureWidth("日本語") == 6, "cjk is double width")
+      failed = failed + Checks.Expect(CellText.MeasureWidth("é") == 1, "combining mark is zero width")
+      failed = failed + Checks.Expect(CellText.Graphemes("é").Count == 1, "combining mark is one cluster")
+      failed = failed + Checks.Expect(CellText.MeasureWidth("") == 0, "empty string")
 
       let flag = char.ConvertFromUtf32(0x1F1EF) + char.ConvertFromUtf32(0x1F1F5)
-      failed = failed + expect(CellText.Graphemes(flag).Count == 1, "a flag pair is one cluster")
-      failed = failed + expect(CellText.MeasureWidth(flag) == 2, "a flag pair is two cells wide")
+      failed = failed + Checks.Expect(CellText.Graphemes(flag).Count == 1, "a flag pair is one cluster")
+      failed = failed + Checks.Expect(CellText.MeasureWidth(flag) == 2, "a flag pair is two cells wide")
 
       let scan = Screen(10, 2)
       scan.Write(0, 0, "éx")
-      failed = failed + expect(scan.Probe(0, 0) == "é", "scanner keeps a combining cluster whole")
-      failed = failed + expect(scan.Probe(1, 0) == "x", "scanner advances by one cluster")
+      failed = failed + Checks.Expect(scan.Probe(0, 0) == "é", "scanner keeps a combining cluster whole")
+      failed = failed + Checks.Expect(scan.Probe(1, 0) == "x", "scanner advances by one cluster")
 
       let s = Screen(10, 2)
       s.Write(0, 0, "日")
-      failed = failed + expect(s.Probe(1, 0) == "", "wide cluster reserves its tail cell")
+      failed = failed + Checks.Expect(s.Probe(1, 0) == "", "wide cluster reserves its tail cell")
 
       let raw = Screen(10, 2)
       raw.Write(0, 0, "a" + char(10).ToString() + "b" + char(9).ToString() + "c")
-      failed = failed + expect(raw.Probe(1, 0) == " ", "a newline becomes a blank cell")
-      failed = failed + expect(raw.Probe(2, 0) == "b", "and costs exactly one cell")
-      failed = failed + expect(raw.Probe(3, 0) == " ", "a tab becomes a blank cell")
-      failed = failed + expect(raw.Probe(4, 0) == "c", "the text after it stays aligned")
+      failed = failed + Checks.Expect(raw.Probe(1, 0) == " ", "a newline becomes a blank cell")
+      failed = failed + Checks.Expect(raw.Probe(2, 0) == "b", "and costs exactly one cell")
+      failed = failed + Checks.Expect(raw.Probe(3, 0) == " ", "a tab becomes a blank cell")
+      failed = failed + Checks.Expect(raw.Probe(4, 0) == "c", "the text after it stays aligned")
 
       raw.Write(0, 1, char(13).ToString() + char(10).ToString() + "z")
-      failed = failed + expect(raw.Probe(0, 1) == " ", "CRLF is one cluster and still blanked")
-      failed = failed + expect(raw.Probe(1, 1) == "z", "CRLF costs one cell, not two")
+      failed = failed + Checks.Expect(raw.Probe(0, 1) == " ", "CRLF is one cluster and still blanked")
+      failed = failed + Checks.Expect(raw.Probe(1, 1) == "z", "CRLF costs one cell, not two")
 
       raw.Write(6, 1, char(27).ToString() + char(0x9B).ToString())
-      failed = failed + expect(raw.Probe(6, 1) == " ", "an escape never reaches the buffer")
-      failed = failed + expect(raw.Probe(7, 1) == " ", "a C1 control is blanked too")
+      failed = failed + Checks.Expect(raw.Probe(6, 1) == " ", "an escape never reaches the buffer")
+      failed = failed + Checks.Expect(raw.Probe(7, 1) == " ", "a C1 control is blanked too")
 
       let envelope = Ansi.SyncOn.Length + Ansi.SyncOff.Length + Ansi.Reset.Length
 
       let firstOut = s.Flush()
       let first = firstOut.Length - envelope
-      failed = failed + expect(first > 0, "first flush paints")
-      failed = failed + expect(firstOut.StartsWith(Ansi.SyncOn), "flush starts synchronized output")
-      failed = failed + expect(firstOut.EndsWith(Ansi.Reset + Ansi.SyncOff),
+      failed = failed + Checks.Expect(first > 0, "first flush paints")
+      failed = failed + Checks.Expect(firstOut.StartsWith(Ansi.SyncOn), "flush starts synchronized output")
+      failed = failed + Checks.Expect(firstOut.EndsWith(Ansi.Reset + Ansi.SyncOff),
         "flush resets style before synchronized output ends")
-      failed = failed + expect(s.Flush().Length == 0, "clean reflush is a no-op")
+      failed = failed + Checks.Expect(s.Flush().Length == 0, "clean reflush is a no-op")
 
       s.Write(3, 1, "x")
       let second = s.Flush().Length - envelope
-      failed = failed + expect(second > 0, "dirty cell repaints")
-      failed = failed + expect(second < first / 2, "dirty cell repaints only itself")
+      failed = failed + Checks.Expect(second > 0, "dirty cell repaints")
+      failed = failed + Checks.Expect(second < first / 2, "dirty cell repaints only itself")
 
       let side = Box{ Width: CellLength.Cells(20) }
       let mid = Box{ GrowWeight: 1 }
@@ -69,36 +69,36 @@ public class Selfcheck {
       let root = Row{ GapCells: 1, Children: { side, mid, right } }
       root.Compute(80, 24)
 
-      failed = failed + expect(side.Bounds.WidthCells == 20, "fixed width honored")
-      failed = failed + expect(side.Bounds.HeightRows == 24, "cross axis stretches")
-      failed = failed + expect(mid.Bounds.Column == 21, "gap consumes one cell")
-      failed = failed + expect(mid.Bounds.WidthCells == 29 && right.Bounds.WidthCells == 29, "grow splits the remainder")
-      failed = failed + expect(right.Bounds.Column == 51, "second gap consumes one cell")
-      failed = failed + expect(right.Bounds.Column + right.Bounds.WidthCells == 80, "row fills the width exactly")
+      failed = failed + Checks.Expect(side.Bounds.WidthCells == 20, "fixed width honored")
+      failed = failed + Checks.Expect(side.Bounds.HeightRows == 24, "cross axis stretches")
+      failed = failed + Checks.Expect(mid.Bounds.Column == 21, "gap consumes one cell")
+      failed = failed + Checks.Expect(mid.Bounds.WidthCells == 29 && right.Bounds.WidthCells == 29, "grow splits the remainder")
+      failed = failed + Checks.Expect(right.Bounds.Column == 51, "second gap consumes one cell")
+      failed = failed + Checks.Expect(right.Bounds.Column + right.Bounds.WidthCells == 80, "row fills the width exactly")
 
       root.Compute(81, 24)
-      failed = failed + expect(mid.Bounds.Column + mid.Bounds.WidthCells + 1 == right.Bounds.Column,
+      failed = failed + Checks.Expect(mid.Bounds.Column + mid.Bounds.WidthCells + 1 == right.Bounds.Column,
         "odd remainder still tiles without a seam")
-      failed = failed + expect(right.Bounds.Column + right.Bounds.WidthCells == 81,
+      failed = failed + Checks.Expect(right.Bounds.Column + right.Bounds.WidthCells == 81,
         "odd remainder still fills the width")
 
       let clip = Screen(20, 3)
       let box = CellRect{ Column: 2, Row: 0, WidthCells: 5, HeightRows: 1 }
       clip.WriteClipped(box, 0, 0, "abcdefghij")
-      failed = failed + expect(clip.Probe(6, 0) == "e", "clipped text fills its rect")
-      failed = failed + expect(clip.Probe(7, 0) == " ", "clipped text stops at the edge")
+      failed = failed + Checks.Expect(clip.Probe(6, 0) == "e", "clipped text fills its rect")
+      failed = failed + Checks.Expect(clip.Probe(7, 0) == " ", "clipped text stops at the edge")
 
       clip.WriteClipped(box, 4, 0, "日")
-      failed = failed + expect(clip.Probe(6, 0) == "e", "half-fitting wide cluster is dropped")
+      failed = failed + Checks.Expect(clip.Probe(6, 0) == "e", "half-fitting wide cluster is dropped")
 
       let wrapped = CellText.Wrap("hello world foo", 10)
-      failed = failed + expect(wrapped.Count == 2, "wrap breaks at the space")
-      failed = failed + expect(wrapped[0] == "hello", "wrap keeps whole words")
-      failed = failed + expect(wrapped[1] == "world foo", "wrap fills the next line")
+      failed = failed + Checks.Expect(wrapped.Count == 2, "wrap breaks at the space")
+      failed = failed + Checks.Expect(wrapped[0] == "hello", "wrap keeps whole words")
+      failed = failed + Checks.Expect(wrapped[1] == "world foo", "wrap fills the next line")
       let hard = CellText.Wrap("abcdefgh", 5)
-      failed = failed + expect(hard.Count == 2 && hard[0] == "abcde", "an overlong word breaks")
+      failed = failed + Checks.Expect(hard.Count == 2 && hard[0] == "abcde", "an overlong word breaks")
       let wide = CellText.Wrap("日本語", 4)
-      failed = failed + expect(wide[0] == "日本", "wrap never splits a wide cluster")
+      failed = failed + Checks.Expect(wide[0] == "日本", "wrap never splits a wide cluster")
 
       let list = ListView()
       for n in 0 ... 100 {
@@ -108,31 +108,31 @@ public class Selfcheck {
       let rows = Screen(22, 14)
       pane.Draw(rows)
 
-      failed = failed + expect(list.Bounds.WidthCells == 20, "border insets the child")
-      failed = failed + expect(list.ContentBounds.HeightRows == 12, "child height is the interior")
-      failed = failed + expect(rows.Probe(0, 0) == "┌", "the border is drawn")
-      failed = failed + expect(rows.Probe(2, 0) == "i", "the title sits on the top border")
+      failed = failed + Checks.Expect(list.Bounds.WidthCells == 20, "border insets the child")
+      failed = failed + Checks.Expect(list.ContentBounds.HeightRows == 12, "child height is the interior")
+      failed = failed + Checks.Expect(rows.Probe(0, 0) == "┌", "the border is drawn")
+      failed = failed + Checks.Expect(rows.Probe(2, 0) == "i", "the title sits on the top border")
 
       let down = UiEvent{ Kind: UiEventKind.Key, Key: Key.Down }
       for n in 0 ... 14 {
-        failed = failed + expect(pane.Handle(down) == EventResult.Handled, "the tree routes the arrow to the list")
+        failed = failed + Checks.Expect(pane.Handle(down) == EventResult.Handled, "the tree routes the arrow to the list")
       }
-      failed = failed + expect(list.SelectedIndex == 14, "fourteen downs select item 14")
-      failed = failed + expect(list.FirstVisibleItemIndex == 3, "window follows the selection by the minimum")
+      failed = failed + Checks.Expect(list.SelectedIndex == 14, "fourteen downs select item 14")
+      failed = failed + Checks.Expect(list.FirstVisibleItemIndex == 3, "window follows the selection by the minimum")
 
       pane.Draw(rows)
-      failed = failed + expect(rows.Probe(3, 1) == "i", "the top row is the scrolled-to item")
-      failed = failed + expect(rows.Probe(1, 12) == ">", "the selected row carries the marker")
+      failed = failed + Checks.Expect(rows.Probe(3, 1) == "i", "the top row is the scrolled-to item")
+      failed = failed + Checks.Expect(rows.Probe(1, 12) == ">", "the selected row carries the marker")
 
       let click = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Position: CellPoint{ Column: 5, Row: 3 } }
-      failed = failed + expect(pane.Handle(click) == EventResult.Handled, "a click inside the rect selects")
-      failed = failed + expect(list.SelectedIndex == 5, "click maps a screen row back to its item")
+      failed = failed + Checks.Expect(pane.Handle(click) == EventResult.Handled, "a click inside the rect selects")
+      failed = failed + Checks.Expect(list.SelectedIndex == 5, "click maps a screen row back to its item")
       let outsideClick = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Position: CellPoint{ Column: 5, Row: 40 } }
-      failed = failed + expect(pane.Handle(outsideClick) == EventResult.Continue, "a click outside the rect is ignored")
+      failed = failed + Checks.Expect(pane.Handle(outsideClick) == EventResult.Continue, "a click outside the rect is ignored")
 
       let end = UiEvent{ Kind: UiEventKind.Key, Key: Key.End }
-      failed = failed + expect(pane.Handle(end) == EventResult.Handled, "End moves to the last item")
-      failed = failed + expect(list.FirstVisibleItemIndex == 88, "the last window is flush with the end")
+      failed = failed + Checks.Expect(pane.Handle(end) == EventResult.Handled, "End moves to the last item")
+      failed = failed + Checks.Expect(list.FirstVisibleItemIndex == 88, "the last window is flush with the end")
 
       let scrolled = ListView()
       for n in 0 ... 100 {
@@ -142,13 +142,13 @@ public class Selfcheck {
       let barScreen = Screen(20, 12)
       barred.Draw(barScreen)
       let block = char(0x2588).ToString()
-      failed = failed + expect(barScreen.Probe(19, 1) == block, "the thumb starts at the top")
-      failed = failed + expect(barScreen.Probe(19, 10) != block, "the thumb is not the whole track")
+      failed = failed + Checks.Expect(barScreen.Probe(19, 1) == block, "the thumb starts at the top")
+      failed = failed + Checks.Expect(barScreen.Probe(19, 10) != block, "the thumb is not the whole track")
 
       scrolled.FirstVisibleItemIndex = 90
       barred.Draw(barScreen)
-      failed = failed + expect(barScreen.Probe(19, 10) == block, "the thumb follows the scroll to the end")
-      failed = failed + expect(barScreen.Probe(19, 1) != block, "and leaves the top behind")
+      failed = failed + Checks.Expect(barScreen.Probe(19, 10) == block, "the thumb follows the scroll to the end")
+      failed = failed + Checks.Expect(barScreen.Probe(19, 1) != block, "and leaves the top behind")
 
       let one = ListView()
       let two = ListView()
@@ -159,19 +159,19 @@ public class Selfcheck {
       form.Draw(Screen(40, 6))
 
       let tab = UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab }
-      failed = failed + expect(form.Handle(tab) == EventResult.Handled, "tab takes focus")
-      failed = failed + expect(one.IsFocused, "tab focuses the first widget")
+      failed = failed + Checks.Expect(form.Handle(tab) == EventResult.Handled, "tab takes focus")
+      failed = failed + Checks.Expect(one.IsFocused, "tab focuses the first widget")
       form.Handle(tab)
-      failed = failed + expect(two.IsFocused && !one.IsFocused, "tab moves on, and only one holds focus")
+      failed = failed + Checks.Expect(two.IsFocused && !one.IsFocused, "tab moves on, and only one holds focus")
       form.Handle(tab)
-      failed = failed + expect(one.IsFocused, "tab wraps around")
+      failed = failed + Checks.Expect(one.IsFocused, "tab wraps around")
 
       let back = UiEvent{ Kind: UiEventKind.Key, Key: Key.BackTab }
       form.Handle(back)
-      failed = failed + expect(two.IsFocused, "backtab wraps the other way")
+      failed = failed + Checks.Expect(two.IsFocused, "backtab wraps the other way")
 
       form.Handle(down)
-      failed = failed + expect(two.SelectedIndex == 1 && one.SelectedIndex == 0,
+      failed = failed + Checks.Expect(two.SelectedIndex == 1 && one.SelectedIndex == 0,
         "the arrow goes to the focused widget only")
 
       let styled = List[TextRun]()
@@ -179,16 +179,16 @@ public class Selfcheck {
       styled.Add(TextRun("bold", Style{ Attributes: TextAttributes.Bold }))
       styled.Add(TextRun(" tail words here", Style()))
       let flowed = WrapTextRuns(styled, 12)
-      failed = failed + expect(flowed.Count == 3, "styled text wraps to three lines")
-      failed = failed + expect(flowed[0].Count == 2, "the first line keeps both runs")
-      failed = failed + expect(flowed[0][1].Style.Attributes == TextAttributes.Bold, "the bold run stays bold")
-      failed = failed + expect(TextRunWidth(flowed[0]) <= 12, "no wrapped line overruns the width")
-      failed = failed + expect(TextRunWidth(flowed[2]) <= 12, "the last line fits too")
+      failed = failed + Checks.Expect(flowed.Count == 3, "styled text wraps to three lines")
+      failed = failed + Checks.Expect(flowed[0].Count == 2, "the first line keeps both runs")
+      failed = failed + Checks.Expect(flowed[0][1].Style.Attributes == TextAttributes.Bold, "the bold run stays bold")
+      failed = failed + Checks.Expect(TextRunWidth(flowed[0]) <= 12, "no wrapped line overruns the width")
+      failed = failed + Checks.Expect(TextRunWidth(flowed[2]) <= 12, "the last line fits too")
 
       let st = Ansi.Esc + "\\"
-      failed = failed + expect(Ansi.SetBackground(0x0E1117) == Ansi.Esc + "]11;#0e1117" + st,
+      failed = failed + Checks.Expect(Ansi.SetBackground(0x0E1117) == Ansi.Esc + "]11;#0e1117" + st,
         "OSC 11 sets the background")
-      failed = failed + expect(Ansi.ResetBackground == Ansi.Esc + "]111" + st,
+      failed = failed + Checks.Expect(Ansi.ResetBackground == Ansi.Esc + "]111" + st,
         "OSC 111 restores it")
 
       let directStyle = StringBuilder()
@@ -200,13 +200,13 @@ public class Selfcheck {
         + wireEsc + "[1m" + wireEsc + "[2m" + wireEsc + "[3m"
         + wireEsc + "[4m" + wireEsc + "[7m" + wireEsc + "[9m"
         + wireEsc + "[38;2;1;2;3m" + wireEsc + "[48;2;160;176;192m"
-      failed = failed + expect(directStyle.ToString() == expectedStyle,
+      failed = failed + Checks.Expect(directStyle.ToString() == expectedStyle,
         "direct ANSI style append emits exact bytes")
-      failed = failed + expect(Ansi.Style(0x010203, 0xA0B0C0, styleBits) == expectedStyle,
+      failed = failed + Checks.Expect(Ansi.Style(0x010203, 0xA0B0C0, styleBits) == expectedStyle,
         "ANSI style string API emits exact bytes")
       let styleWire = TerminalBuffer(128)
       Ansi.AppendStyle(styleWire, 0x010203, 0xA0B0C0, styleBits)
-      failed = failed + expect(styleWire.Text() == expectedStyle,
+      failed = failed + Checks.Expect(styleWire.Text() == expectedStyle,
         "direct ANSI style bytes are exact")
 
       failed = failed + rendererChecks()
@@ -249,12 +249,6 @@ public class Selfcheck {
       Console.WriteLine("bench: " + (sw.Elapsed.TotalMilliseconds / 200.0).ToString("0.00")
         + " ms per full repaint at " + w.ToString() + "x" + h.ToString())
       return 0
-    }
-
-    private func expect(ok bool, what string) int32 {
-      if ok { return 0 }
-      Console.WriteLine("selfcheck FAILED: " + what)
-      return 1
     }
   }
 }

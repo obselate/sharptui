@@ -177,17 +177,17 @@ public class DataCheck {
       let typed = TextArea()
       typed.Text = ""
       let typedRoot = editorRoot(typed, 20, 6)
-      typedRoot.Handle(letter("a"))
-      typedRoot.Handle(letter("é"))
-      typedRoot.Handle(letter("語"))
+      typedRoot.Handle(charEv("a"))
+      typedRoot.Handle(charEv("é"))
+      typedRoot.Handle(charEv("語"))
       failed = failed + Checks.Expect(typed.Text == "aé語", "typing appends whole clusters")
       failed = failed + Checks.Expect(typed.Caret.GraphemeIndex == 3, "the cursor counts clusters, not chars")
       failed = failed + Checks.Expect(typed.Undo(), "the typed run undoes")
       failed = failed + Checks.Expect(typed.Text == "", "a run of typing undoes as one edit")
 
       typed.Redo()
-      typedRoot.Handle(key(Key.Enter))
-      typedRoot.Handle(letter("z"))
+      typedRoot.Handle(keyEv(Key.Enter))
+      typedRoot.Handle(charEv("z"))
       typed.Undo()
       failed = failed + Checks.Expect(typed.Text == "aé語\n",
         "undo after a split leaves the split alone")
@@ -218,7 +218,7 @@ public class DataCheck {
       wide.Text = "日本語日本語日本語日本語"
       let wideRoot = editorRoot(wide, 12, 3)
       failed = failed + Checks.Expect(wide.HorizontalCellOffset == 0, "a cursor at the start does not pan")
-      wideRoot.Handle(key(Key.End))
+      wideRoot.Handle(keyEv(Key.End))
       wideRoot.Draw(Screen(12, 3))
       failed = failed + Checks.Expect(wide.HorizontalCellOffset > 0, "End on a long line pans to the cursor")
       let panned = Screen(12, 3)
@@ -244,27 +244,27 @@ public class DataCheck {
       failed = failed + Checks.Expect(softScreen.Probe(2, 1) != " ", "a long line wraps to more screen rows")
       failed = failed + Checks.Expect(soft.Text == source, "wrapping never edits the buffer")
 
-      softRoot.Handle(key(Key.Down))
+      softRoot.Handle(keyEv(Key.Down))
       failed = failed + Checks.Expect(soft.Caret.LineIndex == 0 && soft.Caret.GraphemeIndex > 0,
         "down walks to the next screen row inside the same line")
-      softRoot.Handle(key(Key.Up))
+      softRoot.Handle(keyEv(Key.Up))
       failed = failed + Checks.Expect(soft.Caret.LineIndex == 0 && soft.Caret.GraphemeIndex == 0,
         "up walks back again")
 
-      softRoot.Handle(key(Key.Down))
-      softRoot.Handle(key(Key.End))
+      softRoot.Handle(keyEv(Key.Down))
+      softRoot.Handle(keyEv(Key.End))
       let whole = CellText.Graphemes(soft.Text).Count
       failed = failed + Checks.Expect(soft.Caret.GraphemeIndex > 0 && soft.Caret.GraphemeIndex < whole,
         "End stops at the end of the screen row, not the line")
-      softRoot.Handle(key(Key.Home))
+      softRoot.Handle(keyEv(Key.Home))
       failed = failed + Checks.Expect(soft.Caret.GraphemeIndex > 0, "Home stops at the start of the screen row")
-      softRoot.Handle(key(Key.Up))
-      softRoot.Handle(key(Key.Home))
+      softRoot.Handle(keyEv(Key.Up))
+      softRoot.Handle(keyEv(Key.Home))
       failed = failed + Checks.Expect(soft.Caret.GraphemeIndex == 0, "Home on the first row is still the line start")
 
       failed = failed + Checks.Expect(soft.Find("nine", SearchDirection.Forward) && soft.SelectedText == "nine",
         "find still marks the match on a wrapped line")
-      softRoot.Handle(key(Key.End))
+      softRoot.Handle(keyEv(Key.End))
       failed = failed + Checks.Expect(soft.Find("seven", SearchDirection.Forward) && soft.ReplaceSelection("7"),
         "replace still consumes the hit after a visual End")
       failed = failed + Checks.Expect(soft.Text.Contains("six 7 eight"),
@@ -281,18 +281,14 @@ public class DataCheck {
       let multi = TextArea()
       multi.Text = "one\ntwo\nthree"
       let multiRoot = editorRoot(multi, 20, 6)
-      multiRoot.Handle(key(Key.Down))
+      multiRoot.Handle(keyEv(Key.Down))
       multiRoot.Handle(arrow(Key.Down, true))
       multiRoot.Handle(arrow(Key.Right, true))
       failed = failed + Checks.Expect(multi.SelectedText == "two\nt", "a selection spans the line break")
-      multiRoot.Handle(key(Key.Backspace))
+      multiRoot.Handle(keyEv(Key.Backspace))
       failed = failed + Checks.Expect(multi.Text == "one\nhree", "deleting a spanning selection joins lines")
 
       return failed
-    }
-
-    private func key(key Key) UiEvent {
-      return UiEvent{ Kind: UiEventKind.Key, Key: key }
     }
 
     private func arrow(key Key, shift bool) UiEvent {
@@ -305,10 +301,6 @@ public class DataCheck {
 
     private func ctrlArrow(key Key) UiEvent {
       return UiEvent{ Kind: UiEventKind.Key, Key: key, Modifiers: KeyModifiers.Ctrl }
-    }
-
-    private func letter(text string) UiEvent {
-      return UiEvent{ Kind: UiEventKind.TextInput, Key: Key.Character, Text: text }
     }
 
     private func ctrl(text string) UiEvent {

@@ -162,9 +162,7 @@ private func checkUnchangedMotion() int32 {
     root.Handle(splitterMouse(MouseKind.Move, MouseButton.Left, column, splitter.Bounds.Row))
     warm = warm + 1
   }
-  GC.Collect()
-  GC.WaitForPendingFinalizers()
-  GC.Collect()
+  uiBenchCollect()
   let generationBefore = GC.CollectionCount(0)
   let bytesBefore = GC.GetAllocatedBytesForCurrentThread()
   var motion = 0
@@ -219,11 +217,15 @@ private func rejectsSplitterMinimumAfterMaximum(splitter Splitter, value int32) 
   }
 }
 
-private func splitterMouse(kind MouseKind, button MouseButton, column int32, row int32) UiEvent {
+func mouseButtonEvent(kind MouseKind, button MouseButton, column int32, row int32) UiEvent {
   return UiEvent{
     Kind: UiEventKind.Mouse,
     Mouse: kind,
     Button: button,
     Position: CellPoint{ Column: column, Row: row },
   }
+}
+
+private func splitterMouse(kind MouseKind, button MouseButton, column int32, row int32) UiEvent {
+  return mouseButtonEvent(kind, button, column, row)
 }

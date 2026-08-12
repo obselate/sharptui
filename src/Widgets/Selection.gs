@@ -4,6 +4,10 @@ package SharpTui
 /// TreeView, Select, Tabs, and the line-viewport widgets). Internal only, not public API.
 internal class Selection {
   shared {
+    /// Rows moved per mouse-wheel notch, shared by every scrolling widget.
+    public let WheelStep int32 = 3
+
+
     /// Clamps index into [0, count - 1], or 0 when count is zero.
     public func ClampIndex(count int32, index int32) int32 {
       if count == 0 { return 0 }

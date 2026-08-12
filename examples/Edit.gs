@@ -60,7 +60,7 @@ class Edit : View {
 
     // No MaximumLineWidth: MarkdownView falls back to CellLength.Auto and wraps to the pane.
     doc = MarkdownView{ Source: previewSource, Theme: previewTheme() }
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
 
     leftBox = Box{ GrowWeight: 1, ShowBorder: true, Title: "source",
       Style: Style{ Foreground: Color.Rgb("3A4152"), Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { area } }

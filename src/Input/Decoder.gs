@@ -165,12 +165,13 @@ internal class InputDecoder {
       emit(inputKey(Key.Backspace, int32(value), modifiers))
       return
     }
-    var control = UiEvent{}
-    if ControlInput.TryDecode(value, out control) {
-      emit(inputWithModifiers(control, KeyModifiers(int32(control.Modifiers) | int32(modifiers))))
+    if value < 32 {
+      var control = UiEvent{}
+      if ControlInput.TryDecode(value, out control) {
+        emit(inputWithModifiers(control, KeyModifiers(int32(control.Modifiers) | int32(modifiers))))
+      }
       return
     }
-    if value < 32 { return }
     beginUtf8(value, modifiers)
   }
 

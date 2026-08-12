@@ -382,8 +382,8 @@ public open class TextArea : Box {
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollBy(-3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(scrollBy(3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(scrollBy(-Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(scrollBy(Selection.WheelStep, bounds.HeightRows)) }
       if ev.Mouse == MouseKind.Press {
         endRun()
         dropMark()

@@ -115,8 +115,8 @@ public open class TextBlock : Box {
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
     if ev.Kind == UiEventKind.Mouse && bounds.Contains(ev.Position) {
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollBy(-3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(scrollBy(3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(scrollBy(-Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(scrollBy(Selection.WheelStep, bounds.HeightRows)) }
     }
     return EventResult.Continue
   }

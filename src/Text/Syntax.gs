@@ -158,19 +158,19 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
   while i < n {
     let c = line[i]
     if spec.CommentSlash && c == '/' && i + 1 < n && line[i + 1] == '/' {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       spans.Add(Span(line.Substring(i), commentStyle(base)))
       i = n
       continue
     }
     if spec.CommentDash && c == '-' && i + 1 < n && line[i + 1] == '-' {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       spans.Add(Span(line.Substring(i), commentStyle(base)))
       i = n
       continue
     }
     if spec.CommentHash && c == '#' {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       spans.Add(Span(line.Substring(i), commentStyle(base)))
       i = n
       continue
@@ -178,7 +178,7 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
     if spec.BlockComment && c == '/' && i + 1 < n && line[i + 1] == '*' {
       let close = line.IndexOf("*/", i + 2)
       if close >= 0 {
-        literal = flushRun(spans, literal, base)
+        literal = flushLiteral(spans, literal, base)
         let end = close + 2
         spans.Add(Span(line.Substring(i, end - i), commentStyle(base)))
         i = end
@@ -186,7 +186,7 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
       }
     }
     if c == '"' || (spec.SingleQuote && c == '\'') || (spec.Backtick && c == '`') {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       let end = scanQuoteEnd(line, i + 1, c)
       let style = spec.JsonKeyQuotes ? quoteKeyStyle(line, end, base) : stringStyle(base)
       spans.Add(Span(line.Substring(i, end - i), style))
@@ -194,7 +194,7 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
       continue
     }
     if spec.DollarExpand && c == '$' && i + 1 < n && line[i + 1] == '{' {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       let close = line.IndexOf('}', i + 2)
       let end = close >= 0 ? close + 1 : n
       spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
@@ -204,21 +204,21 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
     if spec.DollarExpand && c == '$' {
       let end = scanIdentEnd(line, i + 1)
       if end > i + 1 {
-        literal = flushRun(spans, literal, base)
+        literal = flushLiteral(spans, literal, base)
         spans.Add(Span(line.Substring(i, end - i), typeStyle(base)))
         i = end
         continue
       }
     }
     if spec.Digits && spec.NegativeNumbers && c == '-' && i + 1 < n && Char.IsDigit(line[i + 1]) {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       let end = scanNumberEnd(line, i + 1)
       spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
       i = end
       continue
     }
     if spec.Digits && Char.IsDigit(c) {
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       let end = scanNumberEnd(line, i)
       spans.Add(Span(line.Substring(i, end - i), numberStyle(base)))
       i = end
@@ -227,7 +227,7 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
     if spec.Ident && (Char.IsLetter(c) || (spec.IdentUnderscoreStart && c == '_')) {
       let end = scanIdentEnd(line, i)
       let word = line.Substring(i, end - i)
-      literal = flushRun(spans, literal, base)
+      literal = flushLiteral(spans, literal, base)
       if spec.Keywords.Contains(" " + word + " ") {
         spans.Add(Span(word, keywordStyle(base)))
       } else if spec.UpperFallbackType && Char.IsUpper(c) {
@@ -241,7 +241,7 @@ internal func scanLine(line string, base Style, spec LineScanSpec, spans List[Sp
     literal = literal + line.Substring(i, 1)
     i = i + 1
   }
-  literal = flushRun(spans, literal, base)
+  literal = flushLiteral(spans, literal, base)
   return spans
 }
 
@@ -381,10 +381,6 @@ internal func highlightGeneric(line string, base Style) List[Span] {
   return scanLine(line, base, spec, List[Span](), 0)
 }
 
-internal func flushRun(spans List[Span], run string, style Style) string {
-  if run != "" { spans.Add(Span(run, style)) }
-  return ""
-}
 
 internal func scanQuoteEnd(line string, start int32, quote char) int32 {
   let n = line.Length

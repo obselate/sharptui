@@ -96,8 +96,7 @@ internal class Terminal {
         Interlocked.Exchange(ref reading, 0)
         reader = nil
         try {
-          let kitty = kittyEnabled ? Ansi.KittyKeyboardDisable : ""
-          writeText(kitty + Ansi.BracketedPasteOff + Ansi.MouseOff
+          writeText(Ansi.BracketedPasteOff + Ansi.MouseOff
             + Ansi.CursorShow + Ansi.AltScreenOff)
         } catch (ignored Exception) {}
         host.Restore()

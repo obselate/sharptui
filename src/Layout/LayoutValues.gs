@@ -4,6 +4,15 @@ import System
 
 internal enum CellLengthUnit { Auto, Cells }
 
+/// Shared non-negative validation for the cell-value structs.
+internal class Guard {
+  shared {
+    internal func NonNegative(value int32, name string) {
+      if value < 0 { throw ArgumentOutOfRangeException(name) }
+    }
+  }
+}
+
 /// A requested size in terminal cells.
 public struct CellLength {
   internal var Unit CellLengthUnit
@@ -24,7 +33,7 @@ public struct CellLength {
     /// @param count The fixed cell count. Must be non-negative.
     /// @returns A cell length with the given fixed count.
     public func Cells(count int32) CellLength {
-      if count < 0 { throw ArgumentOutOfRangeException("count") }
+      Guard.NonNegative(count, "count")
       return CellLength{ Unit: CellLengthUnit.Cells, Count: count }
     }
   }
@@ -41,7 +50,7 @@ public struct CellInsets {
   public prop LeftCells int32 {
     get { return leftCells }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("LeftCells") }
+      Guard.NonNegative(value, "LeftCells")
       leftCells = value
     }
   }
@@ -50,7 +59,7 @@ public struct CellInsets {
   public prop TopRows int32 {
     get { return topRows }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("TopRows") }
+      Guard.NonNegative(value, "TopRows")
       topRows = value
     }
   }
@@ -59,7 +68,7 @@ public struct CellInsets {
   public prop RightCells int32 {
     get { return rightCells }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("RightCells") }
+      Guard.NonNegative(value, "RightCells")
       rightCells = value
     }
   }
@@ -68,7 +77,7 @@ public struct CellInsets {
   public prop BottomRows int32 {
     get { return bottomRows }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("BottomRows") }
+      Guard.NonNegative(value, "BottomRows")
       bottomRows = value
     }
   }
@@ -81,7 +90,7 @@ public struct CellInsets {
     /// @param cells The padding to apply to each side. Must be non-negative.
     /// @returns Insets with the given padding on all four sides.
     public func All(cells int32) CellInsets {
-      if cells < 0 { throw ArgumentOutOfRangeException("cells") }
+      Guard.NonNegative(cells, "cells")
       return CellInsets{
         LeftCells: cells,
         TopRows: cells,
@@ -101,7 +110,7 @@ public struct CellPoint {
   public prop Column int32 {
     get { return column }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("Column") }
+      Guard.NonNegative(value, "Column")
       column = value
     }
   }
@@ -110,7 +119,7 @@ public struct CellPoint {
   public prop Row int32 {
     get { return row }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("Row") }
+      Guard.NonNegative(value, "Row")
       row = value
     }
   }
@@ -125,7 +134,7 @@ public struct CellSize {
   public prop WidthCells int32 {
     get { return widthCells }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("WidthCells") }
+      Guard.NonNegative(value, "WidthCells")
       widthCells = value
     }
   }
@@ -134,7 +143,7 @@ public struct CellSize {
   public prop HeightRows int32 {
     get { return heightRows }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("HeightRows") }
+      Guard.NonNegative(value, "HeightRows")
       heightRows = value
     }
   }
@@ -163,7 +172,7 @@ public struct CellRect {
   public prop WidthCells int32 {
     get { return widthCells }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("WidthCells") }
+      Guard.NonNegative(value, "WidthCells")
       widthCells = value
     }
   }
@@ -172,7 +181,7 @@ public struct CellRect {
   public prop HeightRows int32 {
     get { return heightRows }
     init {
-      if value < 0 { throw ArgumentOutOfRangeException("HeightRows") }
+      Guard.NonNegative(value, "HeightRows")
       heightRows = value
     }
   }

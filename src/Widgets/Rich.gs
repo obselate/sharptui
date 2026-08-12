@@ -140,7 +140,7 @@ private class RichRunWrapper {
     var i = from
     while i < end {
       let glyph = pending[i]
-      if !richSameStyle(style, glyph.Style) {
+      if !stylesEqual(style, glyph.Style) {
         line.Add(TextRun(text.ToString(), style))
         text.Clear()
         style = glyph.Style
@@ -151,10 +151,6 @@ private class RichRunWrapper {
     if text.Length > 0 { line.Add(TextRun(text.ToString(), style)) }
     return line
   }
-}
-
-private func richSameStyle(a Style, b Style) bool {
-  return a.Foreground == b.Foreground && a.Background == b.Background && a.Attributes == b.Attributes
 }
 
 /// Styled, wrapped text with an explicit line viewport.
@@ -282,22 +278,7 @@ public open class RichTextBlock : Box {
     }
     FirstVisibleLine = clamp(FirstVisibleLine, r.HeightRows)
 
-    var i = FirstVisibleLine
-    while i < cache.Count {
-      let row = i - FirstVisibleLine
-      if row >= r.HeightRows { break }
-      var x = 0
-      let line = cache[i]
-      var part = 0
-      while part < line.Count {
-        let run = line[part]
-        let style = run.Style.MergedOver(ink)
-        screen.WriteClipped(r, x, row, run.Text, style)
-        x = x + Glyph.WidthOf(run.Text)
-        part = part + 1
-      }
-      i = i + 1
-    }
+    paintRunLines(screen, r, cache, FirstVisibleLine, 0, ink)
   }
 
   /// Returns the total number of wrapped lines.
@@ -330,8 +311,8 @@ public open class RichTextBlock : Box {
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && bounds.Contains(ev.Position) {
-      if ev.Mouse == MouseKind.ScrollUp { return result(moveBy(-3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(moveBy(3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(moveBy(-Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(moveBy(Selection.WheelStep, bounds.HeightRows)) }
     }
     return EventResult.Continue
   }
@@ -494,11 +475,7 @@ public open class RichTextBlock : Box {
   }
 
   private func sameRun(a TextRun, b TextRun) bool {
-    return a.Text == b.Text && sameStyle(a.Style, b.Style)
-  }
-
-  private func sameStyle(a Style, b Style) bool {
-    return richSameStyle(a, b)
+    return a.Text == b.Text && stylesEqual(a.Style, b.Style)
   }
 
   private func truncateRuns(count int32) {

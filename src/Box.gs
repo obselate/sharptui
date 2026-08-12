@@ -292,11 +292,6 @@ public open class Box {
     }
   }
 
-  internal prop Dir Axis {
-    get { return LayoutAxis }
-    set { LayoutAxis = value }
-  }
-
   /// Lays the tree out in a cell rectangle and fills every Bounds.
   internal func Compute(width int32, height int32) {
     if !IsVisible {
@@ -618,18 +613,7 @@ public open class Box {
   }
 
   private func synchronizeChildren() {
-    var same = treeChildren.Count == Children.Count
-    if same {
-      var child = 0
-      while child < Children.Count {
-        if !Object.ReferenceEquals(treeChildren[child], Children[child]) {
-          same = false
-          break
-        }
-        child = child + 1
-      }
-    }
-    if same { return }
+    if sameChildList(treeChildren) { return }
 
     var old = 0
     while old < treeChildren.Count {
@@ -643,6 +627,17 @@ public open class Box {
       treeChildren.Add(Children[current])
       current = current + 1
     }
+  }
+
+  /// True when list holds exactly the current Children, by reference, in order.
+  private func sameChildList(list List[Box]) bool {
+    if list.Count != Children.Count { return false }
+    var child = 0
+    while child < Children.Count {
+      if !Object.ReferenceEquals(list[child], Children[child]) { return false }
+      child = child + 1
+    }
+    return true
   }
 
   private func containsChild(target Box) bool {
@@ -938,18 +933,8 @@ public open class Box {
     }
 
     var allVisible = !childVisibilityDirty && linked.Count == Children.Count
+    if allVisible && !sameChildList(linked) { allVisible = false }
     var same = allVisible
-    if allVisible {
-      var linkedChild = 0
-      while linkedChild < Children.Count {
-        if !Object.ReferenceEquals(linked[linkedChild], Children[linkedChild]) {
-          allVisible = false
-          same = false
-          break
-        }
-        linkedChild = linkedChild + 1
-      }
-    }
 
     var visibleCount = Children.Count
     if !allVisible {

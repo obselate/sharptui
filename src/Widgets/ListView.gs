@@ -6,9 +6,8 @@ import System.Collections.Generic
 /// A scrolling, keyboard- and mouse-navigable list of ListItem rows with a single selection.
 public open class ListView : Box {
   private var items List[ListItem]
-  private var selectedIndex int32
+  private var selection SelectionState
   private var selectedId string
-  private var selectionChange SelectionChange?
 
   /// The rows shown by this list; setting it replaces all items and re-resolves the selection via RefreshItems.
   public prop Items List[ListItem] {
@@ -21,7 +20,7 @@ public open class ListView : Box {
 
   /// Index of the selected item. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedIndex int32 {
-    get { return selectedIndex }
+    get { return selection.Index }
     set { setProgrammaticSelection(value) }
   }
 
@@ -35,8 +34,8 @@ public open class ListView : Box {
   /// The currently selected item, or nil when SelectedIndex is out of range or Items is empty.
   public prop SelectedItem ListItem? {
     get {
-      if selectedIndex < 0 || selectedIndex >= Items.Count { return nil }
-      return Items[selectedIndex]
+      if selection.Index < 0 || selection.Index >= Items.Count { return nil }
+      return Items[selection.Index]
     }
   }
 
@@ -46,9 +45,8 @@ public open class ListView : Box {
   /// Creates an empty list with a "> " selection marker and CanFocus enabled.
   public init() {
     items = List[ListItem]()
-    selectedIndex = 0
+    selection = SelectionState()
     selectedId = ""
-    selectionChange = nil
     FirstVisibleItemIndex = 0
     SelectedStyle = Style()
     SelectionMarker = "> "
@@ -67,7 +65,7 @@ public open class ListView : Box {
 
   /// Re-resolves the selection after Items is mutated directly; restores the item with the previous Id if one still exists and is selectable, otherwise falls back to the nearest selectable index.
   public func RefreshItems() {
-    let previous = selectedIndex
+    let previous = selection.Index
     var restored = -1
     if selectedId != "" {
       var i = 0
@@ -81,17 +79,15 @@ public open class ListView : Box {
     }
     if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
     if restored < 0 && Items.Count > 0 { restored = clampIndex(previous) }
-    selectedIndex = restored < 0 ? 0 : restored
-    selectedId = selectedIdAt(selectedIndex)
-    selectionChange = nil
+    selection.Index = restored < 0 ? 0 : restored
+    selectedId = selectedIdAt(selection.Index)
+    selection.Change = nil
   }
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
-    let pending = selectionChange
-    selectionChange = nil
-    return pending
+    return selection.Consume()
   }
 
   /// Paints each visible item's selection marker and text, highlighting the selected row.
@@ -149,17 +145,17 @@ public open class ListView : Box {
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
 
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selectedIndex - 1, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selectedIndex + 1, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selectedIndex - bounds.HeightRows, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selectedIndex + bounds.HeightRows, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selection.Index - bounds.HeightRows, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selection.Index + bounds.HeightRows, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveTo(0, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(Items.Count - 1, bounds.HeightRows)) }
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleItemIndex - 3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleItemIndex + 3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleItemIndex - Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleItemIndex + Selection.WheelStep, bounds.HeightRows)) }
       if ev.Mouse == MouseKind.Press { return result(selectAt(FirstVisibleItemIndex + (ev.Position.Row - bounds.Row), bounds.HeightRows)) }
     }
     return EventResult.Continue
@@ -169,14 +165,14 @@ public open class ListView : Box {
     if Items.Count == 0 { return false }
     let i = nearestSelectable(clampIndex(want), directionFor(want))
     if i < 0 || !setSelection(i, true) { return false }
-    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selectedIndex, FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selection.Index, FirstVisibleItemIndex, height)
     return true
   }
 
   private func selectAt(want int32, height int32) bool {
     if want < 0 || want >= Items.Count || !Items[want].IsSelectable { return false }
     if !setSelection(want, true) { return false }
-    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selectedIndex, FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selection.Index, FirstVisibleItemIndex, height)
     return true
   }
 
@@ -205,30 +201,24 @@ public open class ListView : Box {
   }
 
   private func setSelection(value int32, emit bool) bool {
-    if selectedIndex == value {
-      if !emit { selectionChange = nil }
-      return false
-    }
-    let previous = selectedIndex
-    selectedIndex = value
+    if !selection.Set(value, emit) { return false }
     selectedId = selectedIdAt(value)
-    selectionChange = emit ? SelectionChange(previous, value) : nil
     return true
   }
 
   private func normalizeSelection() {
     if Items.Count == 0 {
-      if selectedIndex != 0 {
-        selectedIndex = 0
+      if selection.Index != 0 {
+        selection.Index = 0
         selectedId = ""
-        selectionChange = nil
+        selection.Change = nil
       }
       return
     }
-    if selectedIndex < 0 || selectedIndex >= Items.Count {
-      selectedIndex = clampIndex(selectedIndex)
-      selectedId = selectedIdAt(selectedIndex)
-      selectionChange = nil
+    if selection.Index < 0 || selection.Index >= Items.Count {
+      selection.Index = clampIndex(selection.Index)
+      selectedId = selectedIdAt(selection.Index)
+      selection.Change = nil
     }
   }
 
@@ -238,7 +228,7 @@ public open class ListView : Box {
   }
 
   private func directionFor(want int32) int32 {
-    return Selection.DirectionFor(want, selectedIndex)
+    return Selection.DirectionFor(want, selection.Index)
   }
 
   private func nearestSelectable(start int32, direction int32) int32 {

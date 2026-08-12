@@ -390,6 +390,22 @@ internal func numberMarker(t string) string {
   return t.Substring(0, i + 1)
 }
 
+
+/// Parses one marker-delimited styled span. Returns the flushed literal and sets
+/// next past the closing marker, or -1 when the marker never closes.
+internal func inlineMarker(spans List[Span], text string, i int32, marker string, attr TextAttributes, style Style, theme MarkdownTheme, literal string, out next int32) string {
+  let len = marker.Length
+  let close = len == 1 ? text.IndexOf(marker[0], i + 1) : text.IndexOf(marker, i + len)
+  if close < 0 {
+    next = -1
+    return literal
+  }
+  let flushed = flushLiteral(spans, literal, style)
+  appendAll(spans, parseInline(text.Substring(i + len, close - i - len), style.WithAttributes(attr), theme))
+  next = close + len
+  return flushed
+}
+
 internal func parseInline(text string, style Style, theme MarkdownTheme) List[Span] {
   let spans = List[Span]()
   var literal = ""
@@ -397,29 +413,26 @@ internal func parseInline(text string, style Style, theme MarkdownTheme) List[Sp
 
   while i < text.Length {
     if matchAt(text, i, "**") {
-      let close = text.IndexOf("**", i + 2)
-      if close >= 0 {
-        literal = flushLiteral(spans, literal, style)
-        appendAll(spans, parseInline(text.Substring(i + 2, close - i - 2), style.WithAttributes(TextAttributes.Bold), theme))
-        i = close + 2
+      var next = 0
+      literal = inlineMarker(spans, text, i, "**", TextAttributes.Bold, style, theme, literal, out next)
+      if next >= 0 {
+        i = next
         continue
       }
     }
     if matchAt(text, i, "__") {
-      let close = text.IndexOf("__", i + 2)
-      if close >= 0 {
-        literal = flushLiteral(spans, literal, style)
-        appendAll(spans, parseInline(text.Substring(i + 2, close - i - 2), style.WithAttributes(TextAttributes.Bold), theme))
-        i = close + 2
+      var next = 0
+      literal = inlineMarker(spans, text, i, "__", TextAttributes.Bold, style, theme, literal, out next)
+      if next >= 0 {
+        i = next
         continue
       }
     }
     if matchAt(text, i, "~~") {
-      let close = text.IndexOf("~~", i + 2)
-      if close >= 0 {
-        literal = flushLiteral(spans, literal, style)
-        appendAll(spans, parseInline(text.Substring(i + 2, close - i - 2), style.WithAttributes(TextAttributes.Strikethrough), theme))
-        i = close + 2
+      var next = 0
+      literal = inlineMarker(spans, text, i, "~~", TextAttributes.Strikethrough, style, theme, literal, out next)
+      if next >= 0 {
+        i = next
         continue
       }
     }
@@ -475,20 +488,18 @@ internal func parseInline(text string, style Style, theme MarkdownTheme) List[Sp
       }
     }
     if text[i] == '*' && !matchAt(text, i, "**") {
-      let close = text.IndexOf('*', i + 1)
-      if close >= 0 {
-        literal = flushLiteral(spans, literal, style)
-        appendAll(spans, parseInline(text.Substring(i + 1, close - i - 1), style.WithAttributes(TextAttributes.Italic), theme))
-        i = close + 1
+      var next = 0
+      literal = inlineMarker(spans, text, i, "*", TextAttributes.Italic, style, theme, literal, out next)
+      if next >= 0 {
+        i = next
         continue
       }
     }
     if text[i] == '_' && !matchAt(text, i, "__") {
-      let close = text.IndexOf('_', i + 1)
-      if close >= 0 {
-        literal = flushLiteral(spans, literal, style)
-        appendAll(spans, parseInline(text.Substring(i + 1, close - i - 1), style.WithAttributes(TextAttributes.Italic), theme))
-        i = close + 1
+      var next = 0
+      literal = inlineMarker(spans, text, i, "_", TextAttributes.Italic, style, theme, literal, out next)
+      if next >= 0 {
+        i = next
         continue
       }
     }

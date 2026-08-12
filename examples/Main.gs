@@ -4,6 +4,7 @@ import SharpTui
 
 import System
 import System.Collections.Generic
+import System.Diagnostics
 
 /// The palette every example draws from, so a reskin is one edit.
 public class Ink {
@@ -27,6 +28,11 @@ func sharpLogo() List[string] {
   }
 }
 
+/// The dimmed status bar style shared by every app's footer.
+func dimStatusBar() StatusBar {
+  return StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+}
+
 /// The markdown look shared by every preview in the set.
 func previewTheme() MarkdownTheme {
   let theme = MarkdownTheme{}
@@ -42,6 +48,56 @@ func previewTheme() MarkdownTheme {
 /// Tabs slide a paint past a border, so foreign text is flattened first.
 func flatText(text string) string {
   return text.Replace(char(9).ToString(), "    ").TrimEnd()
+}
+
+/// One subprocess run to completion: whether the process started, its exit
+/// code, and both output streams drained in full. Crashed is set only when
+/// launching or waiting on the process itself threw; Error then carries the
+/// exception message instead of captured stderr.
+class ProcRun {
+  public var Started bool
+  public var Crashed bool
+  public var ExitCode int32
+  public var Output string
+  public var Error string
+
+  public init() {
+    Started = false
+    Crashed = false
+    ExitCode = -1
+    Output = ""
+    Error = ""
+  }
+}
+
+/// Spawns exe with args, optionally in dir ("" for the caller's own working
+/// directory) and with environment overrides ("KEY=VALUE" entries), then
+/// drains stdout and stderr and waits for exit. Never throws.
+func procRun(exe string, args List[string], dir string, env List[string]) ProcRun {
+  let r = ProcRun{}
+  try {
+    let psi = ProcessStartInfo(exe)
+    if dir != "" { psi.WorkingDirectory = dir }
+    for pair in env {
+      let at = pair.IndexOf("=")
+      psi.Environment[pair.Substring(0, at)] = pair.Substring(at + 1)
+    }
+    for a in args { psi.ArgumentList.Add(a) }
+    psi.RedirectStandardOutput = true
+    psi.RedirectStandardError = true
+    psi.UseShellExecute = false
+    let started = Process.Start(psi)
+    guard let p = started else { return r }
+    r.Output = p.StandardOutput.ReadToEnd()
+    r.Error = p.StandardError.ReadToEnd()
+    p.WaitForExit()
+    r.Started = true
+    r.ExitCode = p.ExitCode
+  } catch (e Exception) {
+    r.Crashed = true
+    r.Error = e.Message
+  }
+  return r
 }
 
 /// The launcher menu shown when no flag picks an app directly.
@@ -69,7 +125,7 @@ class Pick : View {
     list.Add("watch   rerun a command and diff its output")
     list.Add("edit    markdown editor with live preview")
     list.Add("julia   the whole framework in 80 lines")
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
     bar.LeftText = "sharptui examples"
     bar.RightText = "enter launches - q quits"
 
@@ -237,7 +293,7 @@ func banner() int32 {
   return 0
 }
 
-/// Julia is the one app that animates, so only it gets a tick interval.
+/// Julia animates continuously, so it runs the fastest tick.
 func golf() int32 {
   let app = App()
   app.TickInterval = TimeSpan.FromMilliseconds(16.0)

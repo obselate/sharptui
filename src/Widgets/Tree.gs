@@ -56,8 +56,7 @@ public open class TreeView : Box {
   private var treeDirty bool
   private var builtRevision int32
   private var builtRootCount int32
-  private var selectedIndex int32
-  private var selectionChange SelectionChange?
+  private var selection SelectionState
 
   /// Top-level nodes of the tree; setting it replaces the roots and calls RefreshNodes.
   public prop Roots List[TreeNode] {
@@ -69,10 +68,10 @@ public open class TreeView : Box {
   }
   /// Index of the selected row among the currently visible (expanded) nodes. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedIndex int32 {
-    get { return selectedIndex }
+    get { return selection.Index }
     set {
       rebuild()
-      setSelection(clampIndex(value), false)
+      selection.Set(clampIndex(value), false)
     }
   }
   /// Index of the first visible tree node.
@@ -85,8 +84,8 @@ public open class TreeView : Box {
   public prop SelectedNode TreeNode? {
     get {
       rebuild()
-      if selectedIndex < 0 || selectedIndex >= visible.Count { return nil }
-      return visible[selectedIndex]
+      if selection.Index < 0 || selection.Index >= visible.Count { return nil }
+      return visible[selection.Index]
     }
   }
 
@@ -100,8 +99,7 @@ public open class TreeView : Box {
     treeDirty = true
     builtRevision = -1
     builtRootCount = -1
-    selectedIndex = 0
-    selectionChange = nil
+    selection = SelectionState()
     FirstVisibleNodeIndex = 0
     SelectedNodeStyle = Style()
     NodeMarkerStyle = Style()
@@ -116,15 +114,13 @@ public open class TreeView : Box {
   public func RefreshNodes() {
     treeDirty = true
     rebuild()
-    selectionChange = nil
+    selection.Change = nil
   }
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
-    let pending = selectionChange
-    selectionChange = nil
-    return pending
+    return selection.Consume()
   }
 
   /// Paints each visible node's indent, expand marker, and text, highlighting the selected row.
@@ -144,13 +140,13 @@ public open class TreeView : Box {
       let node = visible[i]
       let depth = depths[i]
       let marker = node.IsLeaf ? " " : (node.IsExpanded ? "▾" : "▸")
-      let rowStyle = i == selectedIndex ? selectedStyle : ink
+      let rowStyle = i == selection.Index ? selectedStyle : ink
       var x = 0
       while x < depth * 2 && x < r.WidthCells {
         screen.WriteCell(r.Column + x, r.Row + row, " ", rowStyle)
         x = x + 1
       }
-      if i == selectedIndex {
+      if i == selection.Index {
         if x < r.WidthCells { screen.WriteCell(r.Column + x, r.Row + row, marker, selectedStyle) }
         if x + 1 < r.WidthCells { screen.WriteCell(r.Column + x + 1, r.Row + row, " ", selectedStyle) }
         screen.WriteClipped(r, x + 2, row, node.Text, selectedStyle)
@@ -185,10 +181,10 @@ public open class TreeView : Box {
     if bounds.HeightRows <= 0 { return EventResult.Continue }
     rebuild()
 
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selectedIndex - 1, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selectedIndex + 1, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selectedIndex - bounds.HeightRows, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selectedIndex + bounds.HeightRows, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selection.Index - bounds.HeightRows, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selection.Index + bounds.HeightRows, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveTo(0, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(visible.Count - 1, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Right { return result(expandOrDescend(bounds.HeightRows)) }
@@ -197,8 +193,8 @@ public open class TreeView : Box {
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleNodeIndex - 3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleNodeIndex + 3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleNodeIndex - Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleNodeIndex + Selection.WheelStep, bounds.HeightRows)) }
       if ev.Mouse == MouseKind.Press { return result(click(ev, bounds)) }
     }
     return EventResult.Continue
@@ -208,7 +204,7 @@ public open class TreeView : Box {
     let i = FirstVisibleNodeIndex + (ev.Position.Row - bounds.Row)
     if i < 0 || i >= visible.Count { return false }
     var changed = false
-    if setSelection(i, true) { changed = true }
+    if selection.Set(i, true) { changed = true }
     let depth = depths[i]
     let markerX0 = bounds.Column + depth * 2
     let markerX1 = markerX0 + 2
@@ -225,7 +221,7 @@ public open class TreeView : Box {
 
   private func toggleSelected() bool {
     if visible.Count == 0 { return false }
-    let node = visible[selectedIndex]
+    let node = visible[selection.Index]
     if node.IsLeaf { return false }
     node.IsExpanded = !node.IsExpanded
     return true
@@ -233,32 +229,32 @@ public open class TreeView : Box {
 
   private func expandOrDescend(height int32) bool {
     if visible.Count == 0 { return false }
-    let node = visible[selectedIndex]
+    let node = visible[selection.Index]
     if node.IsLeaf { return false }
     if !node.IsExpanded {
       node.IsExpanded = true
       return true
     }
     if node.Children.Count == 0 { return false }
-    return moveTo(selectedIndex + 1, height)
+    return moveTo(selection.Index + 1, height)
   }
 
   private func collapseOrAscend(height int32) bool {
     if visible.Count == 0 { return false }
-    let node = visible[selectedIndex]
+    let node = visible[selection.Index]
     if node.IsExpanded && !node.IsLeaf {
       node.IsExpanded = false
       return true
     }
-    guard let parent = parents[selectedIndex] else { return false }
+    guard let parent = parents[selection.Index] else { return false }
     return moveTo(parent, height)
   }
 
   private func moveTo(want int32, height int32) bool {
     if visible.Count == 0 { return false }
     let i = clampIndex(want)
-    if !setSelection(i, true) { return false }
-    FirstVisibleNodeIndex = Selection.ScrollIntoView(visible.Count, selectedIndex, FirstVisibleNodeIndex, height)
+    if !selection.Set(i, true) { return false }
+    FirstVisibleNodeIndex = Selection.ScrollIntoView(visible.Count, selection.Index, FirstVisibleNodeIndex, height)
     return true
   }
 
@@ -309,22 +305,12 @@ public open class TreeView : Box {
   }
 
 
-  private func setSelection(value int32, emit bool) bool {
-    if selectedIndex == value {
-      if !emit { selectionChange = nil }
-      return false
-    }
-    let previous = selectedIndex
-    selectedIndex = value
-    selectionChange = emit ? SelectionChange(previous, value) : nil
-    return true
-  }
 
   private func normalizeSelection() {
-    let normalized = clampIndex(selectedIndex)
-    if normalized == selectedIndex { return }
-    selectedIndex = normalized
-    selectionChange = nil
+    let normalized = clampIndex(selection.Index)
+    if normalized == selection.Index { return }
+    selection.Index = normalized
+    selection.Change = nil
   }
 
 }

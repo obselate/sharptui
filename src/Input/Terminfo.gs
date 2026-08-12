@@ -97,16 +97,7 @@ internal class TerminfoKeyDecoder {
     for i in 0 ... sequences.Length {
       let item = sequences[i].Bytes
       if item.Length == 0 || pending.Count > item.Length { continue }
-      var matches = true
-      var at = 0
-      while at < pending.Count {
-        if pending[at] != item[at] {
-          matches = false
-          break
-        }
-        at = at + 1
-      }
-      if !matches { continue }
+      if !matchesPending(item, pending.Count) { continue }
       prefix = true
       if pending.Count == item.Length {
         exact = i
@@ -115,21 +106,22 @@ internal class TerminfoKeyDecoder {
     if exact >= 0 {
       for item in sequences {
         if item.Bytes.Length <= pending.Count { continue }
-        var matches = true
-        var at = 0
-        while at < pending.Count {
-          if pending[at] != item.Bytes[at] {
-            matches = false
-            break
-          }
-          at = at + 1
-        }
-        if matches {
+        if matchesPending(item.Bytes, pending.Count) {
           longer = true
           break
         }
       }
     }
+  }
+
+  /// True when the first count bytes of item equal the pending bytes.
+  private func matchesPending(item []uint8, count int32) bool {
+    var at = 0
+    while at < count {
+      if pending[at] != item[at] { return false }
+      at = at + 1
+    }
+    return true
   }
 
   private func longestExactPrefix() int32 {
@@ -138,16 +130,7 @@ internal class TerminfoKeyDecoder {
     for i in 0 ... sequences.Length {
       let item = sequences[i].Bytes
       if item.Length == 0 || item.Length > pending.Count || item.Length <= longest { continue }
-      var matches = true
-      var at = 0
-      while at < item.Length {
-        if pending[at] != item[at] {
-          matches = false
-          break
-        }
-        at = at + 1
-      }
-      if matches {
+      if matchesPending(item, item.Length) {
         found = i
         longest = item.Length
       }

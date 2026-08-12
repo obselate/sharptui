@@ -58,7 +58,7 @@ class Files : View {
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     doc = MarkdownView{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "preview", Theme: previewTheme(),
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
     filter = TextInput{ Placeholder: "filter...", Height: CellLength.Cells(1), ShowBorder: true, Title: "filter",
       Style: Style{ Foreground: Ink.Warm, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     filterBar = Box{ Height: CellLength.Cells(3), Children: { filter } }
@@ -283,16 +283,6 @@ class Files : View {
     }
   }
 
-  private func looksBinary(bytes []uint8) bool {
-    var i = 0
-    let n = bytes.Length < 512 ? bytes.Length : 512
-    while i < n {
-      if bytes[i] == 0 { return true }
-      i = i + 1
-    }
-    return false
-  }
-
   public func Draw(screen Screen) {
     let change = list.ConsumeSelectionChange()
     if change != nil { buildPreview() }
@@ -366,4 +356,16 @@ class Files : View {
     else { sort = SortMode.Name }
     apply()
   }
+}
+
+/// True when the first up-to-512 bytes contain a null, the cheap heuristic
+/// used to steer a preview away from binary content.
+func looksBinary(bytes []uint8) bool {
+  var i = 0
+  let n = bytes.Length < 512 ? bytes.Length : 512
+  while i < n {
+    if bytes[i] == 0 { return true }
+    i = i + 1
+  }
+  return false
 }

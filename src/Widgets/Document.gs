@@ -120,22 +120,7 @@ public open class MarkdownView : Box {
     FirstVisibleLine = clamp(FirstVisibleLine, r.HeightRows)
     let xOffset = (r.WidthCells - textWidth) / 2
 
-    var i = FirstVisibleLine
-    while i < cache.Count {
-      let row = i - FirstVisibleLine
-      if row >= r.HeightRows { break }
-      var x = xOffset
-      let line = cache[i]
-      var part = 0
-      while part < line.Count {
-        let run = line[part]
-        let style = run.Style.MergedOver(ink)
-        screen.WriteClipped(r, x, row, run.Text, style)
-        x = x + Glyph.WidthOf(run.Text)
-        part = part + 1
-      }
-      i = i + 1
-    }
+    paintRunLines(screen, r, cache, FirstVisibleLine, xOffset, ink)
   }
 
   /// Handles keyboard and mouse-wheel scrolling within the content bounds.
@@ -153,8 +138,8 @@ public open class MarkdownView : Box {
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveBy(-cache.Count, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveBy(cache.Count, bounds.HeightRows)) }
     if ev.Kind == UiEventKind.Mouse && bounds.Contains(ev.Position) {
-      if ev.Mouse == MouseKind.ScrollUp { return result(moveBy(-3, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(moveBy(3, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(moveBy(-Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(moveBy(Selection.WheelStep, bounds.HeightRows)) }
     }
     return EventResult.Continue
   }
@@ -178,12 +163,12 @@ public open class MarkdownView : Box {
   }
 
   private func themeChanged() bool {
-    return !sameStyle(Theme.Body, cachedThemeBody)
-      || !sameStyle(Theme.Heading, cachedThemeHeading)
-      || !sameStyle(Theme.Code, cachedThemeCode)
-      || !sameStyle(Theme.Quote, cachedThemeQuote)
-      || !sameStyle(Theme.Link, cachedThemeLink)
-      || !sameStyle(Theme.Marker, cachedThemeMarker)
+    return !stylesEqual(Theme.Body, cachedThemeBody)
+      || !stylesEqual(Theme.Heading, cachedThemeHeading)
+      || !stylesEqual(Theme.Code, cachedThemeCode)
+      || !stylesEqual(Theme.Quote, cachedThemeQuote)
+      || !stylesEqual(Theme.Link, cachedThemeLink)
+      || !stylesEqual(Theme.Marker, cachedThemeMarker)
   }
 
   private func snapshotTheme() {
@@ -193,11 +178,6 @@ public open class MarkdownView : Box {
     cachedThemeQuote = Theme.Quote
     cachedThemeLink = Theme.Link
     cachedThemeMarker = Theme.Marker
-  }
-
-  private func sameStyle(left Style, right Style) bool {
-    return left.Foreground == right.Foreground && left.Background == right.Background
-      && left.Attributes == right.Attributes
   }
 
   private func layout(width int32) List[List[TextRun]] {

@@ -18,8 +18,6 @@ internal class Ansi {
     public let CursorHide string = Csi + "?25l"
     /// Shows the terminal cursor.
     public let CursorShow string = Csi + "?25h"
-    /// Clears the entire screen.
-    public let ClearScreen string = Csi + "2J"
     /// Resets all SGR text attributes and colors to the terminal's default.
     public let Reset string = Csi + "0m"
 
@@ -65,11 +63,6 @@ internal class Ansi {
 
     /// OSC 111: restores the terminal's configured background.
     public let ResetBackground string = char(27).ToString() + "]111" + char(27).ToString() + "\\"
-
-    /// Absolute cursor move. Column and row are zero-based here, one-based on the wire.
-    public func MoveTo(x int32, y int32) string {
-      return Ansi.Csi + (y + 1).ToString() + ";" + (x + 1).ToString() + "H"
-    }
 
     /// Truecolor plus attributes. A negative channel means "terminal default".
     public func Style(fg int32, bg int32, attr int32) string {

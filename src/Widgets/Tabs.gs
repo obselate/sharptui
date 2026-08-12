@@ -5,10 +5,9 @@ import System.Collections.Generic
 
 /// A horizontal strip of titles; arrow keys or a click switch the active one.
 public open class Tabs : Box {
-  private var selectedIndex int32
+  private var selection SelectionState
   private var titles List[string]
   private var titleStarts List[int32]
-  private var selectionChange SelectionChange?
 
   /// Tab titles in display order; setting it replaces all titles and re-resolves the selection via RefreshTitles.
   public prop Titles List[string] {
@@ -24,7 +23,7 @@ public open class Tabs : Box {
     get { return normalizedSelectedIndex() }
     set {
       if value < 0 { throw ArgumentOutOfRangeException("SelectedIndex") }
-      setSelection(value, false)
+      selection.Set(value, false)
     }
   }
 
@@ -35,8 +34,7 @@ public open class Tabs : Box {
   public init() {
     titles = List[string]()
     titleStarts = List[int32]()
-    selectedIndex = 0
-    selectionChange = nil
+    selection = SelectionState()
     SelectedStyle = Style()
     GapCells = 2
     CanFocus = true
@@ -45,15 +43,13 @@ public open class Tabs : Box {
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending SelectionChange, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
-    let pending = selectionChange
-    selectionChange = nil
-    return pending
+    return selection.Consume()
   }
 
   /// Refreshes selection after direct Titles mutation.
   public func RefreshTitles() {
-    selectedIndex = normalizedSelectedIndex()
-    selectionChange = nil
+    selection.Index = normalizedSelectedIndex()
+    selection.Change = nil
   }
 
   /// Always true, so this tab strip sizes itself via MeasureIntrinsic.
@@ -111,7 +107,7 @@ public open class Tabs : Box {
 
   private func moveTo(want int32) bool {
     if Titles.Count == 0 { return false }
-    return setSelection(Selection.ClampIndex(Titles.Count, want), true)
+    return selection.Set(Selection.ClampIndex(Titles.Count, want), true)
   }
 
   /// Left edge of each title, laid end to end with GapCells between.
@@ -152,30 +148,14 @@ public open class Tabs : Box {
   }
 
   private func normalizedSelectedIndex() int32 {
-    if Titles.Count == 0 {
-      if selectedIndex != 0 {
-        selectedIndex = 0
-        selectionChange = nil
-      }
-      return 0
+    let normalized = Selection.ClampIndex(Titles.Count, selection.Index)
+    if normalized != selection.Index {
+      selection.Index = normalized
+      selection.Change = nil
     }
-    if selectedIndex >= Titles.Count {
-      selectedIndex = Titles.Count - 1
-      selectionChange = nil
-    }
-    return selectedIndex
+    return selection.Index
   }
 
-  private func setSelection(value int32, emit bool) bool {
-    if selectedIndex == value {
-      if !emit { selectionChange = nil }
-      return false
-    }
-    let previous = selectedIndex
-    selectedIndex = value
-    selectionChange = emit ? SelectionChange(previous, value) : nil
-    return true
-  }
 
 }
 

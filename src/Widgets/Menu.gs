@@ -10,8 +10,7 @@ public open class Select : Box {
   private var highlightIndex int32
   private var top int32
   private var options List[string]
-  private var selectedIndex int32
-  private var selectionChange SelectionChange?
+  private var selection SelectionState
 
   /// Selectable option strings; setting it replaces all options and re-resolves the selection via RefreshOptions.
   public prop Options List[string] {
@@ -25,7 +24,7 @@ public open class Select : Box {
   public prop SelectedIndex int32 {
     get {
       normalizeSelection()
-      return selectedIndex
+      return selection.Index
     }
     set { setSelection(value, false) }
   }
@@ -39,8 +38,7 @@ public open class Select : Box {
   /// Creates a closed select with no options and the placeholder "select".
   public init() {
     options = List[string]()
-    selectedIndex = 0
-    selectionChange = nil
+    selection = SelectionState()
     isOpen = false
     highlightIndex = 0
     SelectedStyle = Style()
@@ -52,16 +50,14 @@ public open class Select : Box {
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
-    let pending = selectionChange
-    selectionChange = nil
-    return pending
+    return selection.Consume()
   }
 
   /// Refreshes selection after direct Options mutation.
   public func RefreshOptions() {
     normalizeSelection()
     highlightIndex = clampIndex(highlightIndex)
-    selectionChange = nil
+    selection.Change = nil
   }
 
   /// Always true, so this select sizes itself via MeasureIntrinsic.
@@ -190,26 +186,18 @@ public open class Select : Box {
 
   private func selectedOptionIndex() int32 {
     if Options.Count == 0 { return -1 }
-    return selectedIndex
+    return selection.Index
   }
 
   private func normalizeSelection() {
-    let normalized = clampIndex(selectedIndex)
-    if normalized == selectedIndex { return }
-    selectedIndex = normalized
-    selectionChange = nil
+    let normalized = clampIndex(selection.Index)
+    if normalized == selection.Index { return }
+    selection.Index = normalized
+    selection.Change = nil
   }
 
   private func setSelection(want int32, emit bool) bool {
-    let value = clampIndex(want)
-    if selectedIndex == value {
-      if !emit { selectionChange = nil }
-      return false
-    }
-    let previous = selectedIndex
-    selectedIndex = value
-    selectionChange = emit ? SelectionChange(previous, value) : nil
-    return true
+    return selection.Set(clampIndex(want), emit)
   }
 
   private func clampIndex(value int32) int32 {

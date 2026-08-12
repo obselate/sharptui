@@ -60,20 +60,9 @@ public class Hits {
 
 /// Runs a command with unquoted arguments and returns its output.
 func capture(exe string, args List[string]) string {
-  try {
-    let psi = ProcessStartInfo(exe)
-    for a in args { psi.ArgumentList.Add(a) }
-    psi.RedirectStandardOutput = true
-    psi.RedirectStandardError = true
-    psi.UseShellExecute = false
-    let started = Process.Start(psi)
-    guard let p = started else { return "" }
-    let out = p.StandardOutput.ReadToEnd()
-    p.WaitForExit()
-    return out
-  } catch (e Exception) {
-    return ""
-  }
+  let core = procRun(exe, args, "", List[string]())
+  if core.Crashed || !core.Started { return "" }
+  return core.Output
 }
 
 /// A recursive text search with a preview. `sharptui --grep PATTERN [DIR]`.
@@ -117,7 +106,7 @@ class Hunt : View {
     entry.Text = pattern
     glob = TextInput{ Width: CellLength.Cells(18), Placeholder: "-g glob",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
 
     pane = Box{ GrowWeight: 1, ShowBorder: true, Title: "preview", ShowScrollbar: true,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { preview } }

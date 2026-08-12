@@ -24,19 +24,6 @@ public class Chore {
   }
 }
 
-/// Marker recognition, kept pure for the checks.
-public class Note {
-  shared {
-    /// The tag and its message, or nil. A tag counts only as a whole word, so
-    /// "todos" and "mastodon" are not markers, and the message drops a leading
-    /// colon, dash or bracketed owner. "TODO(demo): ..." or "TODO(demo) ..."
-    /// keeps the name separately on Who.
-    public func Of(line string) Chore? {
-      return choreParse(line, choreDefaultTags())
-    }
-  }
-}
-
 /// The marker words looked for when none are named on the command line.
 func choreDefaultTags() List[string] {
   return List[string]{ "TODO", "FIXME", "HACK", "XXX", "BUG", "NOTE" }
@@ -52,7 +39,11 @@ func choreTagList(spec string) List[string] {
   return out.Count == 0 ? choreDefaultTags() : out
 }
 
-/// The parse behind Note.Of, against whichever marker words are in play.
+/// The tag and its message, or nil, against whichever marker words are in
+/// play. A tag counts only as a whole word, so "todos" and "mastodon" are
+/// not markers, and the message drops a leading colon, dash or bracketed
+/// owner. "TODO(demo): ..." or "TODO(demo) ..." keeps the name separately
+/// on Who.
 func choreParse(line string, tags List[string]) Chore? {
   for tag in tags {
     let at = choreWord(line, tag)
@@ -205,7 +196,7 @@ class Chores : View {
       SelectedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     filter = TextInput{ GrowWeight: 1, Placeholder: "a tag or any word in the marker",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
 
     pane = Box{ GrowWeight: 1, ShowBorder: true, Title: "source", ShowScrollbar: true,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, Children: { preview } }
@@ -490,19 +481,11 @@ func choreTracked(dir string) List[string] {
 }
 
 func choreGit(dir string, args string) string {
-  try {
-    let psi = ProcessStartInfo("git", args)
-    psi.WorkingDirectory = dir
-    psi.RedirectStandardOutput = true
-    psi.RedirectStandardError = true
-    psi.UseShellExecute = false
-    let proc = Process.Start(psi)
-    guard let p = proc else { return "" }
-    let out = p.StandardOutput.ReadToEnd()
-    p.WaitForExit()
-    if p.ExitCode != 0 { return "" }
-    return out
-  } catch (e Exception) {
-    return ""
+  let list = List[string]()
+  for part in args.Split(' ') {
+    if part != "" { list.Add(part) }
   }
+  let core = procRun("git", list, dir, List[string]())
+  if core.Crashed || !core.Started || core.ExitCode != 0 { return "" }
+  return core.Output
 }

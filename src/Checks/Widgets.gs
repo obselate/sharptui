@@ -401,6 +401,8 @@ public class WidgetCheck {
       let alignedRoot = Box{ Children: { aligned } }
       let alignedScreen = Screen(10, 5)
       alignedRoot.Draw(alignedScreen)
+      failed = failed + Checks.Expect(alignedScreen.Probe(0, aligned.Bounds.Row) == "N",
+        "TableColumn.HeaderAlignment remains independent from body alignment")
       failed = failed + Checks.Expect(alignedScreen.Probe(3, aligned.Bounds.Row + 1) == "7",
         "TableColumn.Alignment positions a cell")
 

@@ -60,6 +60,8 @@ public class TableColumn {
   public prop Header string { get; set; }
   /// Width policy for this column, either a fixed cell count or a weighted share.
   public prop ColumnWidth ColumnWidth { get; set; }
+  /// Horizontal alignment of the header text, independent of body cells.
+  public prop HeaderAlignment HorizontalAlignment { get; set; }
   /// Horizontal alignment of text within this column's cells.
   public prop Alignment HorizontalAlignment { get; set; }
 
@@ -67,6 +69,7 @@ public class TableColumn {
   public init() {
     Header = ""
     ColumnWidth = ColumnWidth.Share(1)
+    HeaderAlignment = HorizontalAlignment.Left
     Alignment = HorizontalAlignment.Left
   }
 }
@@ -135,9 +138,8 @@ public open class TableView : Box {
   private var columnSeparator string
   private var widthScratch List[int32]
   private var rows List[TableRow]
-  private var selectedRowIndex int32
+  private var selection SelectionState
   private var selectedRowId string
-  private var selectionChange SelectionChange?
 
   /// Column definitions in display order.
   public prop Columns List[TableColumn] { get; set; }
@@ -151,7 +153,7 @@ public open class TableView : Box {
   }
   /// Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedRowIndex int32 {
-    get { return selectedRowIndex }
+    get { return selection.Index }
     set { setProgrammaticSelection(value) }
   }
   /// Id of the selected row, or empty when no row is selected.
@@ -187,9 +189,8 @@ public open class TableView : Box {
     widthScratch = List[int32]()
     Columns = List[TableColumn]()
     rows = List[TableRow]()
-    selectedRowIndex = 0
+    selection = SelectionState()
     selectedRowId = ""
-    selectionChange = nil
     FirstVisibleRowIndex = 0
     FirstVisibleColumnIndex = 0
     HeaderStyle = Style()
@@ -202,14 +203,12 @@ public open class TableView : Box {
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedRowIndex does not produce one.
   /// @returns The pending SelectionChange, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
-    let pending = selectionChange
-    selectionChange = nil
-    return pending
+    return selection.Consume()
   }
 
   /// Refreshes selection after direct Rows mutation.
   public func RefreshRows() {
-    let previous = selectedRowIndex
+    let previous = selection.Index
     var restored = -1
     if selectedRowId != "" {
       var i = 0
@@ -223,9 +222,9 @@ public open class TableView : Box {
     }
     if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
     if restored < 0 && Rows.Count > 0 { restored = clampIndex(previous) }
-    selectedRowIndex = restored < 0 ? 0 : restored
-    selectedRowId = selectedIdAt(selectedRowIndex)
-    selectionChange = nil
+    selection.Index = restored < 0 ? 0 : restored
+    selectedRowId = selectedIdAt(selection.Index)
+    selection.Change = nil
   }
 
   /// Returns the row count including the header row.
@@ -258,7 +257,7 @@ public open class TableView : Box {
     while i < Rows.Count {
       let row = i - FirstVisibleRowIndex
       if row >= height { break }
-      let selected = i == selectedRowIndex
+      let selected = i == selection.Index
       var rowStyle = Rows[i].Style.MergedOver(ink)
       if selected { rowStyle = SelectedRowStyle.MergedOver(rowStyle) }
       drawRow(screen, r, row + 1, Columns.Count, widths, Rows[i].Cells, rowStyle)
@@ -276,10 +275,10 @@ public open class TableView : Box {
     if height <= 0 { return EventResult.Continue }
     normalizeSelection()
 
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selectedRowIndex - 1, height)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selectedRowIndex + 1, height)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selectedRowIndex - height, height)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selectedRowIndex + height, height)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, height)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, height)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selection.Index - height, height)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selection.Index + height, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveTo(0, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(Rows.Count - 1, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left { return result(panTo(FirstVisibleColumnIndex - 1, bounds.WidthCells)) }
@@ -287,8 +286,8 @@ public open class TableView : Box {
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleRowIndex - 3, height)) }
-      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleRowIndex + 3, height)) }
+      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleRowIndex - Selection.WheelStep, height)) }
+      if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleRowIndex + Selection.WheelStep, height)) }
       if ev.Mouse == MouseKind.Press {
         let hit = ev.Position.Row - bounds.Row
         if hit == 0 { return EventResult.Continue }
@@ -349,7 +348,7 @@ public open class TableView : Box {
     var x = 0
     var i = FirstVisibleColumnIndex
     while i < Columns.Count {
-      drawTextCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].Alignment, ink)
+      drawTextCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].HeaderAlignment, ink)
       x = x + widths[i]
       if i + 1 < Columns.Count {
         drawSeparator(screen, r, x, 0, ink)
@@ -450,24 +449,25 @@ public open class TableView : Box {
     var used = 0
     var i = 0
     while i < runs.Count && used < width {
-      for cluster in Glyph.Elements(runs[i].Text) {
-        let next = Glyph.Of(cluster)
-        if used + next > width { return width }
-        used = used + next
-      }
+      used = accumulateWidth(runs[i].Text, used, width)
       i = i + 1
     }
     return used
   }
 
-  private func boundedWidth(text string, width int32) int32 {
-    var used = 0
+  /// Adds text's glyph widths to used, saturating at width.
+  private func accumulateWidth(text string, used int32, width int32) int32 {
+    var total = used
     for cluster in Glyph.Elements(text) {
       let next = Glyph.Of(cluster)
-      if used + next > width { return width }
-      used = used + next
+      if total + next > width { return width }
+      total = total + next
     }
-    return used
+    return total
+  }
+
+  private func boundedWidth(text string, width int32) int32 {
+    return accumulateWidth(text, 0, width)
   }
 
   private func clippedWidth(text string, width int32) int32 {
@@ -503,7 +503,7 @@ public open class TableView : Box {
     let i = nearestSelectable(clampIndex(want), directionFor(want))
     if i < 0 { return false }
     if !setSelection(i, true) { return false }
-    FirstVisibleRowIndex = Selection.ScrollIntoView(Rows.Count, selectedRowIndex, FirstVisibleRowIndex, height)
+    FirstVisibleRowIndex = Selection.ScrollIntoView(Rows.Count, selection.Index, FirstVisibleRowIndex, height)
     return true
   }
 
@@ -523,34 +523,27 @@ public open class TableView : Box {
   }
 
   private func setSelection(value int32, emit bool) bool {
-    if selectedRowIndex == value {
-      selectedRowId = selectedIdAt(value)
-      if !emit { selectionChange = nil }
-      return false
-    }
-    let previous = selectedRowIndex
-    selectedRowIndex = value
+    let changed = selection.Set(value, emit)
     selectedRowId = selectedIdAt(value)
-    selectionChange = emit ? SelectionChange(previous, value) : nil
-    return true
+    return changed
   }
 
   private func normalizeSelection() {
     if Rows.Count == 0 {
-      if selectedRowIndex != 0 || selectedRowId != "" {
-        selectedRowIndex = 0
+      if selection.Index != 0 || selectedRowId != "" {
+        selection.Index = 0
         selectedRowId = ""
-        selectionChange = nil
+        selection.Change = nil
       }
       return
     }
-    var normalized = nearestSelectable(clampIndex(selectedRowIndex), directionFor(selectedRowIndex))
-    if normalized < 0 { normalized = clampIndex(selectedRowIndex) }
+    var normalized = nearestSelectable(clampIndex(selection.Index), directionFor(selection.Index))
+    if normalized < 0 { normalized = clampIndex(selection.Index) }
     let normalizedId = selectedIdAt(normalized)
-    if normalized == selectedRowIndex && normalizedId == selectedRowId { return }
-    selectedRowIndex = normalized
+    if normalized == selection.Index && normalizedId == selectedRowId { return }
+    selection.Index = normalized
     selectedRowId = normalizedId
-    selectionChange = nil
+    selection.Change = nil
   }
 
   private func setProgrammaticSelection(want int32) {
@@ -568,7 +561,7 @@ public open class TableView : Box {
   }
 
   private func directionFor(want int32) int32 {
-    return Selection.DirectionFor(want, selectedRowIndex)
+    return Selection.DirectionFor(want, selection.Index)
   }
 
   private func nearestSelectable(start int32, direction int32) int32 {

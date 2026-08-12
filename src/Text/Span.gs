@@ -129,10 +129,7 @@ internal func packRuns(text List[string], styles List[Style], from int32, to int
   var runStyle = styles[from]
   var i = from
   while i < end {
-    let same = styles[i].Foreground == runStyle.Foreground
-      && styles[i].Background == runStyle.Background
-      && styles[i].Attributes == runStyle.Attributes
-    if !same {
+    if !stylesEqual(styles[i], runStyle) {
       out.Add(TextRun(run, runStyle))
       run = ""
       runStyle = styles[i]
@@ -142,4 +139,29 @@ internal func packRuns(text List[string], styles List[Style], from int32, to int
   }
   if run != "" { out.Add(TextRun(run, runStyle)) }
   return out
+}
+
+/// True when two styles match on every field that affects painting.
+internal func stylesEqual(a Style, b Style) bool {
+  return a.Foreground == b.Foreground && a.Background == b.Background && a.Attributes == b.Attributes
+}
+
+/// Paints wrapped run lines top-down from first, clipped to r, each line starting at x0.
+internal func paintRunLines(screen Screen, r CellRect, lines List[List[TextRun]], first int32, x0 int32, ink Style) {
+  var i = first
+  while i < lines.Count {
+    let row = i - first
+    if row >= r.HeightRows { break }
+    var x = x0
+    let line = lines[i]
+    var part = 0
+    while part < line.Count {
+      let run = line[part]
+      let style = run.Style.MergedOver(ink)
+      screen.WriteClipped(r, x, row, run.Text, style)
+      x = x + Glyph.WidthOf(run.Text)
+      part = part + 1
+    }
+    i = i + 1
+  }
 }

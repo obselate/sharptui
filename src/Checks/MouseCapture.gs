@@ -221,9 +221,7 @@ internal class MouseCaptureCheck {
         allocationRoot.Handle(mouseCaptureEvent(MouseKind.Move, 100, 100))
         warm = warm + 1
       }
-      GC.Collect()
-      GC.WaitForPendingFinalizers()
-      GC.Collect()
+      uiBenchCollect()
       let generationBefore = GC.CollectionCount(0)
       let bytesBefore = GC.GetAllocatedBytesForCurrentThread()
       var motion = 0
@@ -242,10 +240,5 @@ internal class MouseCaptureCheck {
 }
 
 private func mouseCaptureEvent(kind MouseKind, column int32, row int32) UiEvent {
-  return UiEvent{
-    Kind: UiEventKind.Mouse,
-    Mouse: kind,
-    Button: MouseButton.Left,
-    Position: CellPoint{ Column: column, Row: row },
-  }
+  return mouseButtonEvent(kind, MouseButton.Left, column, row)
 }

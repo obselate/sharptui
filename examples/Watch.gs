@@ -6,14 +6,10 @@ import System
 import System.Collections.Generic
 import System.Diagnostics
 
-/// The colour a diff line is drawn in, shared with the diff-style apps.
-func diffInk(line string) Style {
-  if line.StartsWith("diff --git") || line.StartsWith("index ")
-    || line.StartsWith("---") || line.StartsWith("+++") { return Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
-  if line.StartsWith("@@") { return Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
-  if line.StartsWith("+") { return Style{ Foreground: Ink.Good, Background: Color.Inherit } }
-  if line.StartsWith("-") { return Style{ Foreground: Ink.Bad, Background: Color.Inherit } }
-  return Style{ Foreground: Ink.Text, Background: Color.Inherit }
+/// Fresh lines paint green, except lines that themselves read as diff headers.
+func freshInk(line string) Style {
+  if line.StartsWith("++") { return Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+  return Style{ Foreground: Ink.Good, Background: Color.Inherit }
 }
 
 /// A command run again on demand — nothing reruns by itself; each press of
@@ -43,7 +39,7 @@ class Watcher : View {
     entry = TextInput{ GrowWeight: 1, Placeholder: "a command, run through sh -c",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     entry.Text = this.command
-    bar = StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
+    bar = dimStatusBar()
     frame = Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true,
       Title: this.command == "" ? "no command yet" : this.command,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { pane } }
@@ -121,7 +117,7 @@ class Watcher : View {
     for i in 0 ... now.Count {
       let mark = hasPrev && fresh[i]
       if mark {
-        items.Add(ListItem{ Text: now[i], Style: diffInk("+" + now[i]) })
+        items.Add(ListItem{ Text: now[i], Style: freshInk(now[i]) })
       } else {
         items.Add(ListItem{ Text: now[i], Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } })
       }
@@ -209,28 +205,13 @@ func watchExec(command string) WatchRun {
   var run = WatchRun{}
   run.Stamp = DateTime.Now.ToString("HH:mm:ss")
   let started = Environment.TickCount64
-  try {
-    let psi = ProcessStartInfo("sh")
-    psi.ArgumentList.Add("-c")
-    psi.ArgumentList.Add(command)
-    psi.RedirectStandardOutput = true
-    psi.RedirectStandardError = true
-    psi.UseShellExecute = false
-    let proc = Process.Start(psi)
-    guard let p = proc else {
-      run.Lines = List[string]()
-      run.ExitCode = -1
-      run.DurationMs = Environment.TickCount64 - started
-      return run
-    }
-    let out = p.StandardOutput.ReadToEnd()
-    p.StandardError.ReadToEnd() // drain so a chatty command cannot deadlock the pipe
-    p.WaitForExit()
-    run.Lines = watchLines(out)
-    run.ExitCode = p.ExitCode
-  } catch (e Exception) {
+  let core = procRun("sh", List[string]{ "-c", command }, "", List[string]())
+  if core.Crashed || !core.Started {
     run.Lines = List[string]()
     run.ExitCode = -1
+  } else {
+    run.Lines = watchLines(core.Output)
+    run.ExitCode = core.ExitCode
   }
   run.DurationMs = Environment.TickCount64 - started
   return run

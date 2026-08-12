@@ -1,3 +1,0 @@
-package SharpTui
-
-import System
