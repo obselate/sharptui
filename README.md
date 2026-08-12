@@ -36,10 +36,33 @@ git clone https://github.com/obselate/sharptui
 </Project>
 ```
 
+## ChatGPT plugin
+
+SharpTUI includes a skills-only plugin for ChatGPT and Codex. Add this GitHub
+repository as a plugin marketplace:
+
+```sh
+codex plugin marketplace add obselate/sharptui
+```
+
+Restart the ChatGPT desktop app, open the Plugins Directory, select the
+**SharpTUI** marketplace, and install **SharpTUI**. You can also install it
+from the CLI:
+
+```sh
+codex plugin add sharptui@sharptui
+```
+
+The plugin supplies generated API lookup, concise G# authoring guidance, and
+real-terminal viewport verification. It does not require an account, remote
+service, or API key.
+
 ## Documentation
 
 - [G# language and tooling](https://github.com/DavidOBando/gsharp)
 - [Performance and allocation numbers](docs/performance.md)
+- [ChatGPT plugin privacy](docs/plugin-privacy.md)
+- [ChatGPT plugin terms](docs/plugin-terms.md)
 - [examples/](examples/): seven complete applications, from a file browser to a git workbench
 - [LICENSE](LICENSE): MIT, with vendored Yoga.Net provenance in [vendor/Yoga.Net/UPSTREAM.md](vendor/Yoga.Net/UPSTREAM.md)
 

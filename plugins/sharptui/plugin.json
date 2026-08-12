@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sharptui",
+  "version": "0.1.0",
+  "description": "Build accurate, responsive, and well-designed SharpTUI applications in G#."
+}

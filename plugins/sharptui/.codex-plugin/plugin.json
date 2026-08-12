@@ -1,0 +1,39 @@
+{
+  "name": "sharptui",
+  "version": "0.1.0",
+  "description": "Build accurate, responsive, and well-designed SharpTUI applications in G#.",
+  "author": {
+    "name": "obselate",
+    "url": "https://github.com/obselate"
+  },
+  "homepage": "https://github.com/obselate/sharptui",
+  "repository": "https://github.com/obselate/sharptui",
+  "license": "MIT",
+  "keywords": [
+    "sharptui",
+    "tui",
+    "gsharp",
+    "dotnet",
+    "terminal-ui"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SharpTUI",
+    "shortDescription": "Build polished terminal interfaces with SharpTUI.",
+    "longDescription": "Guides coding models through SharpTUI's retained tree, G# syntax, layout, widgets, input routing, styling, and verification without inventing APIs.",
+    "developerName": "obselate",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Write"
+    ],
+    "websiteURL": "https://github.com/obselate/sharptui",
+    "privacyPolicyURL": "https://github.com/obselate/sharptui/blob/main/docs/plugin-privacy.md",
+    "termsOfServiceURL": "https://github.com/obselate/sharptui/blob/main/docs/plugin-terms.md",
+    "defaultPrompt": [
+      "Build a responsive SharpTUI app in G#.",
+      "Improve the layout and interaction of this SharpTUI app.",
+      "Fix this SharpTUI code and verify it builds."
+    ],
+    "brandColor": "#8A2BE2"
+  }
+}

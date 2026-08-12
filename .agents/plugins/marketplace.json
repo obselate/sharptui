@@ -1,0 +1,20 @@
+{
+  "name": "sharptui",
+  "interface": {
+    "displayName": "SharpTUI"
+  },
+  "plugins": [
+    {
+      "name": "sharptui",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sharptui"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
