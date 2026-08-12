@@ -5,7 +5,7 @@ package SharpTui
 internal class Selection {
   shared {
     /// Rows moved per mouse-wheel notch, shared by every scrolling widget.
-    public let WheelStep int32 = 3
+    internal let WheelStep int32 = 3
 
 
     /// Clamps index into [0, count - 1], or 0 when count is zero.
