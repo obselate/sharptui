@@ -37,7 +37,7 @@ def run(command: list[str], root: Path, capture: bool = False) -> str:
 
 
 def short_name(name: str) -> str:
-    return name.rsplit(".", 1)[-1]
+    return name.rsplit(".", 1)[-1].split("`", 1)[0]
 
 
 def one_line(text: str) -> str:
@@ -45,7 +45,7 @@ def one_line(text: str) -> str:
 
 
 def split_document(markdown: str) -> tuple[str, list[tuple[str, str]]]:
-    matches = list(re.finditer(r"^## (SharpTui\.[A-Za-z0-9_.]+)\n", markdown, re.MULTILINE))
+    matches = list(re.finditer(r"^## (SharpTui\.[A-Za-z0-9_.`]+)\n", markdown, re.MULTILINE))
     if not matches:
         raise RuntimeError("API generator returned no public type sections")
     header = markdown[: matches[0].start()]

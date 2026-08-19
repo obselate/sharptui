@@ -91,20 +91,20 @@ internal class OverlayCheck {
       failed = failed + Checks.Expect(screen.Flush().Contains(Ansi.Csi + "2m"),
         "Overlay can dim the background")
 
-      overlay.IsOpen = false
-      failed = failed + Checks.Expect(!overlay.IsOpen && !overlay.IsVisible && background.IsFocused,
-        "IsOpen closes Overlay through its single visibility state")
+      overlay.IsVisible = false
+      failed = failed + Checks.Expect(!overlay.IsVisible && background.IsFocused,
+        "IsVisible false closes Overlay and restores prior focus")
       root.Handle(UiEvent{ Kind: UiEventKind.TextInput, Key: Key.Character, Text: "y" })
       failed = failed + Checks.Expect(background.TextCount == 1,
         "Closed Overlay releases input to the background")
-      overlay.IsOpen = true
-      failed = failed + Checks.Expect(overlay.IsVisible && field.IsFocused,
-        "IsOpen reopens Overlay and moves focus into its content")
-      overlay.IsVisible = false
-      failed = failed + Checks.Expect(!overlay.IsOpen && background.IsFocused,
-        "IsVisible false closes Overlay and restores prior focus")
       overlay.IsVisible = true
-      failed = failed + Checks.Expect(overlay.IsOpen && field.IsFocused,
+      failed = failed + Checks.Expect(overlay.IsVisible && field.IsFocused,
+        "IsVisible true reopens Overlay and moves focus into its content")
+      overlay.IsVisible = false
+      failed = failed + Checks.Expect(!overlay.IsVisible && background.IsFocused,
+        "IsVisible false keeps Overlay closed and restores prior focus")
+      overlay.IsVisible = true
+      failed = failed + Checks.Expect(overlay.IsVisible && field.IsFocused,
         "IsVisible true reopens Overlay through the same focus lifecycle")
 
       let behind = OverlayProbe{ Marker: "b" }

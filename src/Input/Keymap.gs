@@ -15,6 +15,7 @@ public enum BindingPhase {
 public class Bind {
   private var gesture KeyGesture
   private var phase BindingPhase
+  private var command Command?
   private var hit bool
 
   /// The gesture that triggers this binding.
@@ -27,6 +28,14 @@ public class Bind {
   internal init(gesture KeyGesture, phase BindingPhase) {
     this.gesture = gesture
     this.phase = phase
+    command = nil
+    hit = false
+  }
+
+  internal init(gesture KeyGesture, phase BindingPhase, command Command) {
+    this.gesture = gesture
+    this.phase = phase
+    this.command = command
     hit = false
   }
 
@@ -38,8 +47,10 @@ public class Bind {
     return true
   }
 
-  internal func Offer() {
+  internal func Offer() bool {
+    if command != nil { return command!!.Activate() }
     hit = true
+    return true
   }
 }
 
@@ -64,6 +75,12 @@ public class Keymap {
     bindings.Add(binding)
     return binding
   }
+  /// Registers a command binding.
+  /// @param command The command activated by the matching gesture.
+  /// @param phase The routing phase the binding is offered during.
+  public func Add(command Command, phase BindingPhase) {
+    bindings.Add(Bind(command.Gesture, phase, command))
+  }
 
   /// Offers an event to one routing phase.
   /// @param ev The event to offer.
@@ -72,19 +89,10 @@ public class Keymap {
   public func Offer(ev UiEvent, phase BindingPhase) bool {
     for binding in bindings {
       if binding.Phase == phase && binding.Gesture.Matches(ev) {
-        binding.Offer()
-        return true
+        if binding.Offer() { return true }
       }
     }
     return false
-  }
-
-  /// Reports whether an event matches a typed gesture.
-  /// @param ev The event to test.
-  /// @param gesture The gesture to match against.
-  /// @returns True when the event matches the gesture.
-  public func Matches(ev UiEvent, gesture KeyGesture) bool {
-    return gesture.Matches(ev)
   }
 
 }

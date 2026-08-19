@@ -9,12 +9,12 @@ public open class Tabs : Box {
   private var titles List[string]
   private var titleStarts List[int32]
 
-  /// Tab titles in display order; setting it replaces all titles and re-resolves the selection via RefreshTitles.
+  /// Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.
   public prop Titles List[string] {
     get { return titles }
     set {
       titles = value
-      RefreshTitles()
+      Refresh()
     }
   }
 
@@ -46,8 +46,8 @@ public open class Tabs : Box {
     return selection.Consume()
   }
 
-  /// Refreshes selection after direct Titles mutation.
-  public func RefreshTitles() {
+  /// Re-resolves selection after direct Titles mutation.
+  public func Refresh() {
     selection.Index = normalizedSelectedIndex()
     selection.Change = nil
   }

@@ -128,6 +128,8 @@ public class AllocBench {
       uiBenchScroll()
       uiBenchListCleanRedraw()
       uiBenchDefaultMarkerListSelection()
+      uiBenchSourceListSelection()
+      uiBenchCleanRedraw("list source unchanged redraw", uiBenchSourceList(w, h), w, h)
       uiBenchDefaultMarkerListCleanRedraw()
       uiBenchPresentedListSelection10k()
       uiBenchPresentedListCleanRedraw10k()
@@ -137,17 +139,23 @@ public class AllocBench {
       uiBenchTableVerticalScroll()
       uiBenchTableHorizontalScroll()
       uiBenchTableCleanRedraw()
+      uiBenchSourceTableSelection()
+      uiBenchCleanRedraw("table source unchanged redraw", uiBenchSourceTable(w, h), w, h)
       uiBenchCleanRedraw("rich table unchanged redraw", uiBenchRichTable(8, 1000, w, h), w, h)
       uiBenchTreeSelection()
       uiBenchTreeExpandCollapse()
       uiBenchTreeCleanRedraw()
       uiBenchTreeScrollbarScroll()
+      uiBenchSourceTreeSelection()
+      uiBenchCleanRedraw("tree source unchanged redraw", uiBenchSourceTree(w, h), w, h)
       uiBenchStatusCleanRedraw()
       uiBenchStatusTextChange()
       uiBenchTextBlockScroll()
       uiBenchTextBlockCleanRedraw()
       uiBenchRichTextBlockScroll()
       uiBenchRichTextBlockCleanRedraw()
+      uiBenchSourceRichScroll()
+      uiBenchCleanRedraw("rich line source unchanged redraw", uiBenchSourceRich(w, h), w, h)
       uiBenchRichTextBlockFollowEnd()
       uiBenchRichTextBlockPrependAnchor()
       uiBenchMarkdownViewScroll()
@@ -762,14 +770,15 @@ func uiBenchRichTextBlockFollowEnd() {
   let h = 50
   let rich = uiBenchRichTextBlock(600, w, h)
   let tail = TextRun("follow-end appended row alpha bravo charlie delta\n", Style())
+  let tailRuns = List[TextRun]{ tail }
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
   rich.ScrollToEnd()
   uiBenchDraw(rich, screen, sink)
 
   let step = func(i int32) {
-    if (i % 2) == 0 { rich.Runs.Add(tail) }
-    else { rich.Runs.RemoveAt(rich.Runs.Count - 1) }
+    if (i % 2) == 0 { rich.AppendRuns(tailRuns) }
+    else { rich.RemoveTailRuns(1) }
     uiBenchDraw(rich, screen, sink)
   }
   uiBenchRun("rich text block follow-end append", 32, 200, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
@@ -777,7 +786,7 @@ func uiBenchRichTextBlockFollowEnd() {
     if rich.FirstVisibleLine != (end < 0 ? 0 : end) {
       Console.WriteLine("SharpTUI rich text follow-end validation failed")
     }
-    rich.Runs.Add(tail)
+    rich.AppendRuns(tailRuns)
     let bytes = uiBenchDraw(rich, screen, sink)
     if bytes == 0 { Console.WriteLine("SharpTUI rich text follow-end final validation failed") }
     return bytes
@@ -798,7 +807,7 @@ func uiBenchRichTextBlockPrependAnchor() {
   let step = func(i int32) {
     rich.PrependRuns(added)
     uiBenchDraw(rich, screen, sink)
-    rich.Runs.RemoveAt(0)
+    rich.RemoveHeadRuns(1)
     rich.ScrollToLine(20)
     uiBenchDraw(rich, screen, sink)
   }
@@ -859,6 +868,88 @@ func uiBenchMarkdownViewCleanRedraw() {
       let bytes = uiBenchDrawClean(markdown, screen, sink)
       if bytes != 0 || markdown.FirstVisibleLine != 20 { Console.WriteLine("SharpTUI markdown view clean redraw final validation failed") }
       return bytes
+    })
+}
+
+func uiBenchSourceListSelection() {
+  let w = 200
+  let h = 50
+  let list = uiBenchSourceList(w, h)
+  list.SelectedIndex = 20
+  let screen = uiBenchScreen(w, h)
+  let sink = uiBenchSink()
+  list.Focus(list)
+  uiBenchDraw(list, screen, sink)
+  let step = func(i int32) {
+    list.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
+    uiBenchDraw(list, screen, sink)
+  }
+  uiBenchRun("list source selection move", 64, 500, step, step,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if list.SelectedIndex != 20 { Console.WriteLine("SharpTUI list source selection validation failed") }
+      list.Handle(keyEv(Key.Down))
+      return uiBenchDraw(list, screen, sink)
+    })
+}
+
+func uiBenchSourceTableSelection() {
+  let w = 200
+  let h = 50
+  let table = uiBenchSourceTable(w, h)
+  table.SelectedRowIndex = 20
+  let screen = uiBenchScreen(w, h)
+  let sink = uiBenchSink()
+  table.Focus(table)
+  uiBenchDraw(table, screen, sink)
+  let step = func(i int32) {
+    table.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
+    uiBenchDraw(table, screen, sink)
+  }
+  uiBenchRun("table source selection move", 64, 500, step, step,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if table.SelectedRowIndex != 20 { Console.WriteLine("SharpTUI table source selection validation failed") }
+      table.Handle(keyEv(Key.Down))
+      return uiBenchDraw(table, screen, sink)
+    })
+}
+
+func uiBenchSourceTreeSelection() {
+  let w = 200
+  let h = 50
+  let tree = uiBenchSourceTree(w, h)
+  tree.SelectedIndex = 20
+  let screen = uiBenchScreen(w, h)
+  let sink = uiBenchSink()
+  tree.Focus(tree)
+  uiBenchDraw(tree, screen, sink)
+  let step = func(i int32) {
+    tree.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
+    uiBenchDraw(tree, screen, sink)
+  }
+  uiBenchRun("tree source selection move", 64, 500, step, step,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if tree.SelectedIndex != 20 { Console.WriteLine("SharpTUI tree source selection validation failed") }
+      tree.Handle(keyEv(Key.Down))
+      return uiBenchDraw(tree, screen, sink)
+    })
+}
+
+func uiBenchSourceRichScroll() {
+  let w = 200
+  let h = 50
+  let rich = uiBenchSourceRich(w, h)
+  let screen = uiBenchScreen(w, h)
+  let sink = uiBenchSink()
+  uiBenchDraw(rich, screen, sink)
+  let step = func(i int32) {
+    rich.ScrollToLine((i % 2) == 0 ? 20 : 21)
+    uiBenchDraw(rich, screen, sink)
+  }
+  uiBenchRun("rich line source scroll one line", 64, 500, step, step,
+    func(before int64, after int64, genBefore int32, genAfter int32) int32 {
+      if rich.FirstVisibleLine != 21 { Console.WriteLine("SharpTUI rich line source scroll validation failed") }
+      rich.ScrollToLine(22)
+      return uiBenchDraw(rich, screen, sink)
     })
 }
 
@@ -1888,8 +1979,119 @@ func uiBenchPresentedList(count int32, width int32, height int32) ListView {
     list.Items.Add(item)
     i = i + 1
   }
-  list.RefreshItems()
+  list.Refresh()
   return list
+}
+
+class UiBenchListSource : KeyedSource[ListItem, string] {
+  private var items List[ListItem]
+
+  public init(items List[ListItem]) { this.items = items }
+  public func Count() int32 { return items.Count }
+  public func ItemAt(index int32) ListItem { return items[index] }
+  public func IndexOfKey(key string) int32 {
+    var i = 0
+    while i < items.Count {
+      if items[i].Id == key { return i }
+      i = i + 1
+    }
+    return -1
+  }
+}
+
+class UiBenchTableSource : KeyedSource[TableRow, string] {
+  private var rows List[TableRow]
+
+  public init(rows List[TableRow]) { this.rows = rows }
+  public func Count() int32 { return rows.Count }
+  public func ItemAt(index int32) TableRow { return rows[index] }
+  public func IndexOfKey(key string) int32 {
+    var i = 0
+    while i < rows.Count {
+      if rows[i].Id == key { return i }
+      i = i + 1
+    }
+    return -1
+  }
+}
+
+class UiBenchTreeSource : TreeSource {
+  private var nodes List[TreeNode]
+
+  public init(count int32) {
+    nodes = List[TreeNode]()
+    var i = 0
+    while i < count {
+      nodes.Add(TreeNode{ Id: "node-" + i.ToString("D4"), Text: "source node " + i.ToString("D4") })
+      i = i + 1
+    }
+  }
+
+  public func Count() int32 { return nodes.Count }
+  public func ItemAt(index int32) TreeRow {
+    return TreeRow{ Node: nodes[index], Depth: 0, ParentIndex: -1, ChildCount: 0 }
+  }
+  public func IndexOfKey(key string) int32 {
+    var i = 0
+    while i < nodes.Count {
+      if nodes[i].Id == key { return i }
+      i = i + 1
+    }
+    return -1
+  }
+  public func Toggle(index int32) {}
+}
+
+class UiBenchRichSource : RichLineSource {
+  private var lines List[RichTextLine]
+  private var maximumWidth int32
+
+  public init(count int32) {
+    lines = List[RichTextLine]()
+    maximumWidth = 0
+    var i = 0
+    while i < count {
+      let line = RichTextLine(List[TextRun]{
+        TextRun("source line " + i.ToString("D4") + " alpha bravo charlie delta", Style()),
+      })
+      lines.Add(line)
+      if line.WidthCells > maximumWidth { maximumWidth = line.WidthCells }
+      i = i + 1
+    }
+  }
+
+  public func Count() int32 { return lines.Count }
+  public func ItemAt(index int32) RichTextLine { return lines[index] }
+  public func MaximumLineWidth() int32 { return maximumWidth }
+}
+
+func uiBenchSourceList(width int32, height int32) ListView {
+  let list = uiBenchList(1000, width, height, false)
+  list.Source = UiBenchListSource(list.Items)
+  return list
+}
+
+func uiBenchSourceTable(width int32, height int32) TableView {
+  let table = uiBenchTable(8, 1000, width, height)
+  table.Source = UiBenchTableSource(table.Rows)
+  return table
+}
+
+func uiBenchSourceTree(width int32, height int32) TreeView {
+  return TreeView{
+    Source: UiBenchTreeSource(1000),
+    Width: CellLength.Cells(width),
+    Height: CellLength.Cells(height),
+    SelectedNodeStyle: uiBenchSelectedStyle(),
+  }
+}
+
+func uiBenchSourceRich(width int32, height int32) RichTextBlock {
+  return RichTextBlock{
+    LineSource: UiBenchRichSource(1000),
+    Width: CellLength.Cells(width),
+    Height: CellLength.Cells(height),
+  }
 }
 
 func uiBenchSink() Terminal {

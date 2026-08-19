@@ -17,16 +17,6 @@
       <summary>Offers the binding after the application view declines the event.</summary>
     </member>
 
-    <member name="T:SharpTui.CaretPlacement">
-      <summary>Identifies an endpoint to which a text-input caret can move.</summary>
-    </member>
-    <member name="F:SharpTui.CaretPlacement.Start">
-      <summary>Moves the caret to the start of the text.</summary>
-    </member>
-    <member name="F:SharpTui.CaretPlacement.End">
-      <summary>Moves the caret to the end of the text.</summary>
-    </member>
-
     <member name="T:SharpTui.EventResult">
       <summary>Controls how an event affects application routing and lifetime.</summary>
     </member>
@@ -329,6 +319,29 @@
       <summary>Indicates that no recognized event variant is present.</summary>
     </member>
 
+    <member name="T:SharpTui.RichLineSource">
+      <summary>Supplies immutable physical lines to a RichTextBlock on demand.</summary>
+    </member>
+    <member name="M:SharpTui.RichLineSource.Count">
+      <summary>Returns the number of available physical lines.</summary>
+      <returns>The physical line count.</returns>
+    </member>
+    <member name="M:SharpTui.RichLineSource.ItemAt(System.Int32)">
+      <summary>Returns one stable physical line. A block may request nearby lines for prefetching.</summary>
+      <param name="index">The zero-based physical line index.</param>
+      <returns>The requested styled line.</returns>
+    </member>
+    <member name="M:SharpTui.RichLineSource.MaximumLineWidth">
+      <summary>Returns the greatest display width of any physical line.</summary>
+      <returns>The maximum line width in terminal cells.</returns>
+    </member>
+
+    <member name="M:SharpTui.App.StartWorker(System.Func{System.Threading.CancellationToken,``0})">
+      <summary>Starts one app-owned background operation.</summary>
+      <param name="work">The operation to run with a cooperative cancellation token.</param>
+      <returns>A running handle for cancellation and terminal observation.</returns>
+    </member>
+
     <member name="T:SharpTui.View">
       <summary>Defines a drawable application surface with typed event handling.</summary>
     </member>
@@ -341,5 +354,180 @@
       <param name="ev">The event to handle.</param>
       <returns>Handled when the view consumed the event, Exit to stop the app, otherwise Continue.</returns>
     </member>
+    <member name="T:SharpTui.AnimationState">
+      <summary>Reports the lifetime state of an animation handle.</summary>
+    </member>
+    <member name="F:SharpTui.AnimationState.Running">
+      <summary>The animation remains active.</summary>
+    </member>
+    <member name="F:SharpTui.AnimationState.Completed">
+      <summary>The final animation state was applied.</summary>
+    </member>
+    <member name="F:SharpTui.AnimationState.Cancelled">
+      <summary>The animation stopped without another sample.</summary>
+    </member>
+
+    <member name="T:SharpTui.CanvasMode">
+      <summary>Selects the subcell packing used by a CanvasSurface.</summary>
+    </member>
+    <member name="F:SharpTui.CanvasMode.Braille">
+      <summary>Packs a two-by-four Braille grid into each terminal cell.</summary>
+    </member>
+    <member name="F:SharpTui.CanvasMode.Quadrant">
+      <summary>Packs a two-by-two quadrant grid into each terminal cell.</summary>
+    </member>
+    <member name="F:SharpTui.CanvasMode.HalfBlock">
+      <summary>Packs two vertical half blocks into each terminal cell.</summary>
+    </member>
+    <member name="F:SharpTui.CanvasMode.Cell">
+      <summary>Uses one drawable point per terminal cell.</summary>
+    </member>
+
+    <member name="T:SharpTui.ControlState">
+      <summary>Contains visual state flags applied while resolving a theme role.</summary>
+    </member>
+    <member name="F:SharpTui.ControlState.None">
+      <summary>Applies no visual state overlay.</summary>
+    </member>
+    <member name="F:SharpTui.ControlState.Focused">
+      <summary>Applies the focused state.</summary>
+    </member>
+    <member name="F:SharpTui.ControlState.Selected">
+      <summary>Applies the selected state.</summary>
+    </member>
+    <member name="F:SharpTui.ControlState.Disabled">
+      <summary>Applies the disabled state.</summary>
+    </member>
+
+    <member name="T:SharpTui.Easing">
+      <summary>Selects the interpolation curve used by a tween.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.Linear">
+      <summary>Leaves progress unchanged.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.SineIn">
+      <summary>Starts with sinusoidal acceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.SineOut">
+      <summary>Ends with sinusoidal deceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.SineInOut">
+      <summary>Uses sinusoidal acceleration and deceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.CubicIn">
+      <summary>Starts with cubic acceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.CubicOut">
+      <summary>Ends with cubic deceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.CubicInOut">
+      <summary>Uses cubic acceleration and deceleration.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BackIn">
+      <summary>Overshoots before accelerating from the start.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BackOut">
+      <summary>Overshoots after decelerating into the end.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BackInOut">
+      <summary>Overshoots at both ends.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BounceIn">
+      <summary>Bounces into the start.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BounceOut">
+      <summary>Bounces into the end.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.BounceInOut">
+      <summary>Bounces at both ends.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.ElasticIn">
+      <summary>Springs into the start.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.ElasticOut">
+      <summary>Springs into the end.</summary>
+    </member>
+    <member name="F:SharpTui.Easing.ElasticInOut">
+      <summary>Springs at both ends.</summary>
+    </member>
+
+    <member name="T:SharpTui.KeyedSource`2">
+      <summary>Supplies indexed values with source-owned stable-key lookup.</summary>
+    </member>
+    <member name="M:SharpTui.KeyedSource`2.Count">
+      <summary>Returns the number of values currently available.</summary>
+      <returns>The value count.</returns>
+    </member>
+    <member name="M:SharpTui.KeyedSource`2.ItemAt(System.Int32)">
+      <summary>Returns one value by zero-based index.</summary>
+      <param name="index">The zero-based value index.</param>
+      <returns>The value at index.</returns>
+    </member>
+    <member name="M:SharpTui.KeyedSource`2.IndexOfKey(`1)">
+      <summary>Returns the index of a stable key, or negative one when absent.</summary>
+      <param name="key">The stable key to find.</param>
+      <returns>The current zero-based index, or negative one.</returns>
+    </member>
+
+    <member name="T:SharpTui.ThemeRole">
+      <summary>Identifies a semantic style role shared by controls and application surfaces.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Body">
+      <summary>Uses the normal content style.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Accent">
+      <summary>Uses the emphasized application style.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Muted">
+      <summary>Uses the secondary content style.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Success">
+      <summary>Uses the successful outcome style.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Warning">
+      <summary>Uses the cautionary outcome style.</summary>
+    </member>
+    <member name="F:SharpTui.ThemeRole.Error">
+      <summary>Uses the failed outcome style.</summary>
+    </member>
+
+    <member name="T:SharpTui.TreeSource">
+      <summary>Supplies flattened visible tree rows with stable-node lookup.</summary>
+    </member>
+    <member name="M:SharpTui.TreeSource.Count">
+      <summary>Returns the number of currently visible rows.</summary>
+      <returns>The visible row count.</returns>
+    </member>
+    <member name="M:SharpTui.TreeSource.ItemAt(System.Int32)">
+      <summary>Returns one visible row by zero-based index.</summary>
+      <param name="index">The zero-based visible row index.</param>
+      <returns>The row at index.</returns>
+    </member>
+    <member name="M:SharpTui.TreeSource.IndexOfKey(System.String)">
+      <summary>Returns the visible index of a stable node Id, or negative one when absent.</summary>
+      <param name="key">The stable TreeNode Id to find.</param>
+      <returns>The current zero-based index, or negative one.</returns>
+    </member>
+    <member name="M:SharpTui.TreeSource.Toggle(System.Int32)">
+      <summary>Toggles one expandable row and updates the flattened index.</summary>
+      <param name="index">The zero-based visible row index.</param>
+    </member>
+
+    <member name="T:SharpTui.WorkerState">
+      <summary>Reports the lifecycle state of one background worker.</summary>
+    </member>
+    <member name="F:SharpTui.WorkerState.Running">
+      <summary>The operation is running on a background thread.</summary>
+    </member>
+    <member name="F:SharpTui.WorkerState.Completed">
+      <summary>The operation completed and has a result to consume.</summary>
+    </member>
+    <member name="F:SharpTui.WorkerState.Failed">
+      <summary>The operation failed and has an exception to consume.</summary>
+    </member>
+    <member name="F:SharpTui.WorkerState.Cancelled">
+      <summary>The operation exited after cancellation was requested.</summary>
+    </member>
+
   </members>
 </doc>

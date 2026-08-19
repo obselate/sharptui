@@ -3,18 +3,31 @@ package SharpTui
 import System
 import System.Collections.Generic
 
+
 /// A scrolling, keyboard- and mouse-navigable list of ListItem rows with a single selection.
 public open class ListView : Box {
   private var items List[ListItem]
+  private var source KeyedSource[ListItem, string]?
   private var selection SelectionState
   private var selectedId string
 
-  /// The rows shown by this list; setting it replaces all items and re-resolves the selection via RefreshItems.
+  /// The rows shown by this list; setting it replaces all items and re-resolves the selection via Refresh.
   public prop Items List[ListItem] {
     get { return items }
     set {
+      source = nil
       items = value
-      RefreshItems()
+      Refresh()
+    }
+  }
+
+  /// An optional indexed item source. When set, the source supplies rows instead of Items.
+  public prop Source KeyedSource[ListItem, string]? {
+    get { return source }
+    set {
+      if Object.ReferenceEquals(source, value) { return }
+      source = value
+      Refresh()
     }
   }
 
@@ -26,28 +39,35 @@ public open class ListView : Box {
 
   /// Index of the first item visible in the viewport.
   public prop FirstVisibleItemIndex int32 { get; set; }
+  /// When true the list pins to its tail: every render selects the last
+  /// selectable item and scrolls the viewport to the end, so appended items
+  /// are always in view. Navigating or scrolling away from the tail (Up,
+  /// PageUp, Home, wheel-up, or a click) turns it off; it never re-engages
+  /// on its own.
+  public prop FollowTail bool { get; set; }
   /// Marker text drawn before the selected row; unselected rows reserve the same width with blanks.
   public prop SelectionMarker string { get; set; }
   /// Style merged over the selected row's own style and the inherited style.
   public prop SelectedStyle Style { get; set; }
 
-  /// The currently selected item, or nil when SelectedIndex is out of range or Items is empty.
+  /// The currently selected item, or nil when SelectedIndex is out of range or the active source is empty.
   public prop SelectedItem ListItem? {
     get {
-      if selection.Index < 0 || selection.Index >= Items.Count { return nil }
-      return Items[selection.Index]
+      if selection.Index < 0 || selection.Index >= itemCount() { return nil }
+      return itemAt(selection.Index)
     }
   }
-
   /// Id of the currently selected item, or empty when nothing is selected.
   public prop SelectedId string { get { return selectedId } }
 
   /// Creates an empty list with a "> " selection marker and CanFocus enabled.
   public init() {
     items = List[ListItem]()
+    source = nil
     selection = SelectionState()
     selectedId = ""
     FirstVisibleItemIndex = 0
+    FollowTail = false
     SelectedStyle = Style()
     SelectionMarker = "> "
     CanFocus = true
@@ -58,30 +78,15 @@ public open class ListView : Box {
   /// @param text The text for the new item.
   /// @returns The newly appended item.
   public func Add(text string) ListItem {
+    source = nil
     let item = ListItem{ Text: text }
     Items.Add(item)
     return item
   }
 
-  /// Re-resolves the selection after Items is mutated directly; restores the item with the previous Id if one still exists and is selectable, otherwise falls back to the nearest selectable index.
-  public func RefreshItems() {
-    let previous = selection.Index
-    var restored = -1
-    if selectedId != "" {
-      var i = 0
-      while i < Items.Count {
-        if Items[i].Id == selectedId && Items[i].IsSelectable {
-          restored = i
-          break
-        }
-        i = i + 1
-      }
-    }
-    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
-    if restored < 0 && Items.Count > 0 { restored = clampIndex(previous) }
-    selection.Index = restored < 0 ? 0 : restored
-    selectedId = selectedIdAt(selection.Index)
-    selection.Change = nil
+  /// Re-resolves selection after direct mutation of the active Items or Source data, restoring the previous Id when possible.
+  public func Refresh() {
+    refreshSelection()
   }
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
@@ -96,15 +101,17 @@ public open class ListView : Box {
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
     normalizeSelection()
+    if FollowTail { snapToTail() }
     FirstVisibleItemIndex = clampScroll(FirstVisibleItemIndex, r.HeightRows)
     let selectedStyle = SelectedStyle.MergedOver(ink)
     let markerWidth = Glyph.WidthOf(SelectionMarker)
     let visibleMarkerWidth = markerWidth < r.WidthCells ? markerWidth : r.WidthCells
+    let count = itemCount()
     var i = FirstVisibleItemIndex
-    while i < Items.Count {
+    while i < count {
       let row = i - FirstVisibleItemIndex
       if row >= r.HeightRows { break }
-      let item = Items[i]
+      let item = itemAt(i)
       let selected = i == SelectedIndex
       let itemStyle = item.Style.MergedOver(ink)
       let rowStyle = selected ? SelectedStyle.MergedOver(itemStyle) : itemStyle
@@ -125,10 +132,8 @@ public open class ListView : Box {
     }
   }
 
-  /// Returns the total number of items.
-  /// @returns The item count.
   protected override func ScrollExtentRows() int32 {
-    return Items.Count
+    return itemCount()
   }
 
   /// Returns FirstVisibleItemIndex as the current scroll offset.
@@ -145,34 +150,59 @@ public open class ListView : Box {
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
 
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Up {
+      FollowTail = false
+      return result(moveTo(selection.Index - 1, bounds.HeightRows))
+    }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selection.Index - bounds.HeightRows, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp {
+      FollowTail = false
+      return result(moveTo(selection.Index - bounds.HeightRows, bounds.HeightRows))
+    }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selection.Index + bounds.HeightRows, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveTo(0, bounds.HeightRows)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(Items.Count - 1, bounds.HeightRows)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Home {
+      FollowTail = false
+      return result(moveTo(0, bounds.HeightRows))
+    }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(itemCount() - 1, bounds.HeightRows)) }
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleItemIndex - Selection.WheelStep, bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.ScrollUp {
+        FollowTail = false
+        return result(scrollTo(FirstVisibleItemIndex - Selection.WheelStep, bounds.HeightRows))
+      }
       if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleItemIndex + Selection.WheelStep, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.Press { return result(selectAt(FirstVisibleItemIndex + (ev.Position.Row - bounds.Row), bounds.HeightRows)) }
+      if ev.Mouse == MouseKind.Press {
+        FollowTail = false
+        return result(selectAt(FirstVisibleItemIndex + (ev.Position.Row - bounds.Row), bounds.HeightRows))
+      }
     }
     return EventResult.Continue
   }
 
+  private func snapToTail() {
+    let count = itemCount()
+    if count == 0 { return }
+    let last = nearestSelectable(count - 1, -1)
+    if last >= 0 { setSelection(last, false) }
+    FirstVisibleItemIndex = count
+  }
+
   private func moveTo(want int32, height int32) bool {
-    if Items.Count == 0 { return false }
+    let count = itemCount()
+    if count == 0 { return false }
     let i = nearestSelectable(clampIndex(want), directionFor(want))
     if i < 0 || !setSelection(i, true) { return false }
-    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selection.Index, FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleItemIndex, height)
     return true
   }
 
   private func selectAt(want int32, height int32) bool {
-    if want < 0 || want >= Items.Count || !Items[want].IsSelectable { return false }
+    let count = itemCount()
+    if want < 0 || want >= count || !itemAt(want).IsSelectable { return false }
     if !setSelection(want, true) { return false }
-    FirstVisibleItemIndex = Selection.ScrollIntoView(Items.Count, selection.Index, FirstVisibleItemIndex, height)
+    FirstVisibleItemIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleItemIndex, height)
     return true
   }
 
@@ -184,15 +214,16 @@ public open class ListView : Box {
   }
 
   private func clampIndex(i int32) int32 {
-    return Selection.ClampIndex(Items.Count, i)
+    return Selection.ClampIndex(itemCount(), i)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(Items.Count, s, height)
+    return Selection.ClampScroll(itemCount(), s, height)
   }
 
   private func setProgrammaticSelection(want int32) {
-    if Items.Count == 0 {
+    let count = itemCount()
+    if count == 0 {
       setSelection(0, false)
       return
     }
@@ -207,7 +238,8 @@ public open class ListView : Box {
   }
 
   private func normalizeSelection() {
-    if Items.Count == 0 {
+    let count = itemCount()
+    if count == 0 {
       if selection.Index != 0 {
         selection.Index = 0
         selectedId = ""
@@ -215,7 +247,7 @@ public open class ListView : Box {
       }
       return
     }
-    if selection.Index < 0 || selection.Index >= Items.Count {
+    if selection.Index < 0 || selection.Index >= count {
       selection.Index = clampIndex(selection.Index)
       selectedId = selectedIdAt(selection.Index)
       selection.Change = nil
@@ -223,8 +255,8 @@ public open class ListView : Box {
   }
 
   private func selectedIdAt(index int32) string {
-    if index < 0 || index >= Items.Count { return "" }
-    return Items[index].Id
+    if index < 0 || index >= itemCount() { return "" }
+    return itemAt(index).Id
   }
 
   private func directionFor(want int32) int32 {
@@ -232,17 +264,57 @@ public open class ListView : Box {
   }
 
   private func nearestSelectable(start int32, direction int32) int32 {
+    let count = itemCount()
     var i = start
-    while i >= 0 && i < Items.Count {
-      if Items[i].IsSelectable { return i }
+    while i >= 0 && i < count {
+      if itemAt(i).IsSelectable { return i }
       i = i + direction
     }
     i = start - direction
-    while i >= 0 && i < Items.Count {
-      if Items[i].IsSelectable { return i }
+    while i >= 0 && i < count {
+      if itemAt(i).IsSelectable { return i }
       i = i - direction
     }
     return -1
+  }
+
+  private func itemCount() int32 {
+    if source != nil { return source!!.Count() }
+    return Items.Count
+  }
+
+  private func itemAt(index int32) ListItem {
+    if source != nil { return source!!.ItemAt(index) }
+    return Items[index]
+  }
+
+  private func refreshSelection() {
+    let previous = selection.Index
+    let count = itemCount()
+    var restored = -1
+    if selectedId != "" {
+      if source != nil {
+        let candidate = source!!.IndexOfKey(selectedId)
+        if candidate >= 0 && candidate < count && itemAt(candidate).IsSelectable {
+          restored = candidate
+        }
+      } else {
+        var i = 0
+        while i < count {
+          let item = itemAt(i)
+          if item.Id == selectedId && item.IsSelectable {
+            restored = i
+            break
+          }
+          i = i + 1
+        }
+      }
+    }
+    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
+    if restored < 0 && count > 0 { restored = clampIndex(previous) }
+    selection.Index = restored < 0 ? 0 : restored
+    selectedId = selectedIdAt(selection.Index)
+    selection.Change = nil
   }
 
   private func drawRuns(screen Screen, r CellRect, x int32, row int32, runs List[TextRun], inherited Style) {

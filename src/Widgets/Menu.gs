@@ -12,12 +12,12 @@ public open class Select : Box {
   private var options List[string]
   private var selection SelectionState
 
-  /// Selectable option strings; setting it replaces all options and re-resolves the selection via RefreshOptions.
+  /// Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.
   public prop Options List[string] {
     get { return options }
     set {
       options = value
-      RefreshOptions()
+      Refresh()
     }
   }
   /// Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.
@@ -53,8 +53,8 @@ public open class Select : Box {
     return selection.Consume()
   }
 
-  /// Refreshes selection after direct Options mutation.
-  public func RefreshOptions() {
+  /// Re-resolves selection after direct Options mutation.
+  public func Refresh() {
     normalizeSelection()
     highlightIndex = clampIndex(highlightIndex)
     selection.Change = nil

@@ -17,6 +17,7 @@
     <Compile Remove="mine/**/*.gs" />
     <Compile Remove="tools/**/*.gs" />
     <Compile Remove="agent-testing/**/*.gs" />
+    <Compile Remove="archive/**/*.gs" />
     <ProjectReference Include="vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj" />
   </ItemGroup>
 

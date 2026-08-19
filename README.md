@@ -59,11 +59,12 @@ service, or API key.
 
 ## Documentation
 
+- [API guides and complete reference](docs/api/README.md)
 - [G# language and tooling](https://github.com/DavidOBando/gsharp)
 - [Performance and allocation numbers](docs/performance.md)
 - [ChatGPT plugin privacy](docs/plugin-privacy.md)
 - [ChatGPT plugin terms](docs/plugin-terms.md)
-- [examples/](examples/): seven complete applications, from a file browser to a git workbench
+- [examples/](examples/): eight complete applications, from a Git workbench to retained subcell drawing and animation galleries
 - [LICENSE](LICENSE): MIT, with vendored Yoga.Net provenance in [vendor/Yoga.Net/UPSTREAM.md](vendor/Yoga.Net/UPSTREAM.md)
 
 ## Example
@@ -96,5 +97,7 @@ func Main(args []string) int32 {
 }
 ```
 
-Escape or Ctrl+C quits. Run the bundled examples with
+Escape or Ctrl+C quits. Install the global `tuitool` executable to
+`$HOME/.local/bin/tuitool` with `./tools/install-tuitool` and run `tuitool`,
+or run the bundled examples directly with
 `dotnet run -c Release --project SharpTui.Examples.gsproj`.

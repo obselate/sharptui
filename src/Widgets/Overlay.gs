@@ -21,12 +21,6 @@ public open class Overlay : Box {
     }
   }
 
-  /// Whether the overlay is shown. Mirrors IsVisible.
-  public prop IsOpen bool {
-    get { return IsVisible }
-    set { IsVisible = value }
-  }
-
   /// Whether Render dims everything outside the overlay's bounds while it is open. Defaults to false.
   public prop DimBackground bool {
     get { return dimBackground }

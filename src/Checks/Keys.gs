@@ -84,6 +84,15 @@ internal class KeysCheck {
         "after-widgets binding takes its event")
       failed = failed + Checks.Expect(quit.Consume(), "after-widgets binding consumes")
 
+      let command = Command("save", "Save", KeyGesture.Ctrl("s"))
+      let commandMap = Keymap()
+      commandMap.Add(command, BindingPhase.BeforeWidgets)
+      failed = failed + Checks.Expect(commandMap.Offer(typed, BindingPhase.BeforeWidgets)
+          && command.Consume()
+          && !commandMap.Bindings[0].IsPending
+          && !commandMap.Bindings[0].Consume(),
+        "command registration produces only the command activation signal")
+
       let first = RouteProbe()
       let second = RouteProbe()
       let routedRoot = Row{ Children: { first, second } }

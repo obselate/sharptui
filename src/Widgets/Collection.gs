@@ -29,6 +29,23 @@ public struct SelectionChange {
   }
 }
 
+/// Supplies indexed values with source-owned stable-key lookup.
+public interface KeyedSource[T, TKey] {
+  /// Returns the number of values currently available.
+  /// @returns The value count.
+  func Count() int32;
+
+  /// Returns one value by zero-based index.
+  /// @param index The zero-based value index.
+  /// @returns The value at index.
+  func ItemAt(index int32) T;
+
+  /// Returns the index of a stable key, or negative one when absent.
+  /// @param key The stable key to find.
+  /// @returns The current zero-based index, or negative one.
+  func IndexOfKey(key TKey) int32;
+}
+
 /// A single row in a ListView, carrying its text, optional styled runs, and selection eligibility.
 public class ListItem {
   /// Caller-supplied Id values must be unique for selection restoration across Items replacement.

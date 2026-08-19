@@ -26,15 +26,20 @@ internal class RichViewportCheck {
           && screen.Probe(0, 0) == "o",
         "RichTextBlock prepend keeps the prior top line visible")
 
+      rich.RemoveHeadRuns(1)
+      rich.Draw(screen)
+      failed = failed + Checks.Expect(rich.FirstVisibleLine == 2
+          && screen.Probe(0, 0) == "o",
+        "RichTextBlock head removal keeps the prior top line visible")
       rich.ScrollToEnd()
       rich.Draw(screen)
-      runs.Add(TextRun("old 5\n", Style()))
+      rich.AppendRuns(List[TextRun]{ TextRun("old 5\n", Style()) })
       rich.Draw(screen)
       failed = failed + Checks.Expect(rich.FirstVisibleLine == rich.LineCount() - 2,
         "RichTextBlock ScrollToEnd follows later content")
 
       rich.ScrollToLine(0)
-      runs.Add(TextRun("old 6\n", Style()))
+      rich.AppendRuns(List[TextRun]{ TextRun("old 6\n", Style()) })
       rich.Draw(screen)
       failed = failed + Checks.Expect(rich.FirstVisibleLine == 0,
         "RichTextBlock explicit scrolling stops end following")
@@ -49,13 +54,13 @@ internal class RichViewportCheck {
       }
       let streamedScreen = Screen(4, 8)
       streamed.Draw(streamedScreen)
-      streamedRuns.Add(TextRun(" efghij", blue))
+      streamed.AppendRuns(List[TextRun]{ TextRun(" efghij", blue) })
       streamed.Draw(streamedScreen)
       let appended = WrapTextRuns(streamedRuns, 4)
       failed = failed + Checks.Expect(streamed.LineCount() == appended.Count
           && matches(streamedScreen, appended),
         "RichTextBlock appends styled wrapped runs without changing rows")
-      streamedRuns.RemoveAt(streamedRuns.Count - 1)
+      streamed.RemoveTailRuns(1)
       streamed.Draw(streamedScreen)
       let restored = WrapTextRuns(streamedRuns, 4)
       failed = failed + Checks.Expect(streamed.LineCount() == restored.Count
@@ -103,6 +108,87 @@ internal class RichViewportCheck {
           && wideScreen.Probe(9, 0) == "█",
         "RichTextBlock reserves the scrollbar column while rewrapping across widths")
 
+
+      let unwrapped = RichTextBlock{
+        Runs: List[TextRun]{ TextRun("alpha\nbeta\ngamma", red) },
+        Wrapping: TextWrapping.None,
+        ShowLineNumbers: true,
+        GutterStyle: blue,
+        Width: CellLength.Cells(8),
+        Height: CellLength.Cells(2),
+      }
+      let unwrappedScreen = Screen(8, 2)
+      unwrapped.Draw(unwrappedScreen)
+      failed = failed + Checks.Expect(unwrapped.LineCount() == 3,
+        "RichTextBlock keeps unwrapped line count")
+      failed = failed + Checks.Expect(unwrappedScreen.Probe(0, 0) == "1"
+          && unwrappedScreen.Probe(2, 0) == "a",
+        "RichTextBlock renders numbered gutters at the initial width")
+      unwrapped.ScrollToLine(1)
+      unwrapped.Draw(unwrappedScreen)
+      failed = failed + Checks.Expect(unwrappedScreen.Probe(0, 0) == "2"
+          && unwrappedScreen.Probe(2, 0) == "b",
+        "RichTextBlock scrolls unwrapped content vertically")
+      unwrapped.Width = CellLength.Cells(5)
+      let widthScreen = Screen(5, 2)
+      unwrapped.Draw(widthScreen)
+      failed = failed + Checks.Expect(widthScreen.Probe(0, 0) == "2"
+          && widthScreen.Probe(2, 0) == "b",
+        "RichTextBlock keeps the unwrapped content visible at a narrower width")
+      unwrapped.HorizontalCellOffset = 99
+      let panResult = unwrapped.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Right })
+      let pannedUnwrappedScreen = Screen(5, 2)
+      unwrapped.Draw(pannedUnwrappedScreen)
+      failed = failed + Checks.Expect(panResult == EventResult.Handled,
+        "RichTextBlock handles Right at the root")
+      failed = failed + Checks.Expect(unwrapped.HorizontalCellOffset == 2,
+        "RichTextBlock clamps horizontal panning to the content edge")
+      failed = failed + Checks.Expect(pannedUnwrappedScreen.Probe(0, 0) == "2",
+        "RichTextBlock keeps the gutter at column zero while panning")
+      failed = failed + Checks.Expect(pannedUnwrappedScreen.Probe(2, 0) == "t",
+        "RichTextBlock pans beta through the fixed gutter")
+      failed = failed + Checks.Expect(
+        pannedUnwrappedScreen.Flush().Contains("[38;2;69;133;136m"),
+        "RichTextBlock renders the configured gutter color")
+      unwrapped.Runs = List[TextRun]{ TextRun("x", red) }
+      unwrapped.HorizontalCellOffset = 99
+      let narrowUnwrappedScreen = Screen(5, 2)
+      unwrapped.Draw(narrowUnwrappedScreen)
+      failed = failed + Checks.Expect(unwrapped.HorizontalCellOffset == 0,
+        "RichTextBlock clears stale horizontal panning after content narrows")
+      failed = failed + Checks.Expect(narrowUnwrappedScreen.Probe(0, 0) == "1",
+        "RichTextBlock keeps the gutter at column zero after content narrows")
+      failed = failed + Checks.Expect(narrowUnwrappedScreen.Probe(2, 0) == "x",
+        "RichTextBlock renders narrow content after the fixed gutter")
+
+      let virtualSource = SyntaxLineSource(List[string]{
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "abcdefghij",
+      }, "txt", red)
+      let virtual = RichTextBlock{
+        LineSource: virtualSource,
+        ShowLineNumbers: true,
+        Width: CellLength.Cells(8),
+        Height: CellLength.Cells(2),
+      }
+      let virtualScreen = Screen(8, 2)
+      virtual.Draw(virtualScreen)
+      failed = failed + Checks.Expect(virtual.LineCount() == 10
+          && virtualSource.CachedLineCount() == 4
+          && virtualScreen.Probe(1, 0) == "1"
+          && virtualScreen.Probe(3, 0) == "z",
+        "RichTextBlock paints visible virtual lines and prefetches one page")
+      virtual.ScrollToLine(6)
+      virtual.Draw(virtualScreen)
+      failed = failed + Checks.Expect(virtualSource.CachedLineCount() == 8
+          && virtualScreen.Probe(1, 0) == "7"
+          && virtualScreen.Probe(3, 0) == "s",
+        "RichTextBlock requests virtual lines at the scrolled viewport")
+      virtual.Runs = List[TextRun]{ TextRun("x", red) }
+      virtual.Draw(virtualScreen)
+      failed = failed + Checks.Expect(virtual.LineSource == nil
+          && virtual.LineCount() == 1
+          && virtualScreen.Probe(2, 0) == "x",
+        "RichTextBlock Runs replacement leaves virtual-source mode")
       return failed
     }
 

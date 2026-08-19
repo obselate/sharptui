@@ -551,7 +551,7 @@ static string XmlTypeName(Type type)
     return XmlOwnerName(type);
 }
 
-static string Anchor(string value) => Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+static string Anchor(string value) => Regex.Replace(value.ToLowerInvariant().Replace(" ", "-"), "[^a-z0-9-]", "");
 
 static bool IsCompilerContainer(Type type) => type.Name is "<Program>";
 

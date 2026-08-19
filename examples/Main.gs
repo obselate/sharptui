@@ -119,14 +119,15 @@ class Pick : View {
     list = ListView{ GrowWeight: 1, Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent } }
     list.Add("git     beginner-friendly git workbench & diff visualizer")
-    list.Add("files   browse and preview the filesystem")
     list.Add("grep    search a tree with match highlighting")
     list.Add("todo    harvest source markers by tag")
     list.Add("watch   rerun a command and diff its output")
     list.Add("edit    markdown editor with live preview")
     list.Add("julia   the whole framework in 80 lines")
+    list.Add("canvas  retained packed subcell drawing showcase")
+    list.Add("motion  composed animation and easing gallery")
     bar = dimStatusBar()
-    bar.LeftText = "sharptui examples"
+    bar.LeftText = "tuitool"
     bar.RightText = "enter launches - q quits"
 
     let ink = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
@@ -242,12 +243,13 @@ func Main(args []string) int32 {
     let next = i + 1 < args.Length ? args[i + 1] : ""
     i = i + 1
 
-    if arg == "--files" { return run(Files(next == "" ? "." : next)) }
     if arg == "--grep" { return run(Hunt(next, i + 1 < args.Length ? args[i + 1] : "")) }
     if arg == "--todo" { return run(Chores(next == "" ? "." : next, choreTagList(i + 1 < args.Length ? args[i + 1] : ""))) }
     if arg == "--watch" { return run(Watcher(next)) }
     if arg == "--edit" { return run(Edit(next)) }
     if arg == "--julia" { return golf() }
+    if arg == "--canvas" { return canvas() }
+    if arg == "--animation" { return animationGallery() }
     if arg == "--git" { return run(Git(next == "" ? "." : next)) }
     if arg == "--banner" { return banner() }
     if arg.EndsWith(".md") { return run(Edit(arg)) }
@@ -258,12 +260,13 @@ func Main(args []string) int32 {
     let picker = pick(first)
     first = false
     if picker.Choice == 0 { run(Git(".")) }
-    else if picker.Choice == 1 { run(Files(".")) }
-    else if picker.Choice == 2 { run(Hunt("", "")) }
-    else if picker.Choice == 3 { run(Chores(".", choreDefaultTags())) }
-    else if picker.Choice == 4 { run(Watcher("")) }
-    else if picker.Choice == 5 { run(Edit("sharptui-demo.md")) }
-    else if picker.Choice == 6 { golf() }
+    else if picker.Choice == 1 { run(Hunt("", "")) }
+    else if picker.Choice == 2 { run(Chores(".", choreDefaultTags())) }
+    else if picker.Choice == 3 { run(Watcher("")) }
+    else if picker.Choice == 4 { run(Edit("sharptui-demo.md")) }
+    else if picker.Choice == 5 { golf() }
+    else if picker.Choice == 6 { canvas() }
+    else if picker.Choice == 7 { animationGallery() }
     else { break }
   }
   return 0

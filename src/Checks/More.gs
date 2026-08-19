@@ -75,10 +75,10 @@ public class MoreCheck {
       let lateScreen = Screen(20, 4)
       lateBox.Draw(lateScreen)
       lateRoot.Children.Add(TreeNode{ Text: "late" })
-      lateTree.RefreshNodes()
+      lateTree.Refresh()
       lateBox.Draw(lateScreen)
       failed = failed + Checks.Expect(lateScreen.Probe(4, 1) == "l",
-        "TreeView.RefreshNodes exposes direct child-list changes")
+        "TreeView.Refresh exposes direct child-list changes")
 
       let replacementTree = TreeView{ Roots: { TreeNode{ Text: "first" }, TreeNode{ Text: "second" } } }
       let replacementTreeRoot = Box{ Children: { replacementTree } }
@@ -92,9 +92,9 @@ public class MoreCheck {
       replacementTree.Roots = List[TreeNode]{ TreeNode{ Text: "first" }, TreeNode{ Text: "second" } }
       replacementTreeRoot.Handle(keyEv(Key.Down))
       replacementTree.Roots.Add(TreeNode{ Text: "third" })
-      replacementTree.RefreshNodes()
+      replacementTree.Refresh()
       failed = failed + Checks.Expect(replacementTree.ConsumeSelectionChange() == nil,
-        "TreeView.RefreshNodes clears pending output after direct Roots mutation")
+        "TreeView.Refresh clears pending output after direct Roots mutation")
 
       let picker = Select{ Options: { "aa", "bb", "cc" } }
       let mroot = Box{ Children: { picker } }
@@ -149,10 +149,10 @@ public class MoreCheck {
       replacementPickerRoot.Handle(keyEv(Key.Down))
       replacementPickerRoot.Handle(keyEv(Key.Enter))
       replacementPicker.Options.Clear()
-      replacementPicker.RefreshOptions()
+      replacementPicker.Refresh()
       failed = failed + Checks.Expect(replacementPicker.SelectedIndex == 0
           && replacementPicker.ConsumeSelectionChange() == nil,
-        "Select.RefreshOptions clears pending output after direct Options mutation")
+        "Select.Refresh clears pending output after direct Options mutation")
 
       let longSelect = Select{}
       var oi = 0

@@ -29,6 +29,62 @@ public struct TextRun {
   }
 }
 
+/// One immutable physical line supplied to a RichTextBlock.
+public class RichTextLine {
+  private var runs List[TextRun]
+  private var runWidths List[int32]
+  private var widthCells int32
+
+  /// The styled runs in this line.
+  public prop Runs IReadOnlyList[TextRun] { get { return runs } }
+
+  /// The total display width of the line.
+  public prop WidthCells int32 { get { return widthCells } }
+
+  /// Creates a physical line and caches its run widths.
+  /// @param runs The styled runs, without newline characters.
+  public init(runs List[TextRun]) {
+    this.runs = List[TextRun]()
+    runWidths = List[int32]()
+    widthCells = 0
+    for run in runs {
+      this.runs.Add(run)
+      let width = fastTextWidth(run.Text)
+      runWidths.Add(width)
+      widthCells = widthCells + width
+    }
+  }
+
+  internal func RunWidth(index int32) int32 {
+    return runWidths[index]
+  }
+}
+
+/// Supplies immutable physical lines to a RichTextBlock on demand.
+public interface RichLineSource {
+  /// Returns the number of available physical lines.
+  /// @returns The physical line count.
+  func Count() int32;
+
+  /// Returns one stable physical line. A block may request nearby lines for prefetching.
+  /// @param index The zero-based physical line index.
+  /// @returns The requested styled line.
+  func ItemAt(index int32) RichTextLine;
+
+  /// Returns the greatest display width of any physical line.
+  /// @returns The maximum line width in terminal cells.
+  func MaximumLineWidth() int32;
+}
+
+internal func fastTextWidth(text string) int32 {
+  var i = 0
+  while i < text.Length {
+    if text[i] >= '\u0080' { return Glyph.WidthOf(text) }
+    i = i + 1
+  }
+  return text.Length
+}
+
 internal struct Span {
   private var text string
   private var ink Style

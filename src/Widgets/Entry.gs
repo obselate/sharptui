@@ -5,7 +5,7 @@ import System.Collections.Generic
 import System.Text
 
 /// Where the caret moves to in TextInput.MoveCaretToStart / MoveCaretToEnd.
-public enum CaretPlacement { Start, End }
+internal enum CaretPlacement { Start, End }
 
 /// A single-line text input, indexed by grapheme cluster throughout.
 public open class TextInput : Box {

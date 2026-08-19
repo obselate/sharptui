@@ -132,23 +132,34 @@ public class TableRow {
   }
 }
 
+
 /// A scrolling table with a header row and selectable data rows.
 public open class TableView : Box {
   private var columnGapCells int32
   private var columnSeparator string
   private var widthScratch List[int32]
   private var rows List[TableRow]
+  private var source KeyedSource[TableRow, string]?
   private var selection SelectionState
   private var selectedRowId string
-
   /// Column definitions in display order.
   public prop Columns List[TableColumn] { get; set; }
-  /// Data rows shown by this table; setting it replaces all rows and re-resolves the selection via RefreshRows.
+  /// Data rows shown by this table; setting it replaces all rows and re-resolves the selection via Refresh.
   public prop Rows List[TableRow] {
     get { return rows }
     set {
+      source = nil
       rows = value
-      RefreshRows()
+      Refresh()
+    }
+  }
+  /// An optional indexed row source. When set, the source supplies rows instead of Rows.
+  public prop Source KeyedSource[TableRow, string]? {
+    get { return source }
+    set {
+      if Object.ReferenceEquals(source, value) { return }
+      source = value
+      Refresh()
     }
   }
   /// Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
@@ -189,6 +200,7 @@ public open class TableView : Box {
     widthScratch = List[int32]()
     Columns = List[TableColumn]()
     rows = List[TableRow]()
+    source = nil
     selection = SelectionState()
     selectedRowId = ""
     FirstVisibleRowIndex = 0
@@ -206,31 +218,13 @@ public open class TableView : Box {
     return selection.Consume()
   }
 
-  /// Refreshes selection after direct Rows mutation.
-  public func RefreshRows() {
-    let previous = selection.Index
-    var restored = -1
-    if selectedRowId != "" {
-      var i = 0
-      while i < Rows.Count {
-        if Rows[i].Id == selectedRowId && Rows[i].IsSelectable {
-          restored = i
-          break
-        }
-        i = i + 1
-      }
-    }
-    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
-    if restored < 0 && Rows.Count > 0 { restored = clampIndex(previous) }
-    selection.Index = restored < 0 ? 0 : restored
-    selectedRowId = selectedIdAt(selection.Index)
-    selection.Change = nil
+  /// Re-resolves selection after direct mutation of the active Rows or Source data, restoring the previous Id when possible.
+  public func Refresh() {
+    refreshSelection()
   }
 
-  /// Returns the row count including the header row.
-  /// @returns Total content rows, header included.
   protected override func ScrollExtentRows() int32 {
-    return Rows.Count + 1
+    return rowCount() + 1
   }
 
   /// Returns FirstVisibleRowIndex as the current scroll offset.
@@ -253,14 +247,16 @@ public open class TableView : Box {
     let headerStyle = HeaderStyle.MergedOver(ink)
     drawHeader(screen, r, widths, headerStyle)
 
+    let count = rowCount()
     var i = FirstVisibleRowIndex
-    while i < Rows.Count {
+    while i < count {
       let row = i - FirstVisibleRowIndex
       if row >= height { break }
       let selected = i == selection.Index
-      var rowStyle = Rows[i].Style.MergedOver(ink)
+      let data = rowAt(i)
+      var rowStyle = data.Style.MergedOver(ink)
       if selected { rowStyle = SelectedRowStyle.MergedOver(rowStyle) }
-      drawRow(screen, r, row + 1, Columns.Count, widths, Rows[i].Cells, rowStyle)
+      drawRow(screen, r, row + 1, Columns.Count, widths, data.Cells, rowStyle)
       i = i + 1
     }
   }
@@ -280,7 +276,7 @@ public open class TableView : Box {
     if ev.Kind == UiEventKind.Key && ev.Key == Key.PageUp { return result(moveTo(selection.Index - height, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.PageDown { return result(moveTo(selection.Index + height, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Home { return result(moveTo(0, height)) }
-    if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(Rows.Count - 1, height)) }
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.End { return result(moveTo(rowCount() - 1, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left { return result(panTo(FirstVisibleColumnIndex - 1, bounds.WidthCells)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Right { return result(panTo(FirstVisibleColumnIndex + 1, bounds.WidthCells)) }
 
@@ -292,8 +288,9 @@ public open class TableView : Box {
         let hit = ev.Position.Row - bounds.Row
         if hit == 0 { return EventResult.Continue }
         let row = FirstVisibleRowIndex + hit - 1
-        if row < 0 || row >= Rows.Count { return EventResult.Continue }
-        if !Rows[row].IsSelectable { return EventResult.Continue }
+        let count = rowCount()
+        if row < 0 || row >= count { return EventResult.Continue }
+        if !rowAt(row).IsSelectable { return EventResult.Continue }
         return result(moveTo(row, height))
       }
     }
@@ -499,11 +496,12 @@ public open class TableView : Box {
   }
 
   private func moveTo(want int32, height int32) bool {
-    if Rows.Count == 0 { return false }
+    let count = rowCount()
+    if count == 0 { return false }
     let i = nearestSelectable(clampIndex(want), directionFor(want))
     if i < 0 { return false }
     if !setSelection(i, true) { return false }
-    FirstVisibleRowIndex = Selection.ScrollIntoView(Rows.Count, selection.Index, FirstVisibleRowIndex, height)
+    FirstVisibleRowIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleRowIndex, height)
     return true
   }
 
@@ -515,11 +513,11 @@ public open class TableView : Box {
   }
 
   private func clampIndex(i int32) int32 {
-    return Selection.ClampIndex(Rows.Count, i)
+    return Selection.ClampIndex(rowCount(), i)
   }
 
   private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(Rows.Count, s, height)
+    return Selection.ClampScroll(rowCount(), s, height)
   }
 
   private func setSelection(value int32, emit bool) bool {
@@ -529,7 +527,8 @@ public open class TableView : Box {
   }
 
   private func normalizeSelection() {
-    if Rows.Count == 0 {
+    let count = rowCount()
+    if count == 0 {
       if selection.Index != 0 || selectedRowId != "" {
         selection.Index = 0
         selectedRowId = ""
@@ -547,7 +546,7 @@ public open class TableView : Box {
   }
 
   private func setProgrammaticSelection(want int32) {
-    if Rows.Count == 0 {
+    if rowCount() == 0 {
       setSelection(0, false)
       return
     }
@@ -556,8 +555,8 @@ public open class TableView : Box {
   }
 
   private func selectedIdAt(index int32) string {
-    if index < 0 || index >= Rows.Count { return "" }
-    return Rows[index].Id
+    if index < 0 || index >= rowCount() { return "" }
+    return rowAt(index).Id
   }
 
   private func directionFor(want int32) int32 {
@@ -565,17 +564,57 @@ public open class TableView : Box {
   }
 
   private func nearestSelectable(start int32, direction int32) int32 {
+    let count = rowCount()
     var i = start
-    while i >= 0 && i < Rows.Count {
-      if Rows[i].IsSelectable { return i }
+    while i >= 0 && i < count {
+      if rowAt(i).IsSelectable { return i }
       i = i + direction
     }
     i = start - direction
-    while i >= 0 && i < Rows.Count {
-      if Rows[i].IsSelectable { return i }
+    while i >= 0 && i < count {
+      if rowAt(i).IsSelectable { return i }
       i = i - direction
     }
     return -1
+  }
+
+  private func rowCount() int32 {
+    if source != nil { return source!!.Count() }
+    return Rows.Count
+  }
+
+  private func rowAt(index int32) TableRow {
+    if source != nil { return source!!.ItemAt(index) }
+    return Rows[index]
+  }
+
+  private func refreshSelection() {
+    let previous = selection.Index
+    let count = rowCount()
+    var restored = -1
+    if selectedRowId != "" {
+      if source != nil {
+        let candidate = source!!.IndexOfKey(selectedRowId)
+        if candidate >= 0 && candidate < count && rowAt(candidate).IsSelectable {
+          restored = candidate
+        }
+      } else {
+        var i = 0
+        while i < count {
+          let row = rowAt(i)
+          if row.Id == selectedRowId && row.IsSelectable {
+            restored = i
+            break
+          }
+          i = i + 1
+        }
+      }
+    }
+    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
+    if restored < 0 && count > 0 { restored = clampIndex(previous) }
+    selection.Index = restored < 0 ? 0 : restored
+    selectedRowId = selectedIdAt(selection.Index)
+    selection.Change = nil
   }
 
 }

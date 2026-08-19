@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+
+BIN_DIR="${TUITOOL_BIN_DIR:-${HOME}/.local/bin}"
+TARGET_PATH="${BIN_DIR}/tuitool"
+
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tuitool-publish.XXXXXX")"
+STAGE_FILE=""
+
+cleanup() {
+  rm -rf "${TEMP_DIR}"
+  if [ -n "${STAGE_FILE}" ] && [ -e "${STAGE_FILE}" ]; then
+    rm -f "${STAGE_FILE}"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+mkdir -p "${BIN_DIR}"
+
+# Root projects share obj, so restore the entry project last and do not rebuild its references.
+dotnet build "${ROOT_DIR}/SharpTui.Framework.gsproj" -c Release
+dotnet restore "${ROOT_DIR}/SharpTui.Examples.gsproj" \
+  -r linux-x64 \
+  --force \
+  -p:PublishAot=true \
+  -p:RestoreRecursive=false
+
+dotnet publish "${ROOT_DIR}/SharpTui.Examples.gsproj" \
+  -c Release \
+  -r linux-x64 \
+  --self-contained true \
+  --no-restore \
+  -p:PublishAot=true \
+  -p:UseAppHost=true \
+  -p:StripSymbols=true \
+  -p:BuildProjectReferences=false \
+  -o "${TEMP_DIR}"
+
+STAGE_FILE="$(mktemp "${BIN_DIR}/.tuitool.stage.XXXXXX")"
+cp "${TEMP_DIR}/tuitool" "${STAGE_FILE}"
+chmod 755 "${STAGE_FILE}"
+mv -f "${STAGE_FILE}" "${TARGET_PATH}"

@@ -18,6 +18,7 @@ public class DataCheck {
       var failed = 0
 
       failed = failed + Checks.Expect(LangOf("rust,ignore") == "rust", "the fence lang stops at a comma")
+      failed = failed + Checks.Expect(LangOf("rust	ignore") == "rust", "the fence lang stops at a tab")
       failed = failed + Checks.Expect(LangOf("js title=foo") == "js", "the fence lang stops at a space")
       failed = failed + Checks.Expect(LangOf("GS") == "gs", "the fence lang is lowercased")
       failed = failed + Checks.Expect(LangOf("") == "", "an empty fence has no lang")
@@ -30,6 +31,9 @@ public class DataCheck {
         "shell highlighting round trips")
       failed = failed + Checks.Expect(rejoin("{ \"a\": 1, \"b\": null }", "json", base)
         == "{ \"a\": 1, \"b\": null }", "json highlighting round trips")
+      let jsonTabKey = HighlightCode("{ \"key\"	: 1 }", "json", base)
+      failed = failed + Checks.Expect(hasColor(asRuns(jsonTabKey), Color.Rgb("478AD1")),
+        "a json key before a tabbed colon is coloured")
       failed = failed + Checks.Expect(rejoin("日本語 = 12 # 語", "py", base)
         == "日本語 = 12 # 語", "wide characters round trip")
       failed = failed + Checks.Expect(rejoin("", "gs", base) == "", "an empty line round trips")
@@ -38,6 +42,9 @@ public class DataCheck {
       failed = failed + Checks.Expect(spans.Count > 1, "a c-like line splits into runs")
       failed = failed + Checks.Expect(hasColor(asRuns(spans), Color.Rgb("555C6B")), "the comment is dimmed")
       failed = failed + Checks.Expect(hasColor(asRuns(spans), Color.Rgb("D1A047")), "the number is coloured")
+      let unterminated = HighlightCode("let a = 1 /* never closes", "gs", base)
+      failed = failed + Checks.Expect(hasColor(asRuns(unterminated), Color.Rgb("555C6B")),
+        "an unterminated c-like comment is coloured")
 
       let fenced = ParseMarkdown("```go\nfunc main() {}\n```", MarkdownTheme())
       failed = failed + Checks.Expect(fenced.Count == 1, "the fence pair wraps one code line")
@@ -46,12 +53,61 @@ public class DataCheck {
       let comment = HighlightBlock(twoLines("let a = 1 /* start", "still comment */ let b = 2"), "gs", base)
       failed = failed + Checks.Expect(hasColor(asRuns(comment[1]), Color.Rgb("555C6B")), "the comment carries to the next line")
       failed = failed + Checks.Expect(hasColor(asRuns(comment[1]), Color.Rgb("B47FD1")), "and the code after it goes back to normal")
+      let quotedComment = HighlightBlock(twoLines("let s = \"/*\"", "let b = 2"), "gs", base)
+      failed = failed + Checks.Expect(!hasColor(asRuns(quotedComment[1]), Color.Rgb("555C6B")),
+        "a c-like marker in a string does not carry a comment")
+      let reopened = HighlightBlock(threeLines("/* open", "still */ let x = 1 /* reopen", "still comment"), "gs", base)
+      failed = failed + Checks.Expect(hasColor(asRuns(reopened[2]), Color.Rgb("555C6B")),
+        "a comment can reopen after closing on a continuation line")
 
       let pydoc = HighlightBlock(twoLines("x = \"\"\"open", "still string\"\"\""), "py", base)
       failed = failed + Checks.Expect(hasColor(asRuns(pydoc[1]), Color.Rgb("6CBC5F")), "a docstring carries to the next line")
+      let pyComment = HighlightBlock(twoLines("# \"\"\"", "x = 1"), "py", base)
+      failed = failed + Checks.Expect(!hasColor(asRuns(pyComment[1]), Color.Rgb("6CBC5F")),
+        "a triple quote in a python comment does not carry a string")
+      let luaComment = HighlightBlock(twoLines("-- /*", "local x = 1"), "lua", base)
+      failed = failed + Checks.Expect(!hasColor(asRuns(luaComment[1]), Color.Rgb("555C6B")),
+        "a block marker in a lua comment does not carry a comment")
 
       let steady = HighlightBlock(twoLines("let a = 1", "let b = 2"), "gs", base)
       failed = failed + Checks.Expect(!hasColor(asRuns(steady[1]), Color.Rgb("555C6B")), "an ordinary line is untouched")
+
+      let publicLines = twoLines("let a = 1 /* start", "still comment */ let b = 2")
+      let publicRuns = SyntaxHighlighter.HighlightLines(publicLines, "GS", base)
+      failed = failed + Checks.Expect(SyntaxHighlighter.Supports("GS")
+          && !SyntaxHighlighter.Supports("txt"),
+        "the public syntax highlighter reports explicit language support")
+      failed = failed + Checks.Expect(flat(publicRuns)
+          == "let a = 1 /* start\nstill comment */ let b = 2",
+        "the public syntax highlighter preserves physical lines")
+      failed = failed + Checks.Expect(hasColor(publicRuns, Color.Rgb("555C6B"))
+          && hasColor(publicRuns, Color.Rgb("B47FD1")),
+        "the public syntax highlighter preserves multiline state")
+
+      let lazyLines = threeLines("/* open", "still open", "close */ let x = 1")
+      let lazy = SyntaxLineSource(lazyLines, "gs", base)
+      failed = failed + Checks.Expect(lazy.CachedLineCount() == 0,
+        "the lazy syntax source does not tokenize during construction")
+      lazyLines.Add("caller mutation")
+      let lazyTail = lazy.ItemAt(2)
+      failed = failed + Checks.Expect(lazy.Count() == 3
+          && lazy.CachedLineCount() == 1
+          && hasColor(lazyTail.Runs, Color.Rgb("555C6B"))
+          && hasColor(lazyTail.Runs, Color.Rgb("B47FD1")),
+        "the lazy syntax source owns its input snapshot and reaches arbitrary multiline state")
+      let plainSource = SyntaxHighlighter.CreateLineSource(twoLines("# plain 12", "tail"), "txt", base)
+      failed = failed + Checks.Expect(plainSource.ItemAt(0).Runs.Count == 1
+          && plainSource.ItemAt(0).Runs[0].Style.Foreground == base.Foreground,
+        "unsupported lazy sources preserve the base style")
+
+      let mutableRuns = List[TextRun]{ TextRun("fixed", base) }
+      let fixedLine = RichTextLine(mutableRuns)
+      mutableRuns[0] = TextRun("changed", Style())
+      mutableRuns.Add(TextRun("extra", Style()))
+      failed = failed + Checks.Expect(fixedLine.Runs.Count == 1
+          && fixedLine.Runs[0].Text == "fixed"
+          && fixedLine.WidthCells == 5,
+        "RichTextLine owns its input snapshot and keeps cached widths consistent")
 
       let doc = MarkdownView{ Source: "| a | b |\n| - | - |\n| one two three four five six | y |" }
       let docRoot = Box{ Children: { doc } }
@@ -324,6 +380,13 @@ public class DataCheck {
       out.Add(b)
       return out
     }
+    private func threeLines(a string, b string, c string) List[string] {
+      let out = List[string]()
+      out.Add(a)
+      out.Add(b)
+      out.Add(c)
+      return out
+    }
 
     private func flat(runs List[TextRun]) string {
       var out = ""
@@ -337,7 +400,7 @@ public class DataCheck {
       return out
     }
 
-    private func hasColor(runs List[TextRun], foreground Color) bool {
+    private func hasColor(runs IReadOnlyList[TextRun], foreground Color) bool {
       for run in runs {
         if run.Style.Foreground == foreground { return true }
       }

@@ -1,9 +1,7 @@
 bin/
 obj/
 mine/
-
-# local AOT build of the examples; build it with `dotnet publish`
-/examples/sharptui-examples
+/.claude/
 
 # internal working documents, not part of the public repo
 docs/plans/
@@ -12,7 +10,12 @@ docs/superpowers/
 /ROARTUI-CONSUMER-AUDIT.md
 /STRUCTURE.md
 /perf-report.md
+/API-CHANGES-REVIEW.md
+/API-SURFACE-CONSOLIDATION-REPORT.md
+/skiff-rendering-capability-matrix.html
+/skiff-tui-library-matrix.html
 /tools/*
+!/tools/install-tuitool
 !/tools/SharpTui.ApiSurface/
 !/tools/SharpTui.ApiSurface/Program.cs
 !/tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
@@ -24,3 +27,6 @@ docs/superpowers/
 !/api/README.md
 /benchmarks/
 /agent-testing/
+/archive/
+/examples/sharptui-examples.app/
+/examples/sharptui-examples-macos-arm64.tar.gz

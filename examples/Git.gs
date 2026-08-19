@@ -238,7 +238,7 @@ class Git : View {
     settingsBox = Box{ Width: CellLength.Cells(78), Height: CellLength.Cells(18), ShowBorder: true, Title: "settings & theme",
       Children: { Column{ GrowWeight: 1, GapCells: 1, Children: { settingsTabs, presetListView, helpBox, settingsFooter } } } }
     settingsOverlay = Overlay{ Content: settingsBox, DimBackground: true }
-    settingsOverlay.IsOpen = false
+    settingsOverlay.IsVisible = false
 
     promptHeader = Label{ Text: "" }
     promptInput = TextInput{ Placeholder: "", Height: CellLength.Cells(1) }
@@ -246,7 +246,7 @@ class Git : View {
     promptBox = Box{ Width: CellLength.Cells(64), Height: CellLength.Cells(7), ShowBorder: true, Title: "",
       Children: { Column{ GapCells: 1, Children: { promptHeader, promptInput, promptFooter } } } }
     promptOverlay = Overlay{ Content: promptBox, DimBackground: true }
-    promptOverlay.IsOpen = false
+    promptOverlay.IsVisible = false
 
     discardHeader = Label{ Text: "Are you sure you want to revert changes to this file?", Alignment: HorizontalAlignment.Center }
     discardWarn = Label{ Text: "Unsaved edits will be lost permanently!", Alignment: HorizontalAlignment.Center }
@@ -254,7 +254,7 @@ class Git : View {
     discardBox = Box{ Width: CellLength.Cells(60), Height: CellLength.Cells(6), ShowBorder: true, Title: "confirm discard changes",
       Children: { Column{ GapCells: 1, Children: { discardHeader, discardWarn, discardFooter } } } }
     discardOverlay = Overlay{ Content: discardBox, DimBackground: true }
-    discardOverlay.IsOpen = false
+    discardOverlay.IsVisible = false
 
     root = Box{ Children: {
       mainCol,
@@ -462,6 +462,16 @@ class Git : View {
     }
   }
 
+  private func looksBinary(bytes []uint8) bool {
+    var i = 0
+    let limit = bytes.Length < 512 ? bytes.Length : 512
+    while i < limit {
+      if bytes[i] == 0 { return true }
+      i = i + 1
+    }
+    return false
+  }
+
   /// Shows the diff for the selected file. The staged pane drives the view while it holds focus.
   private func updateDiffView() {
     let items = List[ListItem]()
@@ -648,7 +658,7 @@ class Git : View {
       promptInput.Placeholder = "my-new-idea"
       promptFooter.Text = "[enter]: create - [esc]: cancel"
     }
-    promptOverlay.IsOpen = true
+    promptOverlay.IsVisible = true
     root.Focus(promptInput)
   }
 
@@ -663,7 +673,7 @@ class Git : View {
   private func executePrompt() {
     let text = promptInput.Text.Trim()
     if text == "" { return }
-    promptOverlay.IsOpen = false
+    promptOverlay.IsVisible = false
     root.Focus(unstagedList)
     if promptMode == "commit" {
       runNoted(List[string]{ "commit", "-m", text }, "saved snapshot: " + text)
@@ -678,12 +688,12 @@ class Git : View {
     let entry = unstagedFiles[unstagedList.SelectedIndex]
     fileToDiscard = entry.Path
     discardUntracked = entry.Status == "Untracked"
-    discardOverlay.IsOpen = true
+    discardOverlay.IsVisible = true
   }
 
   /// Untracked files are removed with clean; tracked edits are reverted with checkout.
   private func executeDiscard() {
-    discardOverlay.IsOpen = false
+    discardOverlay.IsVisible = false
     if fileToDiscard == "" { return }
     if discardUntracked {
       runNoted(List[string]{ "clean", "-fd", "--", fileToDiscard }, "deleted untracked " + fileToDiscard)
@@ -694,8 +704,8 @@ class Git : View {
   }
 
   private func toggleSettings() {
-    settingsOverlay.IsOpen = !settingsOverlay.IsOpen
-    if settingsOverlay.IsOpen { updateSettingsTab() }
+    settingsOverlay.IsVisible = !settingsOverlay.IsVisible
+    if settingsOverlay.IsVisible { updateSettingsTab() }
     else { root.Focus(unstagedList) }
   }
 
@@ -724,7 +734,7 @@ class Git : View {
     // Consume unconditionally so a change from a closing overlay cannot fire later.
     let tabChanged = settingsTabs.ConsumeSelectionChange()
     let presetChanged = presetListView.ConsumeSelectionChange()
-    if settingsOverlay.IsOpen {
+    if settingsOverlay.IsVisible {
       if tabChanged != nil { updateSettingsTab() }
       if presetChanged != nil && settingsTabs.SelectedIndex == 0 {
         applyPreset(presetListView.SelectedIndex)
@@ -761,9 +771,9 @@ class Git : View {
   public func Handle(ev UiEvent) EventResult {
     if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
 
-    if promptOverlay.IsOpen {
+    if promptOverlay.IsVisible {
       if ev.Key == Key.Escape {
-        promptOverlay.IsOpen = false
+        promptOverlay.IsVisible = false
         root.Focus(unstagedList)
         return EventResult.Handled
       }
@@ -776,9 +786,9 @@ class Git : View {
       return root.Handle(ev)
     }
 
-    if discardOverlay.IsOpen {
+    if discardOverlay.IsVisible {
       if ev.Key == Key.Escape || (ev.Key == Key.Character && ev.Text == "n") {
-        discardOverlay.IsOpen = false
+        discardOverlay.IsVisible = false
         return EventResult.Handled
       }
       if ev.Key == Key.Enter || (ev.Key == Key.Character && ev.Text == "y") {
@@ -788,9 +798,9 @@ class Git : View {
       return EventResult.Handled
     }
 
-    if settingsOverlay.IsOpen {
+    if settingsOverlay.IsVisible {
       if ev.Key == Key.Escape {
-        settingsOverlay.IsOpen = false
+        settingsOverlay.IsVisible = false
         root.Focus(unstagedList)
         return EventResult.Handled
       }
@@ -799,7 +809,7 @@ class Git : View {
           applyPreset(presetListView.SelectedIndex)
           note = "applied theme: " + palette.Name
         }
-        settingsOverlay.IsOpen = false
+        settingsOverlay.IsVisible = false
         root.Focus(unstagedList)
         return EventResult.Handled
       }

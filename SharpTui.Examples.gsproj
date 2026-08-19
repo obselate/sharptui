@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SharpTui</RootNamespace>
-    <AssemblyName>SharpTui.Examples</AssemblyName>
+    <AssemblyName>tuitool</AssemblyName>
     <UseAppHost>false</UseAppHost>
     <InvariantGlobalization>true</InvariantGlobalization>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
@@ -15,6 +15,7 @@
     <Compile Remove="mine/**/*.gs" />
     <Compile Remove="tools/**/*.gs" />
     <Compile Remove="agent-testing/**/*.gs" />
+    <Compile Remove="archive/**/*.gs" />
     <ProjectReference Include="SharpTui.Framework.gsproj" />
   </ItemGroup>
 
