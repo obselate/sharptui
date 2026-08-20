@@ -4,530 +4,335 @@
     <name>SharpTui.Framework</name>
   </assembly>
   <members>
-    <!-- G# SDK 0.3.633 does not emit XML documentation for enums or interfaces.
-         Keep those public API docs here until the compiler emits them. The API-surface
-         gate rejects missing and duplicate documentation across both XML inputs. -->
-    <member name="T:SharpTui.BindingPhase">
-      <summary>Controls whether a binding runs before or after the application view handles an event.</summary>
-    </member>
-    <member name="F:SharpTui.BindingPhase.BeforeWidgets">
-      <summary>Offers the binding before the application view handles the event.</summary>
-    </member>
-    <member name="F:SharpTui.BindingPhase.AfterWidgets">
-      <summary>Offers the binding after the application view declines the event.</summary>
-    </member>
-
-    <member name="T:SharpTui.EventResult">
-      <summary>Controls how an event affects application routing and lifetime.</summary>
-    </member>
+    <!-- G# SDK 0.4.59 emits enum and interface declarations, but not enum values
+         without attached source comments. Keep only those value records here. The
+         API-surface gate rejects missing and duplicate documentation across both inputs. -->
     <member name="F:SharpTui.EventResult.Continue">
       <summary>Leaves the event unconsumed so later routing stages may handle it.</summary>
     </member>
+
     <member name="F:SharpTui.EventResult.Handled">
       <summary>Marks the event consumed and stops later routing stages.</summary>
     </member>
+
     <member name="F:SharpTui.EventResult.Exit">
       <summary>Requests that the application event loop stop.</summary>
     </member>
 
-    <member name="T:SharpTui.HorizontalAlignment">
-      <summary>Controls horizontal placement of content within its box.</summary>
-    </member>
     <member name="F:SharpTui.HorizontalAlignment.Left">
       <summary>Places content against the left edge.</summary>
     </member>
+
     <member name="F:SharpTui.HorizontalAlignment.Center">
       <summary>Centers content between the left and right edges.</summary>
     </member>
+
     <member name="F:SharpTui.HorizontalAlignment.Right">
       <summary>Places content against the right edge.</summary>
     </member>
 
-    <member name="T:SharpTui.Key">
-      <summary>Identifies a logical key independently of the active keyboard layout.</summary>
-    </member>
     <member name="F:SharpTui.Key.Unknown">
       <summary>Indicates that no recognized logical key was decoded.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Character">
       <summary>Represents printable text whose grapheme is carried by UiEvent.Text.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Enter">
       <summary>Represents the Enter or Return key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Tab">
       <summary>Represents forward Tab.</summary>
     </member>
+
     <member name="F:SharpTui.Key.BackTab">
       <summary>Represents reverse Tab, commonly produced by Shift+Tab.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Backspace">
       <summary>Represents the Backspace key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Escape">
       <summary>Represents the Escape key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Up">
       <summary>Represents the Up arrow key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Down">
       <summary>Represents the Down arrow key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Left">
       <summary>Represents the Left arrow key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Right">
       <summary>Represents the Right arrow key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Home">
       <summary>Represents the Home key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.End">
       <summary>Represents the End key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.PageUp">
       <summary>Represents the Page Up key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.PageDown">
       <summary>Represents the Page Down key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Delete">
       <summary>Represents the Delete key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.Insert">
       <summary>Represents the Insert key.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F1">
       <summary>Represents function key F1.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F2">
       <summary>Represents function key F2.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F3">
       <summary>Represents function key F3.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F4">
       <summary>Represents function key F4.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F5">
       <summary>Represents function key F5.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F6">
       <summary>Represents function key F6.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F7">
       <summary>Represents function key F7.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F8">
       <summary>Represents function key F8.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F9">
       <summary>Represents function key F9.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F10">
       <summary>Represents function key F10.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F11">
       <summary>Represents function key F11.</summary>
     </member>
+
     <member name="F:SharpTui.Key.F12">
       <summary>Represents function key F12.</summary>
     </member>
 
-    <member name="T:SharpTui.KeyModifiers">
-      <summary>Contains combinable modifier and lock-state flags reported with input events.</summary>
-    </member>
     <member name="F:SharpTui.KeyModifiers.None">
       <summary>Indicates that no modifiers or lock-state flags are set.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Shift">
       <summary>Indicates that Shift is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Alt">
       <summary>Indicates that Alt is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Ctrl">
       <summary>Indicates that Control is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Super">
       <summary>Indicates that the Super modifier is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Hyper">
       <summary>Indicates that the Hyper modifier is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.Meta">
       <summary>Indicates that the Meta modifier is held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.CapsLock">
       <summary>Indicates that Caps Lock is active; shortcut matching ignores this flag.</summary>
     </member>
+
     <member name="F:SharpTui.KeyModifiers.NumLock">
       <summary>Indicates that Num Lock is active; shortcut matching ignores this flag.</summary>
     </member>
 
-    <member name="T:SharpTui.KeyPhase">
-      <summary>Identifies the press, repeat, or release phase of a key event.</summary>
-    </member>
     <member name="F:SharpTui.KeyPhase.Press">
       <summary>Indicates the initial key-down event.</summary>
     </member>
+
     <member name="F:SharpTui.KeyPhase.Repeat">
       <summary>Indicates an automatic repeat while the key remains held.</summary>
     </member>
+
     <member name="F:SharpTui.KeyPhase.Release">
       <summary>Indicates key release when the terminal reports key-up events.</summary>
     </member>
 
-    <member name="T:SharpTui.MouseButton">
-      <summary>Identifies the physical mouse button associated with a mouse event.</summary>
-    </member>
     <member name="F:SharpTui.MouseButton.None">
       <summary>Indicates that no mouse button applies or the button is unknown.</summary>
     </member>
+
     <member name="F:SharpTui.MouseButton.Left">
       <summary>Identifies the left mouse button.</summary>
     </member>
+
     <member name="F:SharpTui.MouseButton.Middle">
       <summary>Identifies the middle mouse button.</summary>
     </member>
+
     <member name="F:SharpTui.MouseButton.Right">
       <summary>Identifies the right mouse button.</summary>
     </member>
 
-    <member name="T:SharpTui.MouseKind">
-      <summary>Identifies the action carried by a mouse event.</summary>
-    </member>
     <member name="F:SharpTui.MouseKind.Press">
       <summary>Indicates that a mouse button was pressed.</summary>
     </member>
+
     <member name="F:SharpTui.MouseKind.Release">
       <summary>Indicates that a mouse button was released.</summary>
     </member>
+
     <member name="F:SharpTui.MouseKind.Move">
       <summary>Indicates pointer movement, with or without a held button.</summary>
     </member>
+
     <member name="F:SharpTui.MouseKind.ScrollUp">
       <summary>Indicates an upward mouse-wheel step.</summary>
     </member>
+
     <member name="F:SharpTui.MouseKind.ScrollDown">
       <summary>Indicates a downward mouse-wheel step.</summary>
     </member>
+
     <member name="F:SharpTui.MouseKind.None">
       <summary>Indicates that the event carries no mouse action.</summary>
     </member>
 
-    <member name="T:SharpTui.MouseTracking">
-      <summary>Controls which terminal mouse events an application requests.</summary>
-    </member>
     <member name="F:SharpTui.MouseTracking.Disabled">
       <summary>Disables terminal mouse reporting.</summary>
     </member>
+
     <member name="F:SharpTui.MouseTracking.Click">
       <summary>Reports button presses and releases, but not pointer motion.</summary>
     </member>
+
     <member name="F:SharpTui.MouseTracking.Drag">
       <summary>Reports button events and pointer motion while a button is held.</summary>
     </member>
+
     <member name="F:SharpTui.MouseTracking.AllMotion">
       <summary>Reports button events and all pointer motion.</summary>
     </member>
 
-    <member name="T:SharpTui.SearchDirection">
-      <summary>Controls the direction in which TextArea.Find searches from the caret.</summary>
-    </member>
     <member name="F:SharpTui.SearchDirection.Forward">
       <summary>Searches forward through the document.</summary>
     </member>
+
     <member name="F:SharpTui.SearchDirection.Backward">
       <summary>Searches backward through the document.</summary>
     </member>
 
-    <member name="T:SharpTui.SeparatorOrientation">
-      <summary>Controls whether a Separator draws across a row or down a column.</summary>
-    </member>
     <member name="F:SharpTui.SeparatorOrientation.Horizontal">
       <summary>Draws the separator across a row.</summary>
     </member>
+
     <member name="F:SharpTui.SeparatorOrientation.Vertical">
       <summary>Draws the separator down a column.</summary>
     </member>
 
-    <member name="T:SharpTui.SplitterAxis">
-      <summary>Identifies the target dimension resized by a Splitter.</summary>
-    </member>
     <member name="F:SharpTui.SplitterAxis.Columns">
       <summary>Resizes the target width in columns through horizontal dragging.</summary>
     </member>
+
     <member name="F:SharpTui.SplitterAxis.Rows">
       <summary>Resizes the target height in rows through vertical dragging.</summary>
     </member>
 
-    <member name="T:SharpTui.TextAttributes">
-      <summary>Contains combinable terminal text-appearance flags used by Style.</summary>
-    </member>
     <member name="F:SharpTui.TextAttributes.None">
       <summary>Applies no additional text attributes.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Bold">
       <summary>Requests bold or increased-intensity text.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Dim">
       <summary>Requests faint or decreased-intensity text.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Italic">
       <summary>Requests italic text.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Underline">
       <summary>Requests underlined text.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Reverse">
       <summary>Requests reversed foreground and background presentation.</summary>
     </member>
+
     <member name="F:SharpTui.TextAttributes.Strikethrough">
       <summary>Requests struck-through text.</summary>
     </member>
 
-    <member name="T:SharpTui.TextWrapping">
-      <summary>Controls whether text remains unbroken or wraps at word boundaries.</summary>
-    </member>
     <member name="F:SharpTui.TextWrapping.None">
       <summary>Preserves explicit lines without automatic wrapping.</summary>
     </member>
+
     <member name="F:SharpTui.TextWrapping.Word">
       <summary>Wraps content at word boundaries within the available width.</summary>
     </member>
 
-    <member name="T:SharpTui.UiEventKind">
-      <summary>Identifies which input variant a UiEvent carries.</summary>
-    </member>
     <member name="F:SharpTui.UiEventKind.Key">
       <summary>Carries a named key event, usually with modifiers and a key phase.</summary>
     </member>
+
     <member name="F:SharpTui.UiEventKind.TextInput">
       <summary>Carries printable text intended for text entry.</summary>
     </member>
+
     <member name="F:SharpTui.UiEventKind.Paste">
       <summary>Carries a bracketed-paste text payload.</summary>
     </member>
+
     <member name="F:SharpTui.UiEventKind.Mouse">
       <summary>Carries a mouse action, button, and terminal-cell position.</summary>
     </member>
+
     <member name="F:SharpTui.UiEventKind.Tick">
       <summary>Signals an application timer tick.</summary>
     </member>
+
     <member name="F:SharpTui.UiEventKind.Unknown">
       <summary>Indicates that no recognized event variant is present.</summary>
     </member>
-
-    <member name="T:SharpTui.RichLineSource">
-      <summary>Supplies immutable physical lines to a RichTextBlock on demand.</summary>
-    </member>
-    <member name="M:SharpTui.RichLineSource.Count">
-      <summary>Returns the number of available physical lines.</summary>
-      <returns>The physical line count.</returns>
-    </member>
-    <member name="M:SharpTui.RichLineSource.ItemAt(System.Int32)">
-      <summary>Returns one stable physical line. A block may request nearby lines for prefetching.</summary>
-      <param name="index">The zero-based physical line index.</param>
-      <returns>The requested styled line.</returns>
-    </member>
-    <member name="M:SharpTui.RichLineSource.MaximumLineWidth">
-      <summary>Returns the greatest display width of any physical line.</summary>
-      <returns>The maximum line width in terminal cells.</returns>
-    </member>
-
-    <member name="M:SharpTui.App.StartWorker(System.Func{System.Threading.CancellationToken,``0})">
-      <summary>Starts one app-owned background operation.</summary>
-      <param name="work">The operation to run with a cooperative cancellation token.</param>
-      <returns>A running handle for cancellation and terminal observation.</returns>
-    </member>
-
-    <member name="T:SharpTui.View">
-      <summary>Defines a drawable application surface with typed event handling.</summary>
-    </member>
-    <member name="M:SharpTui.View.Draw(SharpTui.Screen)">
-      <summary>Paints one frame after a batch of events.</summary>
-      <param name="screen">The screen to paint into.</param>
-    </member>
-    <member name="M:SharpTui.View.Handle(SharpTui.UiEvent)">
-      <summary>Handles one typed user-interface event.</summary>
-      <param name="ev">The event to handle.</param>
-      <returns>Handled when the view consumed the event, Exit to stop the app, otherwise Continue.</returns>
-    </member>
-    <member name="T:SharpTui.AnimationState">
-      <summary>Reports the lifetime state of an animation handle.</summary>
-    </member>
-    <member name="F:SharpTui.AnimationState.Running">
-      <summary>The animation remains active.</summary>
-    </member>
-    <member name="F:SharpTui.AnimationState.Completed">
-      <summary>The final animation state was applied.</summary>
-    </member>
-    <member name="F:SharpTui.AnimationState.Cancelled">
-      <summary>The animation stopped without another sample.</summary>
-    </member>
-
-    <member name="T:SharpTui.CanvasMode">
-      <summary>Selects the subcell packing used by a CanvasSurface.</summary>
-    </member>
-    <member name="F:SharpTui.CanvasMode.Braille">
-      <summary>Packs a two-by-four Braille grid into each terminal cell.</summary>
-    </member>
-    <member name="F:SharpTui.CanvasMode.Quadrant">
-      <summary>Packs a two-by-two quadrant grid into each terminal cell.</summary>
-    </member>
-    <member name="F:SharpTui.CanvasMode.HalfBlock">
-      <summary>Packs two vertical half blocks into each terminal cell.</summary>
-    </member>
-    <member name="F:SharpTui.CanvasMode.Cell">
-      <summary>Uses one drawable point per terminal cell.</summary>
-    </member>
-
-    <member name="T:SharpTui.ControlState">
-      <summary>Contains visual state flags applied while resolving a theme role.</summary>
-    </member>
-    <member name="F:SharpTui.ControlState.None">
-      <summary>Applies no visual state overlay.</summary>
-    </member>
-    <member name="F:SharpTui.ControlState.Focused">
-      <summary>Applies the focused state.</summary>
-    </member>
-    <member name="F:SharpTui.ControlState.Selected">
-      <summary>Applies the selected state.</summary>
-    </member>
-    <member name="F:SharpTui.ControlState.Disabled">
-      <summary>Applies the disabled state.</summary>
-    </member>
-
-    <member name="T:SharpTui.Easing">
-      <summary>Selects the interpolation curve used by a tween.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.Linear">
-      <summary>Leaves progress unchanged.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.SineIn">
-      <summary>Starts with sinusoidal acceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.SineOut">
-      <summary>Ends with sinusoidal deceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.SineInOut">
-      <summary>Uses sinusoidal acceleration and deceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.CubicIn">
-      <summary>Starts with cubic acceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.CubicOut">
-      <summary>Ends with cubic deceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.CubicInOut">
-      <summary>Uses cubic acceleration and deceleration.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BackIn">
-      <summary>Overshoots before accelerating from the start.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BackOut">
-      <summary>Overshoots after decelerating into the end.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BackInOut">
-      <summary>Overshoots at both ends.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BounceIn">
-      <summary>Bounces into the start.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BounceOut">
-      <summary>Bounces into the end.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.BounceInOut">
-      <summary>Bounces at both ends.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.ElasticIn">
-      <summary>Springs into the start.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.ElasticOut">
-      <summary>Springs into the end.</summary>
-    </member>
-    <member name="F:SharpTui.Easing.ElasticInOut">
-      <summary>Springs at both ends.</summary>
-    </member>
-
-    <member name="T:SharpTui.KeyedSource`2">
-      <summary>Supplies indexed values with source-owned stable-key lookup.</summary>
-    </member>
-    <member name="M:SharpTui.KeyedSource`2.Count">
-      <summary>Returns the number of values currently available.</summary>
-      <returns>The value count.</returns>
-    </member>
-    <member name="M:SharpTui.KeyedSource`2.ItemAt(System.Int32)">
-      <summary>Returns one value by zero-based index.</summary>
-      <param name="index">The zero-based value index.</param>
-      <returns>The value at index.</returns>
-    </member>
-    <member name="M:SharpTui.KeyedSource`2.IndexOfKey(`1)">
-      <summary>Returns the index of a stable key, or negative one when absent.</summary>
-      <param name="key">The stable key to find.</param>
-      <returns>The current zero-based index, or negative one.</returns>
-    </member>
-
-    <member name="T:SharpTui.ThemeRole">
-      <summary>Identifies a semantic style role shared by controls and application surfaces.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Body">
-      <summary>Uses the normal content style.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Accent">
-      <summary>Uses the emphasized application style.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Muted">
-      <summary>Uses the secondary content style.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Success">
-      <summary>Uses the successful outcome style.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Warning">
-      <summary>Uses the cautionary outcome style.</summary>
-    </member>
-    <member name="F:SharpTui.ThemeRole.Error">
-      <summary>Uses the failed outcome style.</summary>
-    </member>
-
-    <member name="T:SharpTui.TreeSource">
-      <summary>Supplies flattened visible tree rows with stable-node lookup.</summary>
-    </member>
-    <member name="M:SharpTui.TreeSource.Count">
-      <summary>Returns the number of currently visible rows.</summary>
-      <returns>The visible row count.</returns>
-    </member>
-    <member name="M:SharpTui.TreeSource.ItemAt(System.Int32)">
-      <summary>Returns one visible row by zero-based index.</summary>
-      <param name="index">The zero-based visible row index.</param>
-      <returns>The row at index.</returns>
-    </member>
-    <member name="M:SharpTui.TreeSource.IndexOfKey(System.String)">
-      <summary>Returns the visible index of a stable node Id, or negative one when absent.</summary>
-      <param name="key">The stable TreeNode Id to find.</param>
-      <returns>The current zero-based index, or negative one.</returns>
-    </member>
-    <member name="M:SharpTui.TreeSource.Toggle(System.Int32)">
-      <summary>Toggles one expandable row and updates the flattened index.</summary>
-      <param name="index">The zero-based visible row index.</param>
-    </member>
-
-    <member name="T:SharpTui.WorkerState">
-      <summary>Reports the lifecycle state of one background worker.</summary>
-    </member>
-    <member name="F:SharpTui.WorkerState.Running">
-      <summary>The operation is running on a background thread.</summary>
-    </member>
-    <member name="F:SharpTui.WorkerState.Completed">
-      <summary>The operation completed and has a result to consume.</summary>
-    </member>
-    <member name="F:SharpTui.WorkerState.Failed">
-      <summary>The operation failed and has an exception to consume.</summary>
-    </member>
-    <member name="F:SharpTui.WorkerState.Cancelled">
-      <summary>The operation exited after cancellation was requested.</summary>
-    </member>
-
   </members>
 </doc>

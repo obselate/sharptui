@@ -3,7 +3,7 @@
 Use .NET 10, the G# SDK, and the local SharpTUI project:
 
 ```xml
-<Project Sdk="Gsharp.NET.Sdk/0.3.633">
+<Project Sdk="Gsharp.NET.Sdk/0.4.59">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Cell geometry, flow, placement, exact styles, semantic themes, and terminal text measurement.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">
+<link rel="stylesheet" href="publication.css">
+<title>Layout and styling / STUI-LAY</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-LAY<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Layout and styling</h1>
+      <p class="cover-subtitle">Cell geometry, flow, placement, exact styles, semantic themes, and terminal text measurement.</p>
+      <table class="system-figure" aria-label="Layout and styling cycle">
+        <tbody><tr>
+          <td class="active">Measure<br>cells</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Flow<br>children</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Resolve<br>style</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Draw<br>frame</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Layout and styling cycle</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p class="front-note">Cell geometry, flow, placement, exact styles, semantic themes, and terminal text measurement.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--measure-in-cells">Measure in cells</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--flow-before-overlay">Flow before overlay</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--set-a-style">Set a style</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--resolve-semantics">Resolve semantics</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--fit-terminal-text">Fit terminal text</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#dont">Don&#x27;t</a></td><td>7-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Layout and styling cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Measure in cells</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Flow before overlay</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Set a style</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Resolve semantics</td><td>5-1</td></tr><tr><td>Listing</td><td>6-1</td><td>Fit terminal text</td><td>6-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="principle">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="principle">Principle</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Layout uses terminal cells. A width is a cell count. A height is a row count. The layout engine has no pixels to recover an arbitrary value from.</p>
+<p>Do not use negative sizes or padding. Do not place a fixed overlay without checking the terminal rectangle that contains it.</p>
+<p>For every member, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Principle</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="01--measure-in-cells">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="01--measure-in-cells">Measure in cells</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Type</th>
+<th>Value</th>
+<th>Bound</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelllength"><code>CellLength</code></a></td>
+<td><code>Auto</code> or <code>Cells(count)</code></td>
+<td><code>count</code> is 0 or more.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellinsets"><code>CellInsets</code></a></td>
+<td>Four edge insets or <code>All(cells)</code></td>
+<td>Every edge is 0 or more.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellpoint"><code>CellPoint</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a></td>
+<td>Both are 0 or more.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellsize"><code>CellSize</code></a></td>
+<td><code>WidthCells</code>, <code>HeightRows</code></td>
+<td>Both are 0 or more.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect</code></a></td>
+<td>Origin plus width and height</td>
+<td>Width and height are 0 or more.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect.Contains</code></a> tests a point against its half-open rectangle. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect.Inset</code></a> clamps a consumed width or height to 0. It does not return a negative rectangle.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Measure in cells</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>panel<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{
+<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">36</span>),
+<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">10</span>),
+<span class="w">  </span><span class="nc">Padding</span>:<span class="w"> </span><span class="nc">CellInsets</span>{<span class="w"> </span><span class="nc">LeftCells</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">TopRows</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">RightCells</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">BottomRows</span>:<span class="w"> </span><span class="m">1</span><span class="w"> </span>},
+<span class="w">  </span><span class="nc">ShowBorder</span>:<span class="w"> </span><span class="k">true</span>,
+}
+
+<span class="k">let</span><span class="w"> </span>cursor<span class="w"> </span>=<span class="w"> </span><span class="nc">CellPoint</span>{<span class="w"> </span><span class="nc">Column</span>:<span class="w"> </span><span class="m">4</span>,<span class="w"> </span><span class="nc">Row</span>:<span class="w"> </span><span class="m">2</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>size<span class="w"> </span>=<span class="w"> </span><span class="nc">CellSize</span>{<span class="w"> </span><span class="nc">WidthCells</span>:<span class="w"> </span><span class="m">36</span>,<span class="w"> </span><span class="nc">HeightRows</span>:<span class="w"> </span><span class="m">10</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>frame<span class="w"> </span>=<span class="w"> </span><span class="nc">CellRect</span>{<span class="w"> </span><span class="nc">Column</span>:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span><span class="nc">Row</span>:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span><span class="nc">WidthCells</span>:<span class="w"> </span><span class="m">36</span>,<span class="w"> </span><span class="nc">HeightRows</span>:<span class="w"> </span><span class="m">10</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>inside<span class="w"> </span>=<span class="w"> </span>frame.<span class="nf">Contains</span>(cursor)
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect</code></a> permits a signed origin. Its width and height remain non-negative. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellpoint"><code>CellPoint</code></a> is for a non-negative terminal position.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Measure in cells</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="02--flow-before-overlay">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="02--flow-before-overlay">Flow before overlay</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.InFlow</code></a> is the default. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a> lay in-flow children on their axis. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.Centered</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.At(point)</code></a> remove a child from that flow.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Placement</th>
+<th>Layout effect</th>
+<th>Bound</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InFlow</code></td>
+<td>Sibling flex layout owns the position.</td>
+<td>Default.</td>
+</tr>
+<tr>
+<td><code>Centered</code></td>
+<td>Centers outside the flow.</td>
+<td>A fixed child can extend beyond its parent.</td>
+</tr>
+<tr>
+<td><code>At(point)</code></td>
+<td>Uses the exact terminal cell.</td>
+<td><code>point</code> uses non-negative coordinates.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Flow before overlay</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>dialog<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{
+<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">32</span>),
+<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">7</span>),
+<span class="w">  </span><span class="nc">Placement</span>:<span class="w"> </span><span class="nc">Placement</span>.<span class="nc">Centered</span>,
+<span class="w">  </span><span class="nc">ShowBorder</span>:<span class="w"> </span><span class="k">true</span>,
+<span class="w">  </span><span class="nc">Title</span>:<span class="w"> </span><span class="s2">"confirm"</span>,
+}
+</code></pre></figure>
+<p>Use <code>Centered</code> for a bounded overlay. Use <code>At</code> only when the coordinates come from a checked cell position. A centered box does not shrink itself to fit a small terminal.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Flow before overlay</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="03--set-a-style">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="03--set-a-style">Set a style</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style()</code></a> inherits foreground, background, and attributes. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Inherit</code></a> means the same thing for one color channel. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.TerminalDefault</code></a> uses the terminal-configured foreground or background.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Type</th>
+<th>Role</th>
+<th>Exact rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color</code></a></td>
+<td>RGB or inherited color</td>
+<td><code>Rgb(hex)</code> accepts exactly 6 hexadecimal digits, without <code>#</code>.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a></td>
+<td>Foreground, background, attributes</td>
+<td>Explicit colors override inherited colors. Attributes combine.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextattributes"><code>TextAttributes</code></a></td>
+<td>Terminal appearance bits</td>
+<td><code>Bold</code>, <code>Dim</code>, <code>Italic</code>, <code>Underline</code>, <code>Reverse</code>, <code>Strikethrough</code>.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuihorizontalalignment"><code>HorizontalAlignment</code></a></td>
+<td>Label position</td>
+<td><code>Left</code>, <code>Center</code>, or <code>Right</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Rgb(red, green, blue)</code></a> accepts each channel from 0 through 255. No other channel values are valid.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Set a style</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>ink<span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{
+<span class="w">  </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E6EDF3"</span>),
+<span class="w">  </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="m">14</span>,<span class="w"> </span><span class="m">17</span>,<span class="w"> </span><span class="m">23</span>),
+<span class="w">  </span><span class="nc">Attributes</span>:<span class="w"> </span><span class="nc">TextAttributes</span>.<span class="nc">Bold</span>,
+}
+
+<span class="k">let</span><span class="w"> </span>title<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{
+<span class="w">  </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"SharpTUI"</span>,
+<span class="w">  </span><span class="nc">Alignment</span>:<span class="w"> </span><span class="nc">HorizontalAlignment</span>.<span class="nc">Center</span>,
+<span class="w">  </span><span class="nc">Style</span>:<span class="w"> </span>ink,
+}
+</code></pre></figure>
+<p>Focus must remain visible. Give a focusable control a <code>FocusedStyle</code> that differs from its normal <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a>. Do not use color as the only selection cue. A prefix, marker, border, or text change gives the same state to terminals with limited color support.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Set a style</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="04--resolve-semantics">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">5</div>
+      <div>
+        <p class="chapter-label">Chapter 5</p>
+        <h2 id="04--resolve-semantics">Resolve semantics</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitheme"><code>Theme</code></a> separates the role from its state overlay. Its base roles are <code>Body</code>, <code>Accent</code>, <code>Muted</code>, <code>Success</code>, <code>Warning</code>, and <code>Error</code>. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicontrolstate"><code>ControlState</code></a> adds <code>Focused</code>, <code>Selected</code>, or <code>Disabled</code> to <code>None</code>.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitheme"><code>Theme.Resolve(role, state)</code></a> applies overlays in one order: focused, selected, then disabled. Disabled wins when the states conflict.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Resolve semantics</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>theme<span class="w"> </span>=<span class="w"> </span><span class="nf">Theme</span>()
+theme.<span class="nc">Body</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E6EDF3"</span>)<span class="w"> </span>}
+theme.<span class="nc">Focused</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"7AA2F7"</span>),<span class="w"> </span><span class="nc">Attributes</span>:<span class="w"> </span><span class="nc">TextAttributes</span>.<span class="nc">Bold</span><span class="w"> </span>}
+
+<span class="k">let</span><span class="w"> </span>focusedBody<span class="w"> </span>=<span class="w"> </span>theme.<span class="nf">Resolve</span>(<span class="nc">ThemeRole</span>.<span class="nc">Body</span>,<span class="w"> </span><span class="nc">ControlState</span>.<span class="nc">Focused</span>)
+</code></pre></figure>
+<p>Use the semantic role at the application boundary. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a> for the exact local exception. Do not encode error, selection, and focus as unrelated RGB literals in each widget.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Resolve semantics</span>
+  <span>5-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="05--fit-terminal-text">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">6</div>
+      <div>
+        <p class="chapter-label">Chapter 6</p>
+        <h2 id="05--fit-terminal-text">Fit terminal text</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelltext"><code>CellText</code></a> measures display cells, not UTF-16 code units. It keeps grapheme clusters intact.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Method</th>
+<th>Result</th>
+<th>Width rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MeasureWidth(text)</code></td>
+<td>Display-cell width</td>
+<td>Wide clusters occupy their terminal width.</td>
+</tr>
+<tr>
+<td><code>Graphemes(text)</code></td>
+<td>User-perceived clusters</td>
+<td>One list item per grapheme.</td>
+</tr>
+<tr>
+<td><code>Clip(text, widthCells)</code></td>
+<td>Longest fitting prefix</td>
+<td>Width 0 or less returns <code>""</code>.</td>
+</tr>
+<tr>
+<td><code>Wrap(text, widthCells)</code></td>
+<td>Fitting lines</td>
+<td>Width 0 or less returns no lines.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 6-1</span><span>Fit terminal text</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>clipped<span class="w"> </span>=<span class="w"> </span><span class="nc">CellText</span>.<span class="nf">Clip</span>(<span class="s2">"東京 SharpTUI"</span>,<span class="w"> </span><span class="m">8</span>)
+<span class="k">let</span><span class="w"> </span>lines<span class="w"> </span>=<span class="w"> </span><span class="nc">CellText</span>.<span class="nf">Wrap</span>(<span class="s2">"one retained tree"</span>,<span class="w"> </span><span class="m">10</span>)
+</code></pre></figure>
+<p>Do not use <code>string.Length</code> to lay out terminal text. It can split a grapheme or mismeasure a double-width cluster.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Fit terminal text</span>
+  <span>6-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="dont">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">7</div>
+      <div>
+        <p class="chapter-label">Chapter 7</p>
+        <h2 id="dont">Don't</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <ul>
+<li>Don't pass a negative <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelllength"><code>CellLength</code></a>, inset, point, size, width, or height.</li>
+<li>Don't use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.Centered</code></a> as a small-terminal constraint.</li>
+<li>Don't pass <code>#RRGGBB</code> to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Rgb</code></a>. Pass 6 digits only.</li>
+<li>Don't remove the focus distinction when applying a theme.</li>
+<li>Don't clip terminal text by code-unit count.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Don&#x27;t</span>
+  <span>7-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Layout and styling</span>
+  <span>STUI-LAY / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a> Current publication.</dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.md">layout-and-styling.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-LAY / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

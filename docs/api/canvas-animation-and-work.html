@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Retained subcell drawing, indicators, animation recipes, and app-owned background work.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">
+<link rel="stylesheet" href="publication.css">
+<title>Canvas, animation, and work / STUI-CAN</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-CAN<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Canvas, animation, and work</h1>
+      <p class="cover-subtitle">Retained subcell drawing, indicators, animation recipes, and app-owned background work.</p>
+      <table class="system-figure" aria-label="Background work and frame cycle">
+        <tbody><tr>
+          <td class="active">Start<br>work</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Post<br>state</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Sample<br>motion</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Draw<br>canvas</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Background work and frame cycle</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p>Canvas keeps pixels. Animation changes retained state. Workers deliver terminal state through the application loop. The complete member list is in <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">the reference</a>.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#canvas">Canvas</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#indicators">Indicators</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#animation">Animation</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#background-work">Background work</a></td><td>4-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Background work and frame cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>1-1</td><td>Canvas</td><td>1-1</td></tr><tr><td>Listing</td><td>2-1</td><td>Indicators</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Animation</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Background work</td><td>4-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="canvas">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="canvas">Canvas</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvassurface"><code>CanvasSurface</code></a> is retained. Draw into it outside <code>Draw</code>, then display it through <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasview"><code>CanvasView</code></a>. Coordinates are subcells, not terminal cells.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasmode"><code>CanvasMode</code></a></th>
+<th>Packing per terminal cell</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Braille</code></td>
+<td>2 × 4 subcells</td>
+<td>Highest compact line detail.</td>
+</tr>
+<tr>
+<td><code>Quadrant</code></td>
+<td>2 × 2 subcells</td>
+<td>Block-like pixel art.</td>
+</tr>
+<tr>
+<td><code>HalfBlock</code></td>
+<td>1 × 2 subcells</td>
+<td>Vertical detail with simple glyphs.</td>
+</tr>
+<tr>
+<td><code>Cell</code></td>
+<td>1 × 1 subcell</td>
+<td>Ordinary cell drawing.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 1-1</span><span>Canvas</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>canvas<span class="w"> </span>=<span class="w"> </span><span class="nf">CanvasView</span>(<span class="m">40</span>,<span class="w"> </span><span class="m">12</span>,<span class="w"> </span><span class="nc">CanvasMode</span>.<span class="nc">Braille</span>)
+canvas.<span class="nc">ShowBorder</span><span class="w"> </span>=<span class="w"> </span><span class="k">true</span>
+canvas.<span class="nc">Title</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"signal"</span>
+<span class="k">let</span><span class="w"> </span>surface<span class="w"> </span>=<span class="w"> </span>canvas.<span class="nc">Surface</span>
+<span class="k">let</span><span class="w"> </span>ink<span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"2563EB"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>}
+
+surface.<span class="nf">Clear</span>()
+surface.<span class="nf">Rect</span>(<span class="m">1</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span>surface.<span class="nc">SubcellWidth</span><span class="w"> </span>-<span class="w"> </span><span class="m">2</span>,<span class="w"> </span>surface.<span class="nc">SubcellHeight</span><span class="w"> </span>-<span class="w"> </span><span class="m">2</span>,<span class="w"> </span>ink)
+surface.<span class="nf">Line</span>(<span class="m">2</span>,<span class="w"> </span>surface.<span class="nc">SubcellHeight</span><span class="w"> </span>-<span class="w"> </span><span class="m">3</span>,<span class="w"> </span>surface.<span class="nc">SubcellWidth</span><span class="w"> </span>-<span class="w"> </span><span class="m">3</span>,<span class="w"> </span><span class="m">2</span>,<span class="w"> </span>ink)
+</code></pre></figure>
+<p><code>WidthCells</code> and <code>HeightRows</code> are terminal dimensions. <code>SubcellWidth</code> and <code>SubcellHeight</code> are the drawable coordinate bounds. <code>Point</code>, <code>Line</code>, <code>Polyline</code>, <code>Rect</code>, <code>Fill</code>, <code>Circle</code>, and <code>FillCircle</code> clip to the surface. Their style overloads retain style per affected terminal cell.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasview"><code>CanvasView(width, height, mode)</code></a> owns its surface. Call <code>Surface.Resize(width, height)</code> to change dimensions and clear retained content. Construct and assign a separate <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvassurface"><code>CanvasSurface</code></a> only when several views or application components must share it.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Canvas</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="indicators">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="indicators">Indicators</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiprogressbar"><code>ProgressBar</code></a> is one row. <code>Value</code> is clamped to the displayed range from zero through <code>Maximum</code>. A non-positive maximum leaves the bar empty. <code>OverlayText</code> is centered over the fill.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Indicators</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>progress<span class="w"> </span>=<span class="w"> </span><span class="nc">ProgressBar</span>{
+<span class="w">  </span><span class="nc">Value</span>:<span class="w"> </span><span class="m">3.0</span>,
+<span class="w">  </span><span class="nc">Maximum</span>:<span class="w"> </span><span class="m">5.0</span>,
+<span class="w">  </span><span class="nc">OverlayText</span>:<span class="w"> </span><span class="s2">"3/5"</span>,
+<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">20</span>),
+<span class="w">  </span><span class="nc">FillStyle</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"16A34A"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>},
+}
+
+<span class="k">let</span><span class="w"> </span>history<span class="w"> </span>=<span class="w"> </span><span class="nc">Sparkline</span>{
+<span class="w">  </span><span class="nc">Values</span>:<span class="w"> </span>{<span class="w"> </span><span class="m">3.0</span>,<span class="w"> </span><span class="m">7.0</span>,<span class="w"> </span><span class="m">5.0</span>,<span class="w"> </span><span class="m">9.0</span><span class="w"> </span>},
+<span class="w">  </span><span class="nc">ValueRange</span>:<span class="w"> </span><span class="nc">NumericRange</span>.<span class="nf">Fixed</span>(<span class="m">0.0</span>,<span class="w"> </span><span class="m">10.0</span>),
+}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisparkline"><code>Sparkline</code></a> draws one glyph per value, oldest first. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuinumericrange"><code>NumericRange.Auto</code></a> recalculates from the current values. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuinumericrange"><code>NumericRange.Fixed(minimum, maximum)</code></a> requires finite bounds and <code>maximum &gt; minimum</code>.</p>
+<h3 id="indicator-rules">Indicator rules</h3>
+<ul>
+<li>Don't animate a number when the value itself is the fact. Set <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiprogressbar"><code>ProgressBar.Value</code></a>.</li>
+<li>Don't use automatic sparkline range when comparable charts need a fixed scale.</li>
+<li>Don't rely on fill color alone. Use <code>OverlayText</code>, a nearby label, or both.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Indicators</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="animation">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="animation">Animation</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation</code></a> is a reusable recipe. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimationcontroller"><code>AnimationController.Play</code></a> owns one running instance and returns an <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimationhandle"><code>AnimationHandle</code></a>.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Animation</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
+<span class="k">var</span><span class="w"> </span>phase<span class="w"> </span>=<span class="w"> </span><span class="m">0.0</span>
+<span class="k">let</span><span class="w"> </span>pulse<span class="w"> </span>=<span class="w"> </span><span class="nc">Animation</span>.<span class="nf">Tween</span>(
+<span class="w">  </span><span class="nc">TimeSpan</span>.<span class="nf">FromMilliseconds</span>(<span class="m">150.0</span>),
+<span class="w">  </span><span class="k">func</span>(progress<span class="w"> </span><span class="kt">float64</span>)<span class="w"> </span>{
+<span class="w">    </span>phase<span class="w"> </span>=<span class="w"> </span>progress
+<span class="w">  </span>},
+<span class="w">  </span><span class="nc">Easing</span>.<span class="nc">CubicOut</span>)
+
+<span class="k">let</span><span class="w"> </span>handle<span class="w"> </span>=<span class="w"> </span>app.<span class="nc">Animations</span>.<span class="nf">Play</span>(pulse)
+</code></pre></figure>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>API</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Tween</code></a></td>
+<td>Calls its update with eased progress over a duration.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Wait</code></a></td>
+<td>Occupies time without state change.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Sequence</code></a></td>
+<td>Runs child recipes in order.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Parallel</code></a></td>
+<td>Runs child recipes together.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Repeat</code></a></td>
+<td>Repeats forever or for a positive count.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation"><code>Animation.Lerp</code></a></td>
+<td>Interpolates <code>float64</code>, <code>int32</code>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color</code></a>, or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellpoint"><code>CellPoint</code></a> with clamped progress.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimationcontroller"><code>AnimationController.MotionScale</code></a></td>
+<td>Zero completes active animations on the next app turn.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimationhandle"><code>AnimationHandle.State</code></a> is an <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimationstate"><code>AnimationState</code></a> value: <code>Running</code>, <code>Completed</code>, or <code>Cancelled</code>. <code>Finish()</code> applies the terminal sample. <code>Cancel()</code> stops without another sample.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieasing"><code>Easing</code></a> provides linear, sine, cubic, back, bounce, and elastic curves. Match the curve to the state change. <code>Linear</code> suits continuous indicators. <code>CubicOut</code> suits arrival. Back, bounce, and elastic announce themselves. Use them only when that motion is information.</p>
+<h3 id="animation-rules">Animation rules</h3>
+<ul>
+<li>Don't create an animation in <code>Draw</code>. Create the recipe once and mutate retained state from its update.</li>
+<li>Don't use <code>Repeat</code> without retaining or intentionally discarding the handle's lifetime.</li>
+<li>Don't assume cancellation applies a final value. Call <code>Finish</code> when the terminal state is required.</li>
+<li>Don't ignore reduced motion. Set <code>MotionScale</code> to zero when the application policy requires instant state changes.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Animation</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="background-work">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="background-work">Background work</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.StartWorker[T]</code></a> starts one app-owned function on a background thread, then posts completed, failed, or cancelled terminal state to the application loop. UI changes belong in the post-delivery path, never in the worker function.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Background work</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
+<span class="k">let</span><span class="w"> </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">StatusBar</span>{}
+<span class="k">let</span><span class="w"> </span>worker<span class="w"> </span>=<span class="w"> </span>app.<span class="nc">StartWorker</span>[<span class="kt">string</span>]((token<span class="w"> </span><span class="nc">CancellationToken</span>)<span class="w"> </span>-&gt;<span class="w"> </span>{
+<span class="w">  </span>token.<span class="nf">ThrowIfCancellationRequested</span>()
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s2">"report ready"</span>
+})
+
+<span class="k">var</span><span class="w"> </span>report<span class="w"> </span><span class="kt">string</span>
+<span class="k">if</span><span class="w"> </span>worker.<span class="nf">ConsumeResult</span>(<span class="k">out</span><span class="w"> </span>report)<span class="w"> </span>{
+<span class="w">  </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span>report
+}
+</code></pre></figure>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworkerstate"><code>WorkerState</code></a></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Running</code></td>
+<td>Background operation is active.</td>
+</tr>
+<tr>
+<td><code>Completed</code></td>
+<td>One result is ready to consume.</td>
+</tr>
+<tr>
+<td><code>Failed</code></td>
+<td>One exception is ready to consume.</td>
+</tr>
+<tr>
+<td><code>Cancelled</code></td>
+<td>The operation exited after cancellation was requested.</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>ConsumeResult(out value)</code> and <code>ConsumeError()</code> consume each terminal payload once. <code>Cancel()</code> requests cooperative cancellation. State remains <code>Running</code> until the operation exits. The app requests cancellation for its active workers when its loop stops.</p>
+<h3 id="work-rules">Work rules</h3>
+<ul>
+<li>Don't mutate widgets from <code>work</code>. Return data, then update retained UI after delivery.</li>
+<li>Don't discard a running handle when the operation may need explicit cancellation or terminal observation.</li>
+<li>Don't report completion before <code>ConsumeResult</code> succeeds. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworkerstate"><code>WorkerState.Completed</code></a> means a result is ready, not yet applied.</li>
+<li>Don't hide failure. Consume the error and render the fact near the affected work.</li>
+</ul>
+<p>For deterministic UI testing, see the <a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html#03--test-the-same-path">getting-started guide</a> and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver">the <code>TestDriver</code> reference</a>. For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasmode">canvas</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation">animation</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker1">worker</a>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Background work</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Canvas, animation, and work</span>
+  <span>STUI-CAN / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a> Current publication.</dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.md">canvas-animation-and-work.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-CAN / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

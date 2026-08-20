@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Display text, input, document editing, rich lines, Markdown, and source highlighting.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">
+<link rel="stylesheet" href="publication.css">
+<title>Text and rich content / STUI-TXT</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-TXT<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Text and rich content</h1>
+      <p class="cover-subtitle">Display text, input, document editing, rich lines, Markdown, and source highlighting.</p>
+      <table class="system-figure" aria-label="Text control operating cycle">
+        <tbody><tr>
+          <td class="active">Choose<br>surface</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Supply<br>content</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Route<br>editing</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Draw<br>text</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Text control operating cycle</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p>Text has three shapes: display, single-line input, and multi-line editing. Pick the narrowest shape. The complete member list is in <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">the reference</a>.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#choose-the-surface">Choose the surface</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#text-blocks">Text blocks</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#single-line-input">Single-line input</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#text-areas">Text areas</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#rich-lines">Rich lines</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#markdown-and-syntax">Markdown and syntax</a></td><td>6-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Text control operating cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Text blocks</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Single-line input</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Text areas</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Rich lines</td><td>5-1</td></tr><tr><td>Listing</td><td>6-1</td><td>Markdown and syntax</td><td>6-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="choose-the-surface">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="choose-the-surface">Choose the surface</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Need</th>
+<th>Type</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Static wrapped text</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextblock"><code>TextBlock</code></a></td>
+<td>Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.Word</code></a> unless horizontal panning is deliberate.</td>
+</tr>
+<tr>
+<td>One editable value</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextinput"><code>TextInput</code></a></td>
+<td>Keep the label outside the field. <code>Placeholder</code> is empty-state text, not a label.</td>
+</tr>
+<tr>
+<td>Plain-text document</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea</code></a></td>
+<td>Keep selection, caret, search, and undo in the editor.</td>
+</tr>
+<tr>
+<td>Styled generated output</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextblock"><code>RichTextBlock</code></a></td>
+<td>Build <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> values or supply a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a>.</td>
+</tr>
+<tr>
+<td>Markdown document</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdownview"><code>MarkdownView</code></a></td>
+<td>Set <code>Source</code> and a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdowntheme"><code>MarkdownTheme</code></a>. Do not pre-render Markdown as plain text.</td>
+</tr>
+<tr>
+<td>Source preview</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisyntaxhighlighter"><code>SyntaxHighlighter</code></a></td>
+<td>Ask <code>Supports</code> before relying on a language name.</td>
+</tr>
+</tbody>
+</table></div>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Choose the surface</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="text-blocks">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="text-blocks">Text blocks</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>No manual line splitting for ordinary prose. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextblock"><code>TextBlock</code></a> wraps and has an explicit wrapped-line viewport.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Text blocks</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>notice<span class="w"> </span>=<span class="w"> </span><span class="nc">TextBlock</span>{
+<span class="w">  </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"The operation completed. Review the output before you close this panel."</span>,
+<span class="w">  </span><span class="nc">Wrapping</span>:<span class="w"> </span><span class="nc">TextWrapping</span>.<span class="nc">Word</span>,
+<span class="w">  </span><span class="nc">ShowScrollbar</span>:<span class="w"> </span><span class="k">true</span>,
+}
+
+notice.<span class="nf">ScrollToLine</span>(<span class="m">0</span>)
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.None</code></a> preserves explicit lines. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.Word</code></a> wraps at word boundaries within the available width. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextblock"><code>TextBlock.FirstVisibleLine</code></a> reports the top wrapped line. It is read-only.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Text blocks</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="single-line-input">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="single-line-input">Single-line input</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextinput"><code>TextInput</code></a> is indexed by grapheme cluster, not byte or UTF-16 offset. Set <code>CaretGraphemeIndex</code> only with a cluster index. The control clamps it to the current text bounds.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Single-line input</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>filter<span class="w"> </span>=<span class="w"> </span><span class="nc">TextInput</span>{
+<span class="w">  </span><span class="nc">Placeholder</span>:<span class="w"> </span><span class="s2">"filter files"</span>,
+<span class="w">  </span><span class="nc">PlaceholderStyle</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"6B7280"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>},
+<span class="w">  </span><span class="nc">GrowWeight</span>:<span class="w"> </span><span class="m">1</span>,
+}
+
+filter.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"report"</span>
+filter.<span class="nf">MoveCaretToEnd</span>()
+</code></pre></figure>
+<p><code>MoveCaretToStart()</code> and <code>MoveCaretToEnd()</code> move to the two text endpoints. <code>IsPassword</code> changes rendering to bullets. It does not protect the value in <code>Text</code>.</p>
+<h3 id="input-rules">Input rules</h3>
+<ul>
+<li>Don't use <code>Placeholder</code> as the only prompt. A placeholder disappears when a value exists.</li>
+<li>Don't slice <code>Text</code> with the caret index. The index counts grapheme clusters.</li>
+<li>Don't echo active editor input through a separate status label. Let the focused <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextinput"><code>TextInput</code></a> render it.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Single-line input</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="text-areas">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="text-areas">Text areas</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea</code></a> owns a multi-line document, a grapheme-indexed <code>Caret</code>, selection, undo, redo, and search. Set <code>Text</code> to load a document. That resets the caret and clears undo history.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Text areas</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>editor<span class="w"> </span>=<span class="w"> </span><span class="nc">TextArea</span>{
+<span class="w">  </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"one\ntwo\nthree"</span>,
+<span class="w">  </span><span class="nc">Wrapping</span>:<span class="w"> </span><span class="nc">TextWrapping</span>.<span class="nc">Word</span>,
+<span class="w">  </span><span class="nc">SelectedTextStyle</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"FFFFFF"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"2563EB"</span>)<span class="w"> </span>},
+}
+
+<span class="k">if</span><span class="w"> </span>editor.<span class="nf">Find</span>(<span class="s2">"two"</span>,<span class="w"> </span><span class="nc">SearchDirection</span>.<span class="nc">Forward</span>)<span class="w"> </span>{
+<span class="w">  </span>editor.<span class="nf">ReplaceSelection</span>(<span class="s2">"second"</span>)
+}
+</code></pre></figure>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Caret</code></td>
+<td>A <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextposition"><code>TextPosition</code></a> with zero-based <code>LineIndex</code> and <code>GraphemeIndex</code>. Setting it scrolls the caret into view.</td>
+</tr>
+<tr>
+<td><code>Selection</code></td>
+<td>A read-only optional <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextselection"><code>TextSelection</code></a> with <code>Start</code> and <code>End</code> positions.</td>
+</tr>
+<tr>
+<td><code>SelectedText</code></td>
+<td>The selected text, or an empty string.</td>
+</tr>
+<tr>
+<td><code>HasSelection</code></td>
+<td>True only while a selection exists.</td>
+</tr>
+<tr>
+<td><code>IsModified</code></td>
+<td>True after an edit since the last <code>Text</code> assignment.</td>
+</tr>
+<tr>
+<td><code>FirstVisibleRowIndex</code></td>
+<td>The top visible visual row. Negative assignments clamp to zero.</td>
+</tr>
+<tr>
+<td><code>HorizontalCellOffset</code></td>
+<td>The horizontal scroll offset when wrapping is <code>None</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>Find</code> searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Forward</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Backward</code></a> select the direction. <code>ReplaceSelection</code>, <code>Undo</code>, and <code>Redo</code> report whether they changed editor state.</p>
+<h3 id="editor-rules">Editor rules</h3>
+<ul>
+<li>Don't mutate the document after every paint. Mutate it from input or application state.</li>
+<li>Don't assume a selection exists. Check <code>HasSelection</code> or the result of <code>ReplaceSelection</code>.</li>
+<li>Don't use horizontal panning with <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.Word</code></a>. The offset belongs to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.None</code></a>.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Text areas</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="rich-lines">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">5</div>
+      <div>
+        <p class="chapter-label">Chapter 5</p>
+        <h2 id="rich-lines">Rich lines</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> is one immutable text-and-style pair. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextline"><code>RichTextLine</code></a> groups runs for one logical line. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a> supplies indexed rich lines without retaining all output in the block.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Rich lines</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>output<span class="w"> </span>=<span class="w"> </span><span class="nc">RichTextBlock</span>{
+<span class="w">  </span><span class="nc">Runs</span>:<span class="w"> </span>{
+<span class="w">    </span><span class="nf">TextRun</span>(<span class="s2">"PASS "</span>,<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"16A34A"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>}),
+<span class="w">    </span><span class="nf">TextRun</span>(<span class="s2">"42 checks"</span>,<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E5E7EB"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>}),
+<span class="w">  </span>},
+<span class="w">  </span><span class="nc">Wrapping</span>:<span class="w"> </span><span class="nc">TextWrapping</span>.<span class="nc">Word</span>,
+}
+
+<span class="k">let</span><span class="w"> </span>runs<span class="w"> </span>=<span class="w"> </span>output.<span class="nc">Runs</span>
+runs.<span class="nf">Add</span>(<span class="nf">TextRun</span>(<span class="s2">"\nready"</span>,<span class="w"> </span><span class="nc">Style</span>{}))
+output.<span class="nc">Runs</span><span class="w"> </span>=<span class="w"> </span>runs
+output.<span class="nf">ScrollToEnd</span>()
+</code></pre></figure>
+<p>Set <code>Runs</code> for an owned run list. Use <code>AppendRuns</code>, <code>PrependRuns</code>, <code>RemoveHeadRuns</code>, and <code>RemoveTailRuns</code> for retained output. Set <code>LineSource</code> when an indexed source can answer <code>Count</code>, <code>ItemAt</code>, and <code>MaximumLineWidth</code>; it replaces the owned-run presentation. <code>ShowLineNumbers</code>, <code>GutterStyle</code>, and <code>HorizontalCellOffset</code> control the viewport.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Rich lines</span>
+  <span>5-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="markdown-and-syntax">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">6</div>
+      <div>
+        <p class="chapter-label">Chapter 6</p>
+        <h2 id="markdown-and-syntax">Markdown and syntax</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdownview"><code>MarkdownView</code></a> owns parsing and wrapped layout. <code>Source</code> or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitheme"><code>Theme</code></a> invalidates its cache. <code>MaximumLineWidth</code> limits a wrapped line before centering; <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelllength"><code>CellLength.Auto</code></a> uses the available width.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 6-1</span><span>Markdown and syntax</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>theme<span class="w"> </span>=<span class="w"> </span><span class="nc">MarkdownTheme</span>{
+<span class="w">  </span><span class="nc">Body</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E5E7EB"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>},
+<span class="w">  </span><span class="nc">Heading</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"2563EB"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>},
+<span class="w">  </span><span class="nc">Code</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"F59E0B"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>},
+}
+
+<span class="k">let</span><span class="w"> </span>preview<span class="w"> </span>=<span class="w"> </span><span class="nc">MarkdownView</span>{
+<span class="w">  </span><span class="nc">Source</span>:<span class="w"> </span><span class="s2">"# Report\n\n`done`"</span>,
+<span class="w">  </span><span class="nc">Theme</span>:<span class="w"> </span>theme,
+<span class="w">  </span><span class="nc">ShowScrollbar</span>:<span class="w"> </span><span class="k">true</span>,
+}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdowntheme"><code>MarkdownTheme</code></a> separates <code>Body</code>, <code>Heading</code>, <code>Code</code>, <code>Link</code>, <code>Marker</code>, and <code>Quote</code> styles. Parsing adds bold to headings and underline to links. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisyntaxhighlighter"><code>SyntaxHighlighter.CreateLineSource(lines, language, baseStyle)</code></a> creates a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a>. <code>HighlightLines</code> returns <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> values. <code>Supports(language)</code> is the capability check.</p>
+<p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextblock">reference.md</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea">the text-area entry</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextblock">the rich-content entries</a>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Markdown and syntax</span>
+  <span>6-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Text and rich content</span>
+  <span>STUI-TXT / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a> Current publication.</dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.md">text-and-rich-content.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-TXT / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

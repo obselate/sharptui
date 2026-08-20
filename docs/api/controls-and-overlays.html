@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Control state, focus, selection, overlay scope, dialogs, spinners, and splitters.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">
+<link rel="stylesheet" href="publication.css">
+<title>Controls and overlays / STUI-CTL</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-CTL<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Controls and overlays</h1>
+      <p class="cover-subtitle">Control state, focus, selection, overlay scope, dialogs, spinners, and splitters.</p>
+      <table class="system-figure" aria-label="Control and overlay operating cycle">
+        <tbody><tr>
+          <td class="active">Route<br>input</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Change<br>state</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Resolve<br>focus</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Draw<br>overlay</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Control and overlay operating cycle</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p>Controls state the current fact. Overlays own the active input scope. The complete member list is in <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">the reference</a>.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#basic-controls">Basic controls</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#focus-and-state">Focus and state</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#overlays">Overlays</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#spinners-and-splitters">Spinners and splitters</a></td><td>4-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Control and overlay operating cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>1-1</td><td>Basic controls</td><td>1-1</td></tr><tr><td>Listing</td><td>2-1</td><td>Focus and state</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Overlays</td><td>3-1</td></tr><tr><td>Listing</td><td>3-2</td><td>Overlays</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Spinners and splitters</td><td>4-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="basic-controls">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="basic-controls">Basic controls</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Type</th>
+<th>State</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label</code></a></td>
+<td><code>Text</code>, <code>Alignment</code></td>
+<td>One clipped line of non-interactive text.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button</code></a></td>
+<td>pending press</td>
+<td>One explicit action. Read it with <code>ConsumePress</code>.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitoggle"><code>Toggle</code></a></td>
+<td><code>IsChecked</code></td>
+<td>Independent Boolean choice.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiradiogroup"><code>RadioGroup</code></a></td>
+<td><code>SelectedToggle</code></td>
+<td>One choice among toggles.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselect"><code>Select</code></a></td>
+<td><code>SelectedIndex</code>, <code>IsOpen</code></td>
+<td>One choice from a compact option list.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibadge"><code>Badge</code></a></td>
+<td><code>Text</code></td>
+<td>A short inverted label, not a button.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparator"><code>Separator</code></a></td>
+<td><code>Glyph</code>, <code>Orientation</code></td>
+<td>Structural division.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 1-1</span><span>Basic controls</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>save<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Save"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>autosave<span class="w"> </span>=<span class="w"> </span><span class="nc">Toggle</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Autosave"</span>,<span class="w"> </span><span class="nc">IsChecked</span>:<span class="w"> </span><span class="k">true</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>mode<span class="w"> </span>=<span class="w"> </span><span class="nc">Select</span>{<span class="w"> </span><span class="nc">Options</span>:<span class="w"> </span>{<span class="w"> </span><span class="s2">"Draft"</span>,<span class="w"> </span><span class="s2">"Review"</span>,<span class="w"> </span><span class="s2">"Final"</span><span class="w"> </span>},<span class="w"> </span><span class="nc">Placeholder</span>:<span class="w"> </span><span class="s2">"choose mode"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>state<span class="w"> </span>=<span class="w"> </span><span class="nc">Badge</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"MODIFIED"</span><span class="w"> </span>}
+
+<span class="k">if</span><span class="w"> </span>save.<span class="nf">ConsumePress</span>()<span class="w"> </span>{
+<span class="w">  </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>
+}
+
+<span class="k">if</span><span class="w"> </span>mode.<span class="nf">ConsumeSelectionChange</span>()<span class="w"> </span>!=<span class="w"> </span><span class="k">nil</span><span class="w"> </span>{
+<span class="w">  </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>mode.<span class="nc">Options</span>[mode.<span class="nc">SelectedIndex</span>]
+}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.IsPressed</code></a> reports the same pending state without clearing it. <code>ConsumePress</code> is the action boundary. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitoggle"><code>Toggle</code></a> flips on Enter, space, or click. Set <code>CheckedGlyph</code> and <code>UncheckedGlyph</code> only when the default bracket glyphs do not convey state.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiradiogroup"><code>RadioGroup.Add(toggle)</code></a> gives its toggles radio behavior. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselect"><code>Select</code></a> opens a keyboard- and mouse-navigable option list. Set <code>Options</code>, then call <code>Refresh()</code> after direct list mutation. Programmatic <code>SelectedIndex</code> changes do not produce <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>SelectionChange</code></a>.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparatororientation"><code>SeparatorOrientation.Horizontal</code></a> divides rows. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparatororientation"><code>SeparatorOrientation.Vertical</code></a> divides columns. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparator"><code>Separator.Glyph</code></a> is the visible rule. Keep it structural.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Basic controls</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="focus-and-state">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="focus-and-state">Focus and state</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Every interactive control needs a visible focus state. SharpTUI controls inherit <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.FocusedStyle</code></a>; selected collection controls also have selected styles. Do not draw a second status echo for the active field or choice.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Focus and state</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>choice<span class="w"> </span>=<span class="w"> </span><span class="nc">RadioGroup</span>{}
+choice.<span class="nf">Add</span>(<span class="nc">Toggle</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Compact"</span><span class="w"> </span>})
+choice.<span class="nf">Add</span>(<span class="nc">Toggle</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Comfortable"</span><span class="w"> </span>})
+
+<span class="k">let</span><span class="w"> </span>name<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Profile"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>rule<span class="w"> </span>=<span class="w"> </span><span class="nc">Separator</span>{<span class="w"> </span><span class="nc">Orientation</span>:<span class="w"> </span><span class="nc">SeparatorOrientation</span>.<span class="nc">Horizontal</span><span class="w"> </span>}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiradiogroup"><code>RadioGroup.Select(toggle)</code></a> selects a member. <code>ClearSelection()</code> clears the group. <code>SelectedToggle</code> is nil when no toggle is selected.</p>
+<h3 id="control-rules">Control rules</h3>
+<ul>
+<li>Don't use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibadge"><code>Badge</code></a> as a button. It has no activation state.</li>
+<li>Don't use a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label</code></a> where an editable value is required. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextinput"><code>TextInput</code></a> or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea</code></a>.</li>
+<li>Don't treat <code>SelectedIndex</code> as a user event. Consume <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>SelectionChange</code></a>.</li>
+<li>Don't communicate checked, selected, or disabled state by color alone. Keep the glyph, marker, or label truthful.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Focus and state</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="overlays">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="overlays">Overlays</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuioverlay"><code>Overlay</code></a> paints above normal siblings and traps input while open. It remembers the previous focus, moves focus into its content, and restores the prior visible target when it closes.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Overlays</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>confirm<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Delete"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>cancel<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Cancel"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>overlay<span class="w"> </span>=<span class="w"> </span><span class="nc">Overlay</span>{
+<span class="w">  </span><span class="nc">IsVisible</span>:<span class="w"> </span><span class="k">false</span>,
+<span class="w">  </span><span class="nc">DimBackground</span>:<span class="w"> </span><span class="k">true</span>,
+<span class="w">  </span><span class="nc">Content</span>:<span class="w"> </span><span class="nc">Row</span>{<span class="w"> </span><span class="nc">Children</span>:<span class="w"> </span>{<span class="w"> </span>confirm,<span class="w"> </span>cancel<span class="w"> </span>}<span class="w"> </span>},
+<span class="w">  </span><span class="nc">DefaultAction</span>:<span class="w"> </span>confirm,
+<span class="w">  </span><span class="nc">CancelAction</span>:<span class="w"> </span>cancel,
+}
+
+overlay.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">true</span>
+</code></pre></figure>
+<p><code>Content</code> is one <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a>. Assigning it replaces the existing content. <code>IsVisible</code> controls the overlay lifecycle. <code>DefaultAction</code> receives Enter after focused content declines it. <code>CancelAction</code> receives Enter after Escape reaches the scope. Both targets must be visible descendants.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog</code></a> is a centered, dimmed, bordered <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuioverlay"><code>Overlay</code></a> with a wrapped <code>Message</code> and a row of action buttons. Set <code>Actions</code> or mutate its list. <code>ConsumeResult</code> returns and clears the selected <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction</code></a>.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 3-2</span><span>Overlays</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>apply<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Apply"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>dismiss<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Cancel"</span>,<span class="w"> </span><span class="nc">IsCancel</span>:<span class="w"> </span><span class="k">true</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>dialog<span class="w"> </span>=<span class="w"> </span><span class="nc">Dialog</span>{
+<span class="w">  </span><span class="nc">Message</span>:<span class="w"> </span><span class="s2">"Replace the selected text?"</span>,
+<span class="w">  </span><span class="nc">Actions</span>:<span class="w"> </span>{<span class="w"> </span>apply,<span class="w"> </span>dismiss<span class="w"> </span>},
+}
+
+<span class="k">let</span><span class="w"> </span>result<span class="w"> </span>=<span class="w"> </span>dialog.<span class="nf">ConsumeResult</span>()
+<span class="k">if</span><span class="w"> </span>result<span class="w"> </span>!=<span class="w"> </span><span class="k">nil</span><span class="w"> </span>&amp;&amp;<span class="w"> </span>result.<span class="nc">IsCancel</span><span class="w"> </span>{
+<span class="w">  </span>dialog.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">false</span>
+}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction.IsCancel</code></a> names the Escape action. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.Result</code></a> does not clear the pending result. Use <code>ConsumeResult</code> when a result must be handled once.</p>
+<h3 id="overlay-rules">Overlay rules</h3>
+<ul>
+<li>Don't leave an overlay visible when the decision ends. Set <code>IsVisible</code> false.</li>
+<li>Don't route plain-key commands around an open overlay. The overlay is the input scope.</li>
+<li>Don't use an overlay for an inline edit. Keep the edit in its field.</li>
+<li>Don't make a destructive dialog ambiguous. Give it a cancel action and an explicit action label.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Overlays</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="spinners-and-splitters">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="spinners-and-splitters">Spinners and splitters</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuispinner"><code>Spinner</code></a> advances only when <code>Advance()</code> is called. Its <code>Frames</code> list and <code>Text</code> are caller state. <code>FrameIndex</code> is derived and read-only.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Spinners and splitters</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>spinner<span class="w"> </span>=<span class="w"> </span><span class="nc">Spinner</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"loading"</span><span class="w"> </span>}
+spinner.<span class="nf">Advance</span>()
+
+<span class="k">let</span><span class="w"> </span>left<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{<span class="w"> </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">24</span>)<span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>splitter<span class="w"> </span>=<span class="w"> </span><span class="nf">Splitter</span>(left,<span class="w"> </span><span class="nc">SplitterAxis</span>.<span class="nc">Columns</span>)
+splitter.<span class="nc">MinimumCells</span><span class="w"> </span>=<span class="w"> </span><span class="m">12</span>
+splitter.<span class="nc">MaximumCells</span><span class="w"> </span>=<span class="w"> </span><span class="m">48</span>
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisplitteraxis"><code>Splitter(target, SplitterAxis.Columns)</code></a> is a one-cell vertical drag divider that adjusts the target width. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisplitteraxis"><code>SplitterAxis.Rows</code></a> is a horizontal divider that adjusts target height. <code>ResizeBy(delta)</code> applies the same clamped resize and reports whether a size changed.</p>
+<p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel">controls</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuioverlay">overlay and dialog</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisplitter">splitter</a>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Spinners and splitters</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Controls and overlays</span>
+  <span>STUI-CTL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a> Current publication.</dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.md">controls-and-overlays.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-CTL / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

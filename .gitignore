@@ -1,32 +1,9 @@
 bin/
 obj/
-mine/
-/.claude/
+__pycache__/
 
-# internal working documents, not part of the public repo
-docs/plans/
+# internal working data, not part of the public repo
 docs/superpowers/
-/WIDGET-AUDIT.md
-/ROARTUI-CONSUMER-AUDIT.md
-/STRUCTURE.md
-/perf-report.md
-/API-CHANGES-REVIEW.md
-/API-SURFACE-CONSOLIDATION-REPORT.md
-/skiff-rendering-capability-matrix.html
-/skiff-tui-library-matrix.html
-/tools/*
-!/tools/install-tuitool
-!/tools/SharpTui.ApiSurface/
-!/tools/SharpTui.ApiSurface/Program.cs
-!/tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
-/api/*
-!/api/PublicApi.allowlist.txt
-!/api/PublicApi.documentation.xml
-!/api/PublicApi.snapshot.txt
-!/api/PublicApi.symbols.sha256
-!/api/README.md
 /benchmarks/
-/agent-testing/
 /archive/
-/examples/sharptui-examples.app/
-/examples/sharptui-examples-macos-arm64.tar.gz
+/agent-testing/

@@ -1,4 +1,4 @@
-<Project Sdk="Gsharp.NET.Sdk/0.3.633">
+<Project Sdk="Gsharp.NET.Sdk/0.4.59">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <Compile Remove="src/**/*.gs" />
-    <Compile Remove="mine/**/*.gs" />
     <Compile Remove="tools/**/*.gs" />
     <Compile Remove="agent-testing/**/*.gs" />
     <Compile Remove="archive/**/*.gs" />

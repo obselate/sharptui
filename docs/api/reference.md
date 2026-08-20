@@ -188,8 +188,8 @@ G# kind: `enum`.
 
 ### Values
 
-- `Running` — The animation remains active.
-- `Completed` — The final animation state was applied.
+- `Running` — The animation has not yet completed or been cancelled.
+- `Completed` — The terminal animation state has been applied.
 - `Cancelled` — The animation stopped without another sample.
 
 ## SharpTui.App
@@ -258,7 +258,7 @@ G# kind: `class`.
 
 ## SharpTui.BindingPhase
 
-Controls whether a binding runs before or after the application view handles an event.
+Controls whether a binding runs before or after focused widgets.
 
 G# kind: `enum`.
 
@@ -340,10 +340,10 @@ G# kind: `enum`.
 
 ### Values
 
-- `Braille` — Packs a two-by-four Braille grid into each terminal cell.
-- `Quadrant` — Packs a two-by-two quadrant grid into each terminal cell.
-- `HalfBlock` — Packs two vertical half blocks into each terminal cell.
-- `Cell` — Uses one drawable point per terminal cell.
+- `Braille` — Packs eight dots into each terminal cell.
+- `Quadrant` — Packs four quadrants into each terminal cell.
+- `HalfBlock` — Packs the upper and lower halves of each terminal cell.
+- `Cell` — Uses one subcell per terminal cell.
 
 ## SharpTui.CanvasSurface
 
@@ -672,16 +672,16 @@ G# kind: `class`.
 
 ## SharpTui.ControlState
 
-Contains visual state flags applied while resolving a theme role.
+Visual state overlays applied while resolving a theme role.
 
 G# kind: `enum`.
 
 ### Values
 
-- `None` — Applies no visual state overlay.
-- `Focused` — Applies the focused state.
-- `Selected` — Applies the selected state.
-- `Disabled` — Applies the disabled state.
+- `None` — No visual state overlay.
+- `Focused` — The control currently has focus.
+- `Selected` — The control is selected.
+- `Disabled` — The control is disabled.
 
 ## SharpTui.Dialog
 
@@ -729,25 +729,25 @@ G# kind: `enum`.
 ### Values
 
 - `Linear` — Leaves progress unchanged.
-- `SineIn` — Starts with sinusoidal acceleration.
-- `SineOut` — Ends with sinusoidal deceleration.
+- `SineIn` — Starts with a sinusoidal acceleration.
+- `SineOut` — Ends with a sinusoidal deceleration.
 - `SineInOut` — Uses sinusoidal acceleration and deceleration.
 - `CubicIn` — Starts with cubic acceleration.
 - `CubicOut` — Ends with cubic deceleration.
 - `CubicInOut` — Uses cubic acceleration and deceleration.
-- `BackIn` — Overshoots before accelerating from the start.
-- `BackOut` — Overshoots after decelerating into the end.
-- `BackInOut` — Overshoots at both ends.
-- `BounceIn` — Bounces into the start.
-- `BounceOut` — Bounces into the end.
-- `BounceInOut` — Bounces at both ends.
-- `ElasticIn` — Springs into the start.
-- `ElasticOut` — Springs into the end.
-- `ElasticInOut` — Springs at both ends.
+- `BackIn` — Overshoots before accelerating from the starting value.
+- `BackOut` — Overshoots after decelerating into the ending value.
+- `BackInOut` — Overshoots at both ends of the curve.
+- `BounceIn` — Bounces into the starting value.
+- `BounceOut` — Bounces into the ending value.
+- `BounceInOut` — Bounces at both ends of the curve.
+- `ElasticIn` — Springs into the starting value.
+- `ElasticOut` — Springs into the ending value.
+- `ElasticInOut` — Springs at both ends of the curve.
 
 ## SharpTui.EventResult
 
-Controls how an event affects application routing and lifetime.
+Controls how an event affects app routing and lifetime.
 
 G# kind: `enum`.
 
@@ -759,7 +759,7 @@ G# kind: `enum`.
 
 ## SharpTui.HorizontalAlignment
 
-Controls horizontal placement of content within its box.
+Horizontal placement of content within its box.
 
 G# kind: `enum`.
 
@@ -771,7 +771,7 @@ G# kind: `enum`.
 
 ## SharpTui.Key
 
-Identifies a logical key independently of the active keyboard layout.
+Logical key identity, independent of layout. Character covers printable text, whose grapheme is carried in the event's Text field.
 
 G# kind: `enum`.
 
@@ -833,7 +833,7 @@ G# kind: `struct`.
 
 ## SharpTui.KeyModifiers
 
-Contains combinable modifier and lock-state flags reported with input events.
+Modifier keys held during a key or mouse event, combined as bit flags. CapsLock and NumLock report lock state rather than a held key, and are stripped before shortcut matching.
 
 G# kind: `enum`.
 
@@ -851,7 +851,7 @@ G# kind: `enum`.
 
 ## SharpTui.KeyPhase
 
-Identifies the press, repeat, or release phase of a key event.
+Stage of a key press, reported by the Kitty keyboard protocol. Repeat is an auto-repeat of a held key and Release fires only when the terminal reports key-up events. Gestures only match Press.
 
 G# kind: `enum`.
 
@@ -1018,7 +1018,7 @@ Inherits `Box`; see that type for inherited members.
 
 ## SharpTui.MouseButton
 
-Identifies the physical mouse button associated with a mouse event.
+Which physical mouse button a Mouse event reports, when known.
 
 G# kind: `enum`.
 
@@ -1031,7 +1031,7 @@ G# kind: `enum`.
 
 ## SharpTui.MouseKind
 
-Identifies the action carried by a mouse event.
+The mouse action a Mouse event reports. None marks an event with no mouse action, such as a key or tick.
 
 G# kind: `enum`.
 
@@ -1046,7 +1046,7 @@ G# kind: `enum`.
 
 ## SharpTui.MouseTracking
 
-Controls which terminal mouse events an application requests.
+Terminal mouse reporting selected when an App enters the terminal.
 
 G# kind: `enum`.
 
@@ -1301,7 +1301,7 @@ G# kind: `class`.
 
 ## SharpTui.SearchDirection
 
-Controls the direction in which TextArea.Find searches from the caret.
+The direction TextArea.Find searches from the caret.
 
 G# kind: `enum`.
 
@@ -1370,7 +1370,7 @@ Inherits `Box`; see that type for inherited members.
 
 ## SharpTui.SeparatorOrientation
 
-Controls whether a Separator draws across a row or down a column.
+Whether a Separator draws across a row or down a column.
 
 G# kind: `enum`.
 
@@ -1442,7 +1442,7 @@ Inherits `Box`; see that type for inherited members.
 
 ## SharpTui.SplitterAxis
 
-Identifies the target dimension resized by a Splitter.
+Which dimension a Splitter resizes: Columns adjusts width by horizontal drag, Rows adjusts height by vertical drag.
 
 G# kind: `enum`.
 
@@ -1710,7 +1710,7 @@ Inherits `Box`; see that type for inherited members.
 
 ## SharpTui.TextAttributes
 
-Contains combinable terminal text-appearance flags used by Style.
+Text attribute bits that can be combined on a Style.
 
 G# kind: `enum`.
 
@@ -1813,7 +1813,7 @@ G# kind: `struct`.
 
 ## SharpTui.TextWrapping
 
-Controls whether text remains unbroken or wraps at word boundaries.
+How wrapped content breaks lines: None leaves lines unbroken except at explicit newlines, Word wraps at word boundaries within the available width.
 
 G# kind: `enum`.
 
@@ -1853,18 +1853,18 @@ G# kind: `class`.
 
 ## SharpTui.ThemeRole
 
-Identifies a semantic style role shared by controls and application surfaces.
+Semantic style roles shared by controls and application surfaces.
 
 G# kind: `enum`.
 
 ### Values
 
-- `Body` — Uses the normal content style.
-- `Accent` — Uses the emphasized application style.
-- `Muted` — Uses the secondary content style.
-- `Success` — Uses the successful outcome style.
-- `Warning` — Uses the cautionary outcome style.
-- `Error` — Uses the failed outcome style.
+- `Body` — The normal content style.
+- `Accent` — The emphasized application style.
+- `Muted` — The secondary content style.
+- `Success` — The successful outcome style.
+- `Warning` — The cautionary outcome style.
+- `Error` — The failed outcome style.
 
 ## SharpTui.Toggle
 
@@ -1984,7 +1984,7 @@ G# kind: `struct`.
 
 ## SharpTui.UiEventKind
 
-Identifies which input variant a UiEvent carries.
+Which variant of input an UiEvent carries; determines which of its other fields are meaningful.
 
 G# kind: `enum`.
 
@@ -1999,13 +1999,13 @@ G# kind: `enum`.
 
 ## SharpTui.View
 
-Defines a drawable application surface with typed event handling.
+A drawable application surface.
 
 G# kind: `interface`.
 
 ### Methods
 
-- `func Draw(screen Screen)` — Paints one frame after a batch of events.
+- `func Draw(screen Screen)` — Paints one frame. Called after every batch of events.
   - `screen`: The screen to paint into.
 - `func Handle(ev UiEvent) EventResult` — Handles one typed user-interface event.
   - `ev`: The event to handle.

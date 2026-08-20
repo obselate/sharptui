@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Authority, regeneration, publication register, and project boundaries for the SharpTUI public API.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">
+<link rel="stylesheet" href="publication.css">
+<title>API documentation / STUI-00</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-00<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Publication index</p>
+      <h1 id="manual-title">API documentation</h1>
+      <p class="cover-subtitle">Authority, regeneration, publication register, and project boundaries for the SharpTUI public API.</p>
+      <table class="system-figure" aria-label="Documentation lookup route">
+        <tbody><tr>
+          <td class="active">Choose<br>task</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Open<br>guide</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Verify<br>member</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Build<br>app</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Documentation lookup route</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p class="front-note">Authority, regeneration, publication register, and project boundaries for the SharpTUI public API.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#01-authority">Authority</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#02-regenerate">Regenerate</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#03-guides">Guides</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#04-boundaries">Boundaries</a></td><td>4-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Documentation lookup route</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Regenerate</td><td>2-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="01-authority">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="01-authority">Authority</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Do not edit <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>. The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 91 public types and 561 declared members.</p>
+<p><code>api/</code> locks the contract. <code>PublicApi.allowlist.txt</code> locks exported type names. <code>PublicApi.snapshot.txt</code> locks type kinds. <code>PublicApi.symbols.sha256</code> locks exported signatures. <code>PublicApi.documentation.xml</code> fills the remaining compiler XML gaps for enum values.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Authority</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="02-regenerate">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="02-regenerate">Regenerate</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Build the framework first. The inspector rejects a stale assembly. HTML rendering requires Python 3 with <code>beautifulsoup4</code>, <code>markdown-it-py</code>, and <code>Pygments</code>.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Regenerate</span></figcaption><pre class="language-sh"><code>dotnet<span class="w"> </span>build<span class="w"> </span>SharpTui.Framework.gsproj<span class="w"> </span>-c<span class="w"> </span>Release
+dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj<span class="w"> </span>-c<span class="w"> </span>Release
+dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj<span class="w"> </span>-c<span class="w"> </span>Release<span class="w"> </span>--no-build<span class="w"> </span>--<span class="w"> </span>--print-docs<span class="w"> </span>&gt;<span class="w"> </span>docs/api/reference.md
+python<span class="w"> </span>tools/render_api_html.py
+</code></pre></figure>
+<p>Do not hand-edit <code>reference.md</code> or the HTML editions produced by <code>render_api_html.py</code>. Change the exported API or XML documentation, rebuild, validate, then regenerate.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Regenerate</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="03-guides">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="03-guides">Guides</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>The reference states signatures. These guides state use, bounds, and interaction rules.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Area</th>
+<th>Guide</th>
+<th>Public API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Application tree</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">Getting started</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">HTML</a>)</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen</code></a></td>
+</tr>
+<tr>
+<td>Layout and appearance</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">Layout and styling</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">HTML</a>)</td>
+<td>Cell geometry, placement, color, style, theme</td>
+</tr>
+<tr>
+<td>Events and shortcuts</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">Input and commands</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">HTML</a>)</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent</code></a>, keys, mouse, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a></td>
+</tr>
+<tr>
+<td>Text</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">Text and rich content</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">HTML</a>)</td>
+<td>Text controls, Markdown, rich text, syntax</td>
+</tr>
+<tr>
+<td>Data views</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">Collections</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">HTML</a>)</td>
+<td>List, table, tree, tabs, status bar</td>
+</tr>
+<tr>
+<td>Interactive controls</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">Controls and overlays</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">HTML</a>)</td>
+<td>Inputs, selection, dialogs, overlays, splitters</td>
+</tr>
+<tr>
+<td>Drawing and runtime work</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">Canvas, animation, and work</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">HTML</a>)</td>
+<td>Canvas, indicators, animation, workers</td>
+</tr>
+<tr>
+<td>Complete contract</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">Reference</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">HTML</a>)</td>
+<td>All exported types and members</td>
+</tr>
+</tbody>
+</table></div>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Guides</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="04-boundaries">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="04-boundaries">Boundaries</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><code>SharpTui.Framework.gsproj</code> is the reusable library. <code>SharpTui.Examples.gsproj</code> builds the example executable against that library. <code>SharpTui.gsproj</code> is the monolithic verification executable. It includes framework sources, checks, and allocation benchmarks. It excludes examples.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Boundaries</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a> Current publication.</dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.md">README.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-00 / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

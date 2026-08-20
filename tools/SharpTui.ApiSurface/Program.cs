@@ -381,7 +381,9 @@ static XElement? FindMethodDoc(IReadOnlyDictionary<string, XElement> documentati
         return entry;
 
     var owner = XmlOwnerName(method.DeclaringType!);
-    var name = method is ConstructorInfo ? "#ctor" : method.Name;
+    var name = method is ConstructorInfo
+        ? "#ctor"
+        : method.Name + (method.IsGenericMethod ? $"``{method.GetGenericArguments().Length}" : "");
     var prefix = $"M:{owner}.{name}";
     var expected = method.GetParameters().Select(parameter => SimpleXmlTypeName(XmlTypeName(parameter.ParameterType))).ToArray();
     var candidates = documentation
@@ -521,7 +523,9 @@ static string GSharpTypeName(Type type)
 static string XmlDocId(MethodBase method)
 {
     var owner = XmlOwnerName(method.DeclaringType!);
-    var name = method is ConstructorInfo ? "#ctor" : method.Name;
+    var name = method is ConstructorInfo
+        ? "#ctor"
+        : method.Name + (method.IsGenericMethod ? $"``{method.GetGenericArguments().Length}" : "");
     var parameters = method.GetParameters();
     var suffix = parameters.Length == 0 ? "" : $"({string.Join(",", parameters.Select(parameter => XmlTypeName(parameter.ParameterType)))})";
     return $"M:{owner}.{name}{suffix}";

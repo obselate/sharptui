@@ -53,7 +53,7 @@ class Banner : View {
           Style{ Foreground: shade(float64(i), float64(row)), Background: Ink.Back })
       }
     }
-    let sub = "an immediate-mode TUI for G#"
+    let sub = "a retained-tree TUI for G#"
     var sa = 1.0
     if mode == 0 { sa = Math.Min(Math.Max((t - 1.1) * 1.4, 0.0), 1.0) }
     for i in 0 ... sub.Length {

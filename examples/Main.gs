@@ -137,7 +137,7 @@ class Pick : View {
       Label{ Text: logo[0], Alignment: HorizontalAlignment.Center, Style: ink },
       Label{ Text: logo[1], Alignment: HorizontalAlignment.Center, Style: ink },
       Label{ Text: logo[2], Alignment: HorizontalAlignment.Center, Style: ink },
-      Label{ Text: "an immediate-mode TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim },
+      Label{ Text: "a retained-tree TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim },
       Label{ Text: "", Height: CellLength.Cells(1) },
       Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
         Style: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
@@ -198,7 +198,7 @@ class Pick : View {
           Style{ Foreground: Color.Rgb(glow(14.0, 71.0, lit, hot), glow(17.0, 138.0, lit, hot), glow(23.0, 209.0, lit, hot)), Background: Ink.Back })
       }
     }
-    let sub = "an immediate-mode TUI for G#"
+    let sub = "a retained-tree TUI for G#"
     let sa = Math.Min(Math.Max((t - 1.1) * 1.4, 0.0), 1.0)
     for i in 0 ... sub.Length {
       screen.WriteCell((w - sub.Length) / 2 + i, 4, sub[i].ToString(),

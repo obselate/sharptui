@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Typed input, gestures, command bindings, routing order, mouse reporting, and focus.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">
+<link rel="stylesheet" href="publication.css">
+<title>Input and commands / STUI-INP</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-INP<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Input and commands</h1>
+      <p class="cover-subtitle">Typed input, gestures, command bindings, routing order, mouse reporting, and focus.</p>
+      <table class="system-figure" aria-label="Input routing cycle">
+        <tbody><tr>
+          <td class="active">Read<br>event</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Match<br>gesture</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Route<br>phases</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Handle<br>result</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Input routing cycle</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p class="front-note">Typed input, gestures, command bindings, routing order, mouse reporting, and focus.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--read-an-event">Read an event</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--match-a-gesture">Match a gesture</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--bind-a-command">Bind a command</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--keep-routing-ordered">Keep routing ordered</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--keep-focus-visible">Keep focus visible</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#dont">Don&#x27;t</a></td><td>7-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Input routing cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Read an event</td><td>2-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="principle">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="principle">Principle</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Input is typed. A key, text payload, paste, mouse action, and tick are different <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuieventkind"><code>UiEventKind</code></a> values. Inspect the kind before reading the fields that belong to it.</p>
+<p>Do not steal editing keys in a before-widget binding. The focused widget must receive its input first unless the command is global by definition.</p>
+<p>For every member, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Principle</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="01--read-an-event">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="01--read-an-event">Read an event</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Type</th>
+<th>Values</th>
+<th>Fact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuieventkind"><code>UiEventKind</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextinput"><code>TextInput</code></a>, <code>Paste</code>, <code>Mouse</code>, <code>Tick</code>, <code>Unknown</code></td>
+<td>Selects the meaningful event fields.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key</code></a></td>
+<td>Named keys plus <code>Character</code></td>
+<td>Printable text is in <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent.Text</code></a>.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeyphase"><code>KeyPhase</code></a></td>
+<td><code>Press</code>, <code>Repeat</code>, <code>Release</code></td>
+<td>Gestures match <code>Press</code> only.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymodifiers"><code>KeyModifiers</code></a></td>
+<td>Shift, Alt, Ctrl, Super, Hyper, Meta, lock flags</td>
+<td>Caps Lock and Num Lock do not affect shortcut matching.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimousekind"><code>MouseKind</code></a></td>
+<td>Press, Release, Move, ScrollUp, ScrollDown, None</td>
+<td>Describes the mouse action.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimousebutton"><code>MouseButton</code></a></td>
+<td>None, Left, Middle, Right</td>
+<td>Identifies the physical button.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Read an event</span></figcaption><pre class="language-gs"><code><span class="k">package</span><span class="w"> </span><span class="nc">Demo</span>
+
+<span class="k">import</span><span class="w"> </span><span class="nc">SharpTui</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">InputView</span><span class="w"> </span>:<span class="w"> </span><span class="nc">View</span><span class="w"> </span>{
+<span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>root<span class="w"> </span><span class="nc">Box</span>
+<span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>status<span class="w"> </span><span class="nc">Label</span>
+<span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>save<span class="w"> </span><span class="nc">Command</span>
+
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">init</span>()<span class="w"> </span>{
+<span class="w">    </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"ready"</span><span class="w"> </span>}
+<span class="w">    </span>root<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{<span class="w"> </span><span class="nc">Padding</span>:<span class="w"> </span><span class="nc">CellInsets</span>.<span class="nf">All</span>(<span class="m">1</span>),<span class="w"> </span><span class="nc">Children</span>:<span class="w"> </span>{<span class="w"> </span>status<span class="w"> </span>}<span class="w"> </span>}
+<span class="w">    </span>save<span class="w"> </span>=<span class="w"> </span><span class="nf">Command</span>(<span class="s2">"save"</span>,<span class="w"> </span><span class="s2">"Save"</span>,<span class="w"> </span><span class="nc">KeyGesture</span>.<span class="nf">Ctrl</span>(<span class="s2">"s"</span>))
+<span class="w">  </span>}
+
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Configure</span>(app<span class="w"> </span><span class="nc">App</span>)<span class="w"> </span>{
+<span class="w">    </span>app.<span class="nc">Keys</span>.<span class="nf">Add</span>(save,<span class="w"> </span><span class="nc">BindingPhase</span>.<span class="nc">AfterWidgets</span>)
+<span class="w">  </span>}
+
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Draw</span>(screen<span class="w"> </span><span class="nc">Screen</span>)<span class="w"> </span>{
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>save.<span class="nf">Consume</span>()<span class="w"> </span>{<span class="w"> </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"saved"</span><span class="w"> </span>}
+<span class="w">    </span>screen.<span class="nf">Clear</span>()
+<span class="w">    </span>root.<span class="nf">Draw</span>(screen)
+<span class="w">  </span>}
+
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Handle</span>(ev<span class="w"> </span><span class="nc">UiEvent</span>)<span class="w"> </span><span class="nc">EventResult</span><span class="w"> </span>{
+<span class="w">    </span><span class="k">let</span><span class="w"> </span>routed<span class="w"> </span>=<span class="w"> </span>root.<span class="nf">Handle</span>(ev)
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>routed<span class="w"> </span>!=<span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Continue</span><span class="w"> </span>{<span class="w"> </span><span class="k">return</span><span class="w"> </span>routed<span class="w"> </span>}
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>ev.<span class="nc">Kind</span><span class="w"> </span>==<span class="w"> </span><span class="nc">UiEventKind</span>.<span class="nc">Paste</span><span class="w"> </span>{
+<span class="w">      </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>ev.<span class="nc">Text</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Handled</span>
+<span class="w">    </span>}
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>ev.<span class="nc">Kind</span><span class="w"> </span>==<span class="w"> </span><span class="nc">UiEventKind</span>.<span class="nc">Mouse</span><span class="w"> </span>&amp;&amp;<span class="w"> </span>ev.<span class="nc">Mouse</span><span class="w"> </span>==<span class="w"> </span><span class="nc">MouseKind</span>.<span class="nc">Press</span>
+<span class="w">        </span>&amp;&amp;<span class="w"> </span>ev.<span class="nc">Button</span><span class="w"> </span>==<span class="w"> </span><span class="nc">MouseButton</span>.<span class="nc">Left</span><span class="w"> </span>{
+<span class="w">      </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>ev.<span class="nc">Position</span>.<span class="nc">Column</span>.<span class="nf">ToString</span>()<span class="w"> </span>+<span class="w"> </span><span class="s2">","</span><span class="w"> </span>+<span class="w"> </span>ev.<span class="nc">Position</span>.<span class="nc">Row</span>.<span class="nf">ToString</span>()
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Handled</span>
+<span class="w">    </span>}
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nc">KeyGesture</span>.<span class="nf">Ctrl</span>(<span class="s2">"q"</span>).<span class="nf">Matches</span>(ev)<span class="w"> </span>{<span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Exit</span><span class="w"> </span>}
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Continue</span>
+<span class="w">  </span>}
+}
+
+<span class="k">func</span><span class="w"> </span><span class="nf">Main</span>(args<span class="w"> </span>[]<span class="kt">string</span>)<span class="w"> </span><span class="kt">int32</span><span class="w"> </span>{
+<span class="w">  </span><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
+<span class="w">  </span><span class="k">let</span><span class="w"> </span>view<span class="w"> </span>=<span class="w"> </span><span class="nf">InputView</span>()
+<span class="w">  </span>view.<span class="nf">Configure</span>(app)
+<span class="w">  </span>app.<span class="nf">Run</span>(view)
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+}
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent.Position</code></a> is a terminal <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellpoint"><code>CellPoint</code></a>. Key-code fields are protocol values. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key</code></a> and <code>Text</code> for normal application behavior.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Read an event</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="02--match-a-gesture">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="02--match-a-gesture">Match a gesture</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture.Character(text)</code></a> accepts exactly 1 grapheme. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture.Ctrl(text)</code></a> adds Ctrl. Both match character text case-insensitively.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Gesture field</th>
+<th>Matching rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key</code></a></td>
+<td>Must equal the event key.</td>
+</tr>
+<tr>
+<td><code>Text</code></td>
+<td>Used only for <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key.Character</code></a>.</td>
+</tr>
+<tr>
+<td><code>Modifiers</code></td>
+<td>Lock flags are ignored.</td>
+</tr>
+<tr>
+<td><code>Phase</code></td>
+<td>Must be <code>Press</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture.Ctrl("s").Matches(ev)</code></a> tests the same gesture used by the command above.</p>
+<p>Do not compare a typed character through an assumed keyboard layout. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key.Character</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent.Text</code></a> carry the decoded input.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Match a gesture</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="03--bind-a-command">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="03--bind-a-command">Bind a command</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a> carries a stable <code>Id</code>, a display <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label</code></a>, a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture</code></a>, enabled state, and one consumable pending activation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> records a gesture and a routing phase. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a> owns bindings in registration order.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>API</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command(id, label, gesture)</code></a></td>
+<td>Creates an enabled command.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command.Consume()</code></a></td>
+<td>Reports and clears one command activation.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(command, phase)</code></a></td>
+<td>Activates the command when its gesture matches.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(gesture, phase)</code></a></td>
+<td>Returns a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> whose <code>Consume()</code> reports one match.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Offer(ev, phase)</code></a></td>
+<td>Offers one routing phase directly.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The example above consumes <code>save</code> in <code>Draw</code>. <code>AfterWidgets</code> activates it after <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View.Handle</code></a> returns, then the event loop draws the updated retained state.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command.IsEnabled = false</code></a> rejects activation. A disabled command does not consume the event.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Bind a command</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="04--keep-routing-ordered">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">5</div>
+      <div>
+        <p class="chapter-label">Chapter 5</p>
+        <h2 id="04--keep-routing-ordered">Keep routing ordered</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a> routes every event in this order:</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Stage</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a> offers <code>BeforeWidgets</code>. A match returns <code>Handled</code>.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View.Handle(ev)</code></a> runs. A non-<code>Continue</code> result stops routing.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a> offers <code>AfterWidgets</code>. A match returns <code>Handled</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>QuitGestures</code> run. A match returns <code>Exit</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a> wraps the tree as a view. Its view handler calls <code>root.Handle(ev)</code>. A custom view must route its retained root before its fallback shortcuts.</p>
+<p>Use <code>BeforeWidgets</code> only for a command that must preempt all controls. Use <code>AfterWidgets</code> for application shortcuts that must not interrupt text entry.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Keep routing ordered</span>
+  <span>5-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="05--keep-focus-visible">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">6</div>
+      <div>
+        <p class="chapter-label">Chapter 6</p>
+        <h2 id="05--keep-focus-visible">Keep focus visible</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.Handle(ev)</code></a> routes keyboard and text input to the focused descendant. If there is no focused control, input routing selects the first focusable box. Tab moves forward. BackTab moves backward. Both wrap in tree order.</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>API</th>
+<th>Focus effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Focus(target)</code></td>
+<td>Clears the tree's other focus, then focuses <code>target</code>.</td>
+</tr>
+<tr>
+<td><code>FocusNext()</code></td>
+<td>Moves to the next focusable visible box.</td>
+</tr>
+<tr>
+<td><code>FocusPrevious()</code></td>
+<td>Moves to the previous focusable visible box.</td>
+</tr>
+<tr>
+<td><code>FocusedElement</code></td>
+<td>Returns the visible focused descendant, or nil.</td>
+</tr>
+<tr>
+<td><code>FocusedStyle</code></td>
+<td>Applies only when that exact box has focus.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Mouse reporting is opt-in through <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimousetracking"><code>App.MouseTracking</code></a>: <code>Disabled</code>, <code>Click</code>, <code>Drag</code>, or <code>AllMotion</code>. New apps use <code>Drag</code>. A press on a focusable hit target focuses it before routing the mouse event.</p>
+<p>Focus is an accessibility state. Give every focusable control a distinct <code>FocusedStyle</code>. Do not use color as its only signal. Do not hide the state behind hover or a mouse-only interaction.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Keep focus visible</span>
+  <span>6-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="dont">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">7</div>
+      <div>
+        <p class="chapter-label">Chapter 7</p>
+        <h2 id="dont">Don't</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <ul>
+<li>Don't read <code>Mouse</code>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button</code></a>, or <code>Position</code> from a non-mouse event.</li>
+<li>Don't treat <code>Repeat</code> or <code>Release</code> as a shortcut gesture match.</li>
+<li>Don't bind ordinary editing keys in <code>BeforeWidgets</code>.</li>
+<li>Don't consume a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a> or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> twice. <code>Consume()</code> clears its pending activation.</li>
+<li>Don't remove or obscure focus when a keyboard user changes controls.</li>
+</ul>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Don&#x27;t</span>
+  <span>7-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a> Current publication.</dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.md">input-and-commands.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-INP / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

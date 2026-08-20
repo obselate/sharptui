@@ -20,4 +20,6 @@ jobs:
       - run: dotnet build SharpTui.Framework.gsproj -c Release
       - run: dotnet run -c Release --project tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
       - run: dotnet build SharpTui.Examples.gsproj -c Release
+      - if: runner.os == 'Linux'
+        run: python3 tools/LinuxPtyCheck.py
       - run: dotnet run -c Release --project SharpTui.gsproj -- --selfcheck
