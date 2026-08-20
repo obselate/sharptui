@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.gif" alt="sharptui" width="720"></p>
+<p align="center"><img src="docs/banner.gif?v=2" alt="sharptui" width="720"></p>
 
 # sharptui
 
