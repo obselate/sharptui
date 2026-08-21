@@ -32,14 +32,11 @@ internal open class RouteAncestor : Box {
   }
 }
 
-internal class RouteView : View {
+internal open class RouteBox : Box {
   internal prop Events int32 { get; set; }
   internal prop Response EventResult { get; set; }
 
-  public func Draw(screen Screen) {
-  }
-
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     Events = Events + 1
     return Response
   }
@@ -68,30 +65,39 @@ internal class KeysCheck {
         "typed named key gesture matches")
 
       let typedBinds = Keymap()
-      let save = typedBinds.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets)
-      let quit = typedBinds.Add(KeyGesture.Character("q"), BindingPhase.AfterWidgets)
+      var saveHits = 0
+      var quitHits = 0
+      let save = typedBinds.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets,
+        () -> saveHits = saveHits + 1)
+      typedBinds.Add(KeyGesture.Character("q"), BindingPhase.AfterWidgets,
+        () -> quitHits = quitHits + 1)
       failed = failed + Checks.Expect(typedBinds.Offer(typed, BindingPhase.BeforeWidgets),
         "before-widgets typed binding takes its event")
-      failed = failed + Checks.Expect(save.IsPending && save.Consume(),
-        "binding reports and consumes a pending hit")
-      failed = failed + Checks.Expect(!save.IsPending && !save.Consume(),
-        "consumed binding is clear")
+      failed = failed + Checks.Expect(saveHits == 1,
+        "binding invokes its handler once")
+      save.IsEnabled = false
+      failed = failed + Checks.Expect(!typedBinds.Offer(typed, BindingPhase.BeforeWidgets)
+          && saveHits == 1,
+        "disabled binding declines activation")
+      save.IsEnabled = true
       failed = failed + Checks.Expect(!typedBinds.Offer(UiEvent{
           Kind: UiEventKind.TextInput, Key: Key.Character, Text: "q" }, BindingPhase.BeforeWidgets),
         "after-widgets binding is absent before widgets")
       failed = failed + Checks.Expect(typedBinds.Offer(UiEvent{
           Kind: UiEventKind.TextInput, Key: Key.Character, Text: "q" }, BindingPhase.AfterWidgets),
         "after-widgets binding takes its event")
-      failed = failed + Checks.Expect(quit.Consume(), "after-widgets binding consumes")
+      failed = failed + Checks.Expect(quitHits == 1, "after-widgets binding invokes its handler")
 
-      let command = Command("save", "Save", KeyGesture.Ctrl("s"))
       let commandMap = Keymap()
-      commandMap.Add(command, BindingPhase.BeforeWidgets)
+      var commandHits = 0
+      let command = commandMap.Add("save", "Save", KeyGesture.Ctrl("s"),
+        BindingPhase.BeforeWidgets, () -> commandHits = commandHits + 1)
       failed = failed + Checks.Expect(commandMap.Offer(typed, BindingPhase.BeforeWidgets)
-          && command.Consume()
-          && !commandMap.Bindings[0].IsPending
-          && !commandMap.Bindings[0].Consume(),
-        "command registration produces only the command activation signal")
+          && commandHits == 1
+          && command.Id == "save"
+          && command.Label == "Save"
+          && Object.ReferenceEquals(commandMap.Bindings[0], command),
+        "named binding carries command metadata and invokes directly")
 
       let first = RouteProbe()
       let second = RouteProbe()
@@ -141,50 +147,54 @@ internal class KeysCheck {
       cancelRoot.Draw(Screen(20, 5))
       cancelRoot.Focus(cancelSelect)
       cancelRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
-      failed = failed + Checks.Expect(app.Route(Shell(cancelRoot), UiEvent{
+      failed = failed + Checks.Expect(app.Route(cancelRoot, UiEvent{
           Kind: UiEventKind.Key, Key: Key.Escape }) == EventResult.Handled
           && !cancelSelect.IsOpen,
         "App.Run Box routing lets Select handle Escape before quit")
 
-      let handledEscape = RouteView{ Response: EventResult.Handled }
+      let handledEscape = RouteBox{ Response: EventResult.Handled }
       failed = failed + Checks.Expect(app.Route(handledEscape, UiEvent{
           Kind: UiEventKind.Key, Key: Key.Escape }) == EventResult.Handled
           && handledEscape.Events == 1,
-        "a View handles Escape before the default quit gesture")
+        "the tree handles Escape before the default quit gesture")
 
-      let handledInterrupt = RouteView{ Response: EventResult.Handled }
+      let handledInterrupt = RouteBox{ Response: EventResult.Handled }
       failed = failed + Checks.Expect(app.Route(handledInterrupt, UiEvent{
           Kind: UiEventKind.TextInput,
           Key: Key.Character,
           Text: "c",
           Modifiers: KeyModifiers.Ctrl,
         }) == EventResult.Handled && handledInterrupt.Events == 1,
-        "a View handles Ctrl+C before the default quit gesture")
+        "the tree handles Ctrl+C before the default quit gesture")
 
-      let fallback = RouteView{ Response: EventResult.Continue }
+      let fallback = RouteBox{ Response: EventResult.Continue }
       failed = failed + Checks.Expect(app.Route(fallback, UiEvent{
           Kind: UiEventKind.Key, Key: Key.Escape }) == EventResult.Exit,
         "unhandled Escape uses the default quit gesture")
 
-      let before = app.Keys.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets)
-      let blocked = RouteView{ Response: EventResult.Continue }
+      var beforeHits = 0
+      app.Keys.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets,
+        () -> beforeHits = beforeHits + 1)
+      let blocked = RouteBox{ Response: EventResult.Continue }
       failed = failed + Checks.Expect(app.Route(blocked, typed) == EventResult.Handled
-          && blocked.Events == 0 && before.Consume(),
-        "App before-widget bindings run before the View")
+          && blocked.Events == 0 && beforeHits == 1,
+        "App before-widget bindings run before the tree")
 
-      let after = app.Keys.Add(KeyGesture.Character("q"), BindingPhase.AfterWidgets)
-      let passed = RouteView{ Response: EventResult.Continue }
+      var afterHits = 0
+      app.Keys.Add(KeyGesture.Character("q"), BindingPhase.AfterWidgets,
+        () -> afterHits = afterHits + 1)
+      let passed = RouteBox{ Response: EventResult.Continue }
       failed = failed + Checks.Expect(app.Route(passed, UiEvent{
           Kind: UiEventKind.TextInput, Key: Key.Character, Text: "q" }) == EventResult.Handled
-          && passed.Events == 1 && after.Consume(),
-        "App after-widget bindings run after an unhandled View event")
+          && passed.Events == 1 && afterHits == 1,
+        "App after-widget bindings run after an unhandled tree event")
 
       app.QuitGestures.Clear()
-      failed = failed + Checks.Expect(app.Route(RouteView{ Response: EventResult.Continue }, UiEvent{
+      failed = failed + Checks.Expect(app.Route(RouteBox{ Response: EventResult.Continue }, UiEvent{
           Kind: UiEventKind.Key, Key: Key.Escape }) == EventResult.Continue,
         "App quit gestures can be cleared")
       app.QuitGestures.Add(KeyGesture.Ctrl("q"))
-      failed = failed + Checks.Expect(app.Route(RouteView{ Response: EventResult.Continue }, UiEvent{
+      failed = failed + Checks.Expect(app.Route(RouteBox{ Response: EventResult.Continue }, UiEvent{
           Kind: UiEventKind.TextInput,
           Key: Key.Character,
           Text: "q",
@@ -193,21 +203,23 @@ internal class KeysCheck {
         "App quit gestures can be configured")
 
       let phased = App()
-      let released = RouteView{ Response: EventResult.Continue }
+      let released = RouteBox{ Response: EventResult.Continue }
       failed = failed + Checks.Expect(phased.Route(released, UiEvent{
           Kind: UiEventKind.Key, Key: Key.Escape, Phase: KeyPhase.Release,
         }) == EventResult.Continue && released.Events == 1,
-        "Views receive key releases but quit gestures ignore them")
+        "trees receive key releases but quit gestures ignore them")
 
-      let hot = phased.Keys.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets)
-      phased.Route(RouteView{ Response: EventResult.Continue }, UiEvent{
+      var hotHits = 0
+      phased.Keys.Add(KeyGesture.Ctrl("s"), BindingPhase.BeforeWidgets,
+        () -> hotHits = hotHits + 1)
+      phased.Route(RouteBox{ Response: EventResult.Continue }, UiEvent{
         Kind: UiEventKind.Key, Key: Key.Character, Text: "s",
         Modifiers: KeyModifiers.Ctrl, Phase: KeyPhase.Release,
       })
-      failed = failed + Checks.Expect(!hot.IsPending,
+      failed = failed + Checks.Expect(hotHits == 0,
         "App bindings never fire on a key release")
 
-      let repeated = RouteView{ Response: EventResult.Continue }
+      let repeated = RouteBox{ Response: EventResult.Continue }
       phased.Route(repeated, UiEvent{
         Kind: UiEventKind.Key, Key: Key.Character, Text: "j", Phase: KeyPhase.Repeat,
       })

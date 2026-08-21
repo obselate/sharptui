@@ -11,8 +11,7 @@ struct EasingSpec {
 }
 
 /// Four interactive scenes built from the public animation and canvas APIs.
-class AnimationGallery : View {
-  private var root Box
+open class AnimationGallery : Column {
   private var title Label
   private var caption Label
   private var canvas CanvasView
@@ -67,7 +66,10 @@ class AnimationGallery : View {
     canvas.Style = paint(Ink.Accent)
     surface = canvas.Surface
     bar = dimStatusBar()
-    root = Column{ Children: { title, caption, canvas, bar } }
+    Children.Add(title)
+    Children.Add(caption)
+    Children.Add(canvas)
+    Children.Add(bar)
     scene = 0
     easingIndex = 5
     speedIndex = 1
@@ -76,7 +78,7 @@ class AnimationGallery : View {
     startScene()
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     let width = Math.Max(screen.Size.WidthCells - 2, 1)
     let height = Math.Max(screen.Size.HeightRows - 5, 1)
     if surface.WidthCells != width || surface.HeightRows != height {
@@ -84,14 +86,10 @@ class AnimationGallery : View {
     }
     updateChrome(screen.Size.WidthCells)
     paintScene()
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
-    let routed = root.Handle(ev)
-    if routed != EventResult.Continue { return routed }
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
 
     if ev.Key == Key.Escape { return EventResult.Exit }
     if ev.Key == Key.Right {

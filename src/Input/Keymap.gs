@@ -5,51 +5,49 @@ import System.Collections.Generic
 
 /// Controls whether a binding runs before or after focused widgets.
 public enum BindingPhase {
-  /// Offers the binding before the application view handles the event.
+  /// Offers the binding before the application tree handles the event.
   BeforeWidgets;
-  /// Offers the binding after the application view declines the event.
+  /// Offers the binding after the application tree declines the event.
   AfterWidgets;
 }
 
 /// One project-wide key binding.
 public class Bind {
+  private var id string
+  private var label string
   private var gesture KeyGesture
   private var phase BindingPhase
-  private var command Command?
-  private var hit bool
+  private var enabled bool
+  private var handler Action
 
+  /// Stable binding identity.
+  public prop Id string { get { return id } }
+  /// Text shown for this binding in command surfaces.
+  public prop Label string { get { return label } }
   /// The gesture that triggers this binding.
   public prop Gesture KeyGesture { get { return gesture } }
   /// Which routing phase this binding is offered during.
   public prop Phase BindingPhase { get { return phase } }
-  /// True when the gesture has matched and Consume has not yet reported it.
-  public prop IsPending bool { get { return hit } }
+  /// Whether this binding accepts activation.
+  public prop IsEnabled bool {
+    get { return enabled }
+    set { enabled = value }
+  }
+  /// Work invoked when the binding matches.
+  public prop Handler Action { get { return handler } }
 
-  internal init(gesture KeyGesture, phase BindingPhase) {
+  internal init(id string, label string, gesture KeyGesture, phase BindingPhase, handler Action) {
+    this.id = id
+    this.label = label
     this.gesture = gesture
     this.phase = phase
-    command = nil
-    hit = false
-  }
-
-  internal init(gesture KeyGesture, phase BindingPhase, command Command) {
-    this.gesture = gesture
-    this.phase = phase
-    this.command = command
-    hit = false
-  }
-
-  /// Reports and clears a pending activation.
-  /// @returns True when a pending activation was consumed.
-  public func Consume() bool {
-    if !hit { return false }
-    hit = false
-    return true
+    enabled = true
+    this.handler = handler
   }
 
   internal func Offer() bool {
-    if command != nil { return command!!.Activate() }
-    hit = true
+    if !enabled { return false }
+    handler()
     return true
   }
 }
@@ -66,20 +64,28 @@ public class Keymap {
     bindings = List[Bind]()
   }
 
-  /// Adds a typed binding and returns it for Consume.
+  /// Adds an unnamed binding.
   /// @param gesture The key combination that triggers the binding.
   /// @param phase The routing phase the binding is offered during.
+  /// @param handler Work invoked when the binding matches.
   /// @returns The registered binding.
-  public func Add(gesture KeyGesture, phase BindingPhase) Bind {
-    let binding = Bind(gesture, phase)
+  public func Add(gesture KeyGesture, phase BindingPhase, handler Action) Bind {
+    return Add("", "", gesture, phase, handler)
+  }
+
+  /// Adds a named binding for use by command surfaces.
+  /// @param id The stable binding identity.
+  /// @param label The text shown by command surfaces.
+  /// @param gesture The key combination that triggers this binding.
+  /// @param phase The routing phase the binding is offered during.
+  /// @param handler Work invoked when the binding matches.
+  /// @returns The registered binding.
+  public func Add(id string, label string, gesture KeyGesture, phase BindingPhase,
+      handler Action) Bind {
+    if handler == nil { throw ArgumentNullException("handler") }
+    let binding = Bind(id, label, gesture, phase, handler)
     bindings.Add(binding)
     return binding
-  }
-  /// Registers a command binding.
-  /// @param command The command activated by the matching gesture.
-  /// @param phase The routing phase the binding is offered during.
-  public func Add(command Command, phase BindingPhase) {
-    bindings.Add(Bind(command.Gesture, phase, command))
   }
 
   /// Offers an event to one routing phase.

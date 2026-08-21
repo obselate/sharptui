@@ -808,7 +808,7 @@ dd code{
         <div>
           <section class="manual-block" aria-labelledby="scope-title">
             <h3 class="block-title" id="scope-title">Scope</h3>
-            <p class="front-note">This manual gives the minimum operating sequence for a SharpTUI application. It covers tree construction, view routing, state mutation, frame drawing, and deterministic verification.</p>
+            <p class="front-note">This manual gives the minimum operating sequence for a SharpTUI application. It covers tree construction, callback-driven state mutation, input routing, and deterministic verification.</p>
           </section>
           <section class="manual-block" aria-labelledby="revision-title">
             <h3 class="block-title" id="revision-title">Revision record</h3>
@@ -838,7 +838,7 @@ dd code{
               <tbody>
                 <tr><td>0</td><td>Manual control</td><td>ii</td></tr>
                 <tr><td>1</td><td>Run a retained tree</td><td>1-1</td></tr>
-                <tr><td>2</td><td>Operate through a view</td><td>2-1</td></tr>
+                <tr><td>2</td><td>Change retained state</td><td>2-1</td></tr>
                 <tr><td>3</td><td>Test the operating path</td><td>3-1</td></tr>
                 <tr><td>A</td><td>Operating prohibitions</td><td>A-1</td></tr>
               </tbody>
@@ -853,7 +853,7 @@ dd code{
               <tbody>
                 <tr><td>Figure</td><td>0-1</td><td>Normal application operating cycle</td><td>Cover</td></tr>
                 <tr><td>Listing</td><td>1-1</td><td>Minimal retained tree</td><td>1-1</td></tr>
-                <tr><td>Listing</td><td>2-1</td><td>State-owning view</td><td>2-1</td></tr>
+                <tr><td>Listing</td><td>2-1</td><td>Callback-driven state</td><td>2-1</td></tr>
                 <tr><td>Figure</td><td>2-1</td><td>Application input route</td><td>2-2</td></tr>
                 <tr><td>Listing</td><td>3-1</td><td>Deterministic driver sequence</td><td>3-1</td></tr>
               </tbody>
@@ -888,12 +888,12 @@ dd code{
       <div class="numbered">
         <div class="numbered-id">1.1</div>
         <div class="numbered-body">
-          <p><strong>Operating principle.</strong> SharpTUI retains a tree. Construct it once. Mutate the same objects when state changes. Draw the tree into a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen</code></a> after each event batch.</p>
+          <p><strong>Operating principle.</strong> SharpTUI retains a tree. Construct it once. Mutate the same objects when state changes. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a> routes input and draws the tree after each event batch.</p>
         </div>
       </div>
       <div class="instruction">
         <strong>Caution</strong>
-        <p>Do not rebuild the tree in <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>Draw</code></a>. Do not draw application state only into a status line. Change the widget that owns the state.</p>
+        <p>Do not rebuild the tree after each event. Do not mirror widget state through an application loop. Change the widget that owns the state.</p>
       </div>
       <div class="numbered">
         <div class="numbered-id">1.2</div>
@@ -906,7 +906,7 @@ dd code{
           <tr><th>Type</th><th>Role</th><th>Operating fact</th></tr>
         </thead>
         <tbody>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a></td><td>Terminal loop</td><td>Runs a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree or a custom <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a>.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a></td><td>Terminal loop</td><td>Routes and draws one <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a></td><td>Retained node</td><td>Every drawable control and container derives from it.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a></td><td>Horizontal container</td><td>Lays children on the row axis.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a></td><td>Vertical container</td><td>Lays children on the column axis.</td></tr>
@@ -953,81 +953,62 @@ dd code{
     </footer>
   </section>
 
-  <section class="sheet" id="02--use-a-view" aria-labelledby="chapter-two-title">
+  <section class="sheet" id="02--change-retained-state" aria-labelledby="chapter-two-title">
     <header class="running-head">
       <span>SharpTUI Operator's Manual</span>
-      <span>View Operation</span>
+      <span>State Changes</span>
     </header>
     <div class="page-body">
       <div class="chapter-mark">
         <div class="chapter-number">2</div>
         <div>
           <p class="chapter-label">Chapter 2</p>
-          <h2 id="chapter-two-title">Operate through a view</h2>
+          <h2 id="chapter-two-title">Change retained state</h2>
         </div>
       </div>
       <div class="numbered">
         <div class="numbered-id">2.1</div>
         <div class="numbered-body">
-          <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a> is for an application that owns state and a retained tree. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>Draw(screen)</code></a> paints one frame. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>Handle(ev)</code></a> returns <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Continue</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Handled</code></a>, or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Exit</code></a>.</p>
+          <p>Controls invoke application work directly. A callback mutates retained widgets. There is no event-polling loop and no manual draw call.</p>
         </div>
       </div>
       <table class="manual-table">
         <thead>
-          <tr><th>Result</th><th>Meaning</th><th>Next stage</th></tr>
+          <tr><th>Part</th><th>Role</th><th>Result</th></tr>
         </thead>
         <tbody>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Continue</code></a></td><td>The view declined the event.</td><td>Later routing may run.</td></tr>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Handled</code></a></td><td>The view consumed the event.</td><td>Routing stops.</td></tr>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Exit</code></a></td><td>The app must stop.</td><td>The loop exits.</td></tr>
+          <tr><td>Application state</td><td>One authoritative value.</td><td>No duplicated widget state.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnPress</code></a></td><td>State transition.</td><td>Runs once per activation.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label.Text</code></a></td><td>Retained presentation.</td><td>The next frame shows the new value.</td></tr>
         </tbody>
       </table>
       <figure class="listing listing--long">
-        <figcaption class="listing-head"><span>Listing 2-1</span><span>State-owning view</span></figcaption>
+        <figcaption class="listing-head"><span>Listing 2-1</span><span>Callback-driven state</span></figcaption>
         <pre><code class="language-gs"><span class="tok-keyword">package</span> Demo
 
 <span class="tok-keyword">import</span> SharpTui
 
-<span class="tok-keyword">class</span> Counter : <span class="tok-type">View</span> {
-  <span class="tok-keyword">private var</span> root <span class="tok-type">Box</span>
-  <span class="tok-keyword">private var</span> value <span class="tok-type">Label</span>
-  <span class="tok-keyword">private var</span> count <span class="tok-type">int32</span>
-
-  <span class="tok-keyword">public init</span>() {
-    count = <span class="tok-number">0</span>
-    value = <span class="tok-type">Label</span>{ Text: <span class="tok-string">"0"</span> }
-    root = <span class="tok-type">Column</span>{
-      Padding: <span class="tok-type">CellInsets</span>.<span class="tok-call">All</span>(<span class="tok-number">1</span>),
-      Children: { <span class="tok-type">Label</span>{ Text: <span class="tok-string">"press +"</span> }, value },
-    }
-  }
-
-  <span class="tok-keyword">public func</span> Draw(screen <span class="tok-type">Screen</span>) {
-    screen.<span class="tok-call">Clear</span>()
-    root.<span class="tok-call">Draw</span>(screen)
-  }
-
-  <span class="tok-keyword">public func</span> Handle(ev <span class="tok-type">UiEvent</span>) <span class="tok-type">EventResult</span> {
-    <span class="tok-keyword">let</span> routed = root.<span class="tok-call">Handle</span>(ev)
-    <span class="tok-keyword">if</span> routed != <span class="tok-type">EventResult</span>.Continue { <span class="tok-keyword">return</span> routed }
-    <span class="tok-keyword">if</span> <span class="tok-type">KeyGesture</span>.<span class="tok-call">Character</span>(<span class="tok-string">"+"</span>).<span class="tok-call">Matches</span>(ev) {
-      count = count + <span class="tok-number">1</span>
-      value.Text = count.<span class="tok-call">ToString</span>()
-      <span class="tok-keyword">return</span> <span class="tok-type">EventResult</span>.Handled
-    }
-    <span class="tok-keyword">return</span> <span class="tok-type">EventResult</span>.Continue
-  }
-}
-
 <span class="tok-keyword">func</span> Main(args []<span class="tok-type">string</span>) <span class="tok-type">int32</span> {
+  <span class="tok-keyword">var</span> count = <span class="tok-number">0</span>
+  <span class="tok-keyword">let</span> value = <span class="tok-type">Label</span>{ Text: <span class="tok-string">"0"</span> }
+  <span class="tok-keyword">let</span> increment = <span class="tok-type">Button</span>{ Text: <span class="tok-string">"+"</span> }
+  increment.OnPress = () -&gt; {
+    count = count + <span class="tok-number">1</span>
+    value.Text = count.<span class="tok-call">ToString</span>()
+  }
+  <span class="tok-keyword">let</span> root = <span class="tok-type">Column</span>{
+    Padding: <span class="tok-type">CellInsets</span>.<span class="tok-call">All</span>(<span class="tok-number">1</span>),
+    GapCells: <span class="tok-number">1</span>,
+    Children: { value, increment },
+  }
   <span class="tok-keyword">let</span> app = <span class="tok-type">App</span>()
-  app.<span class="tok-call">Run</span>(Counter())
+  app.<span class="tok-call">Run</span>(root)
   <span class="tok-keyword">return</span> <span class="tok-number">0</span>
 }</code></pre>
       </figure>
     </div>
     <footer class="folio">
-      <span>Operate through a view</span>
+      <span>Change retained state</span>
       <span>2-1</span>
     </footer>
   </section>
@@ -1035,7 +1016,7 @@ dd code{
   <section class="sheet" aria-labelledby="chapter-two-continued-title">
     <header class="running-head">
       <span>SharpTUI Operator's Manual</span>
-      <span>View Operation / Continued</span>
+      <span>State Changes / Continued</span>
     </header>
     <div class="page-body">
       <div class="chapter-mark">
@@ -1048,13 +1029,13 @@ dd code{
       <div class="numbered">
         <div class="numbered-id">2.2</div>
         <div class="numbered-body">
-          <p>The app offers <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>BeforeWidgets</code></a> first. The view receives an event only when that phase declines it. Inside a custom view, route the retained root before view fallback shortcuts. Mutating <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>value.Text</code></a> retains the new state.</p>
+          <p>The app offers <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>BeforeWidgets</code></a> first. The retained tree receives an event when that phase declines it. Mutating <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>value.Text</code></a> retains the new state.</p>
         </div>
       </div>
-      <div class="route-strip route-strip--four" role="img" aria-label="Application input route: BeforeWidgets, View Handle, AfterWidgets, then QuitGestures">
+      <div class="route-strip route-strip--four" role="img" aria-label="Application input route: BeforeWidgets, root Handle, AfterWidgets, then QuitGestures">
         <div>BeforeWidgets</div>
         <div class="route-arrow" aria-hidden="true">&#8594;</div>
-        <div class="route-active">View.Handle</div>
+        <div class="route-active">root.Handle</div>
         <div class="route-arrow" aria-hidden="true">&#8594;</div>
         <div>AfterWidgets</div>
         <div class="route-arrow" aria-hidden="true">&#8594;</div>
@@ -1064,7 +1045,7 @@ dd code{
       <div class="numbered">
         <div class="numbered-id">2.3</div>
         <div class="numbered-body">
-          <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.StartWorker[T](work)</code></a> owns one background operation and returns its terminal state to the application loop. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Post(work)</code></a> for results from external producers. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.RequestDraw()</code></a> requests one coalesced repaint.</p>
+          <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.StartWorker[T](work, completed, failed, cancelled)</code></a> owns one background operation and invokes one terminal callback on the application loop. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Post(work)</code></a> for results from external producers. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.RequestDraw()</code></a> requests one coalesced repaint.</p>
         </div>
       </div>
       <h3>Routing and update register</h3>
@@ -1073,9 +1054,9 @@ dd code{
           <tr><th>Operation</th><th>Owner</th><th>Required order</th></tr>
         </thead>
         <tbody>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>BeforeWidgets</code></a></td><td>Application keymap</td><td>Run before the view.</td></tr>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View.Handle(ev)</code></a></td><td>Application view</td><td>Route the root before view fallback shortcuts.</td></tr>
-          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>AfterWidgets</code></a></td><td>Application keymap</td><td>Run after the view returns <code>Continue</code>.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>BeforeWidgets</code></a></td><td>Application keymap</td><td>Run before the tree.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>root.Handle(ev)</code></a></td><td>Retained tree</td><td>Route focused controls and their ancestors.</td></tr>
+          <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibindingphase"><code>AfterWidgets</code></a></td><td>Application keymap</td><td>Run after the tree returns <code>Continue</code>.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>QuitGestures</code></a></td><td>Application loop</td><td>Run last.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>StartWorker[T]</code></a></td><td>Application loop</td><td>Own background work and terminal delivery.</td></tr>
           <tr><td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Post(work)</code></a></td><td>External producer</td><td>Deliver results to the loop.</td></tr>
@@ -1085,8 +1066,8 @@ dd code{
       <h3>Normal operating sequence</h3>
       <ol class="procedure">
         <li>Offer <code>BeforeWidgets</code> application commands.</li>
-        <li>Call <code>View.Handle</code>. A custom view routes its retained root before its fallback logic.</li>
-        <li>Offer <code>AfterWidgets</code> only after the view returns <code>Continue</code>.</li>
+        <li>Route the event through <code>root.Handle</code>.</li>
+        <li>Offer <code>AfterWidgets</code> only after the tree returns <code>Continue</code>.</li>
         <li>Offer <code>QuitGestures</code> last.</li>
         <li>Draw the next dirty frame after accepted state changes.</li>
       </ol>
@@ -1096,7 +1077,7 @@ dd code{
       </div>
     </div>
     <footer class="folio">
-      <span>Operate through a view</span>
+      <span>Change retained state</span>
       <span>2-2</span>
     </footer>
   </section>
@@ -1117,7 +1098,7 @@ dd code{
       <div class="numbered">
         <div class="numbered-id">3.1</div>
         <div class="numbered-body">
-          <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver"><code>TestDriver</code></a> runs a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a> without a terminal or clock. Its width and height are terminal cells. Both values must be 0 or more.</p>
+          <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver"><code>TestDriver</code></a> runs a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree without a terminal or clock. Its width and height are terminal cells. Both values must be 0 or more.</p>
         </div>
       </div>
       <table class="manual-table manual-table--method">
@@ -1134,11 +1115,10 @@ dd code{
       </table>
       <figure class="listing">
         <figcaption class="listing-head"><span>Listing 3-1</span><span>Deterministic driver sequence</span></figcaption>
-        <pre><code class="language-gs"><span class="tok-keyword">let</span> driver = <span class="tok-type">TestDriver</span>(Counter(), <span class="tok-number">40</span>, <span class="tok-number">8</span>)
+        <pre><code class="language-gs"><span class="tok-keyword">let</span> driver = <span class="tok-type">TestDriver</span>(root, <span class="tok-number">40</span>, <span class="tok-number">8</span>)
 <span class="tok-keyword">let</span> result = driver.<span class="tok-call">Send</span>(<span class="tok-type">UiEvent</span>{
   Kind: <span class="tok-type">UiEventKind</span>.Key,
-  Key: <span class="tok-type">Key</span>.Character,
-  Text: <span class="tok-string">"+"</span>,
+  Key: <span class="tok-type">Key</span>.Enter,
   Phase: <span class="tok-type">KeyPhase</span>.Press,
 })
 <span class="tok-keyword">let</span> frame = driver.<span class="tok-call">Draw</span>()</code></pre>
@@ -1151,7 +1131,7 @@ dd code{
       </div>
       <h3>Standard verification sequence</h3>
       <ol class="procedure">
-        <li>Construct the retained tree or state-owning view.</li>
+        <li>Construct the retained tree.</li>
         <li>Create the driver with a fixed cell width and height.</li>
         <li>Send the same event used during terminal operation.</li>
         <li>Draw the frame and inspect the resulting screen state.</li>
@@ -1185,8 +1165,8 @@ dd code{
       <ul class="prohibition-list">
         <li><strong>A-01</strong><span>Don't recreate widgets to show a value change. Mutate the retained widget.</span></li>
         <li><strong>A-02</strong><span>Don't mutate the tree from a background thread. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.StartWorker</code></a> for app-owned work or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Post</code></a> for external results.</span></li>
-        <li><strong>A-03</strong><span>Don't omit <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>screen.Clear()</code></a> before drawing a custom <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a> unless the view deliberately owns every cell.</span></li>
-        <li><strong>A-04</strong><span>Don't return <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Handled</code></a> for an event the view did not consume.</span></li>
+        <li><strong>A-03</strong><span>Don't call <code>screen.Clear()</code>, <code>root.Draw()</code>, or <code>root.Handle()</code> from application code. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a> owns those lifecycle calls.</span></li>
+        <li><strong>A-04</strong><span>Don't return <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuieventresult"><code>Handled</code></a> from a custom root control for an event it did not consume.</span></li>
       </ul>
       <section class="manual-block" aria-labelledby="related-title">
         <h3 class="block-title" id="related-title">Related publications</h3>

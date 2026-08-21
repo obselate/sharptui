@@ -104,28 +104,27 @@ let status = StatusBar{}
 let worker = app.StartWorker[string]((token CancellationToken) -> {
   token.ThrowIfCancellationRequested()
   return "report ready"
-})
-
-var report string
-if worker.ConsumeResult(out report) {
-  status.CenterText = report
-}
+},
+  (report string) -> status.CenterText = report,
+  (error Exception) -> status.CenterText = "failed: " + error.Message,
+  () -> status.CenterText = "cancelled")
 ```
 
-| `WorkerState` | Meaning |
+| API | Meaning |
 | --- | --- |
-| `Running` | Background operation is active. |
-| `Completed` | One result is ready to consume. |
-| `Failed` | One exception is ready to consume. |
-| `Cancelled` | The operation exited after cancellation was requested. |
+| `completed` callback | Receives the result on the application loop. |
+| `failed` callback | Receives the exception on the application loop. |
+| `cancelled` callback | Runs when cancellation wins completion. |
+| `Worker.IsRunning` | True until one terminal callback reaches the application loop. |
+| `Worker.Cancel()` | Requests cooperative cancellation. |
 
-`ConsumeResult(out value)` and `ConsumeError()` consume each terminal payload once. `Cancel()` requests cooperative cancellation. State remains `Running` until the operation exits. The app requests cancellation for its active workers when its loop stops.
+The app invokes exactly one terminal callback. The returned `Worker` is only the cancellation and activity handle. The app requests cancellation for active workers when its loop stops.
 
 ### Work rules
 
 - Don't mutate widgets from `work`. Return data, then update retained UI after delivery.
-- Don't discard a running handle when the operation may need explicit cancellation or terminal observation.
-- Don't report completion before `ConsumeResult` succeeds. `WorkerState.Completed` means a result is ready, not yet applied.
-- Don't hide failure. Consume the error and render the fact near the affected work.
+- Don't discard a running handle when the operation may need explicit cancellation.
+- Don't poll for completion. Put the state transition in the terminal callbacks.
+- Don't hide failure. Render the error from the failure callback.
 
-For deterministic UI testing, see the [getting-started guide](getting-started.md#03--test-the-same-path) and [the `TestDriver` reference](reference.md#sharptuitestdriver). For exhaustive signatures, see [canvas](reference.md#sharptuicanvasmode), [animation](reference.md#sharptuianimation), and [worker](reference.md#sharptuiworker1).
+For deterministic UI testing, see the [getting-started guide](getting-started.md#03--test-the-same-path) and [the `TestDriver` reference](reference.md#sharptuitestdriver). For exhaustive signatures, see [canvas](reference.md#sharptuicanvasmode), [animation](reference.md#sharptuianimation), and [worker](reference.md#sharptuiworker).

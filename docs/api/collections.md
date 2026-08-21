@@ -35,7 +35,7 @@ if changed != nil {
 
 `SelectedIndex` is programmatic selection. It does not emit `SelectionChange`. `ConsumeSelectionChange` returns and clears a user-navigation change with `PreviousIndex` and `SelectedIndex`. `SelectedId` and `SelectedItem` report the current item.
 
-Set `Source` to a `KeyedSource[ListItem, string]` for indexed data. It provides `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. Call `Refresh()` after direct mutation of `Items` or the active source.
+Set `Source` to a `KeyedSource[ListItem, string]` for indexed data. It provides `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. Item data and counts are read live. Before selection is observed, routed, or rendered, the list preserves the selected stable Id through `IndexOfKey` or a fallback `Items` scan. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
 
 `FollowTail` is for logs. It selects the last selectable row and keeps the viewport at the end. Upward navigation, upward scrolling, Home, PageUp, or a click turns it off. It does not re-enable itself.
 
@@ -64,9 +64,9 @@ let table = TableView{
 | `TableCell` | Use `Text` or immutable styled `Runs`. |
 | `TableRow` | Give selectable rows a stable unique `Id`. `IsSelectable: false` remains visible but skips selection. |
 | `KeyedSource[TableRow, string]` | Provide `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. |
-| `TableView` | Use `Rows` or `Source`, then call `Refresh()` after direct changes. |
+| `TableView` | `Rows` and `Source` are read live. Stable selection reconciles automatically after direct changes. |
 
-`SelectedRowIndex` is programmatic and silent. `ConsumeSelectionChange` is user input. `SelectedRowId` restores identity across replacement when possible. `FirstVisibleRowIndex` and `FirstVisibleColumnIndex` are the explicit viewports.
+`SelectedRowIndex` is programmatic and silent. `ConsumeSelectionChange` is user input. `SelectedRowId` restores identity across replacement when possible. `FirstVisibleRowIndex` and `FirstVisibleColumnIndex` are the explicit viewports. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
 
 ## Trees
 
@@ -114,7 +114,7 @@ if tabs.ConsumeSelectionChange() != nil {
 - Don't use list index as a durable identity. Use `Id` for list, table, and tree restoration.
 - Don't infer a user action from `SelectedIndex`. Read `ConsumeSelectionChange`.
 - Don't make headings selectable. Use `IsSelectable: false`.
-- Don't mutate collection data and skip the owning widget's `Refresh()`.
+- Call `Refresh()` only where the widget documents explicit cache invalidation. `ListView` and `TableView` reconcile live data automatically.
 - Don't let a selected row be color-only. Keep `SelectionMarker`, hierarchy markers, or focus state visible.
 
 For exhaustive signatures, see [list types](reference.md#sharptuilistitem), [table types](reference.md#sharptuitablecell), and [tree types](reference.md#sharptuitreenode).

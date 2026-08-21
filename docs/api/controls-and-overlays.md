@@ -7,7 +7,7 @@ Controls state the current fact. Overlays own the active input scope. The comple
 | Type | State | Use |
 | --- | --- | --- |
 | `Label` | `Text`, `Alignment` | One clipped line of non-interactive text. |
-| `Button` | pending press | One explicit action. Read it with `ConsumePress`. |
+| `Button` | `OnPress` | Invokes one explicit action. |
 | `Toggle` | `IsChecked` | Independent Boolean choice. |
 | `RadioGroup` | `SelectedToggle` | One choice among toggles. |
 | `Select` | `SelectedIndex`, `IsOpen` | One choice from a compact option list. |
@@ -15,21 +15,17 @@ Controls state the current fact. Overlays own the active input scope. The comple
 | `Separator` | `Glyph`, `Orientation` | Structural division. |
 
 ```gsharp
-let save = Button{ Text: "Save" }
 let autosave = Toggle{ Text: "Autosave", IsChecked: true }
 let mode = Select{ Options: { "Draft", "Review", "Final" }, Placeholder: "choose mode" }
 let state = Badge{ Text: "MODIFIED" }
-
-if save.ConsumePress() {
-  state.Text = "SAVED"
-}
+let save = Button{ Text: "Save", OnPress: () -> state.Text = "SAVED" }
 
 if mode.ConsumeSelectionChange() != nil {
   state.Text = mode.Options[mode.SelectedIndex]
 }
 ```
 
-`Button.IsPressed` reports the same pending state without clearing it. `ConsumePress` is the action boundary. `Toggle` flips on Enter, space, or click. Set `CheckedGlyph` and `UncheckedGlyph` only when the default bracket glyphs do not convey state.
+`Button.OnPress` runs on Enter, space, or click. `Toggle` flips on the same inputs. Set `CheckedGlyph` and `UncheckedGlyph` only when the default bracket glyphs do not convey state.
 
 `RadioGroup.Add(toggle)` gives its toggles radio behavior. `Select` opens a keyboard- and mouse-navigable option list. Set `Options`, then call `Refresh()` after direct list mutation. Programmatic `SelectedIndex` changes do not produce `SelectionChange`.
 
@@ -77,7 +73,7 @@ overlay.IsVisible = true
 
 `Content` is one `Box`. Assigning it replaces the existing content. `IsVisible` controls the overlay lifecycle. `DefaultAction` receives Enter after focused content declines it. `CancelAction` receives Enter after Escape reaches the scope. Both targets must be visible descendants.
 
-`Dialog` is a centered, dimmed, bordered `Overlay` with a wrapped `Message` and a row of action buttons. Set `Actions` or mutate its list. `ConsumeResult` returns and clears the selected `DialogAction`.
+`Dialog` is a centered, dimmed, bordered `Overlay` with a wrapped `Message` and a row of action buttons. Set `Actions` or mutate its list. `OnResult` receives the selected `DialogAction`.
 
 ```gsharp
 let apply = DialogAction{ Text: "Apply" }
@@ -86,14 +82,12 @@ let dialog = Dialog{
   Message: "Replace the selected text?",
   Actions: { apply, dismiss },
 }
-
-let result = dialog.ConsumeResult()
-if result != nil && result.IsCancel {
-  dialog.IsVisible = false
+dialog.OnResult = (action DialogAction) -> {
+  if action.IsCancel { dialog.IsVisible = false }
 }
 ```
 
-`DialogAction.IsCancel` names the Escape action. `Dialog.Result` does not clear the pending result. Use `ConsumeResult` when a result must be handled once.
+`DialogAction.IsCancel` names the Escape action. One activation invokes `OnResult` once. The dialog does not keep a second pending-result state.
 
 ### Overlay rules
 

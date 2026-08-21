@@ -6,7 +6,7 @@ import System.Collections.Generic
 /// A push button: " Text " centred, flips ink when focused.
 public open class Button : Box {
   private var text string
-  private var isPressed bool
+  private var onPress Action?
 
   /// The label centred within the button.
   public prop Text string {
@@ -14,13 +14,16 @@ public open class Button : Box {
     set { text = value }
   }
 
-  /// True when the button was activated since the last ConsumePress.
-  public prop IsPressed bool { get { return isPressed } }
+  /// Work invoked when the button is activated.
+  public prop OnPress Action? {
+    get { return onPress }
+    set { onPress = value }
+  }
 
   /// Creates an empty, focusable button.
   public init() {
     text = ""
-    isPressed = false
+    onPress = nil
     CanFocus = true
   }
 
@@ -50,32 +53,28 @@ public open class Button : Box {
     screen.WriteClipped(r, x + textWidth + 1, 0, " ", style)
   }
 
-  /// Marks the button pressed on Enter, space, or a click within its bounds.
+  /// Invokes OnPress on Enter, space, or a click within its bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the button was pressed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
-      isPressed = true
+      press()
       return EventResult.Handled
     }
     if ev.Key == Key.Character && ev.Text == " " {
-      isPressed = true
+      press()
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
-      isPressed = true
+      press()
       return EventResult.Handled
     }
     return EventResult.Continue
   }
 
-  /// Returns and clears whether the button was pressed since the last call.
-  /// @returns True when the button had a pending press.
-  public func ConsumePress() bool {
-    if !isPressed { return false }
-    isPressed = false
-    return true
+  private func press() {
+    if onPress != nil { onPress!!() }
   }
 }
 
@@ -98,7 +97,7 @@ public open class Dialog : Overlay {
   private var message string
   private var actions List[DialogAction]
   private var actionButtons List[Button]
-  private var result DialogAction?
+  private var onResult Action[DialogAction]?
 
   /// The wrapped body text. Setting it rebuilds the dialog's children.
   public prop Message string {
@@ -118,12 +117,10 @@ public open class Dialog : Overlay {
     }
   }
 
-  /// The action whose button was most recently pressed, or nil. Reading it does not clear the pending press; use ConsumeResult for that.
-  public prop Result DialogAction? {
-    get {
-      capturePressed()
-      return result
-    }
+  /// Work invoked with the selected action.
+  public prop OnResult Action[DialogAction]? {
+    get { return onResult }
+    set { onResult = value }
   }
 
   /// Creates a centered, dimmed, bordered dialog with no message or actions.
@@ -131,21 +128,12 @@ public open class Dialog : Overlay {
     message = ""
     actions = List[DialogAction]()
     actionButtons = List[Button]()
-    result = nil
+    onResult = nil
     DimBackground = true
     Placement = Placement.Centered
     ShowBorder = true
     Width = CellLength.Cells(44)
     Padding = CellInsets.All(1)
-  }
-
-  /// Returns and clears the most recently pressed action, or nil when no button has been pressed.
-  /// @returns The most recently pressed action, or nil when none is pending.
-  public func ConsumeResult() DialogAction? {
-    capturePressed()
-    let consumed = result
-    result = nil
-    return consumed
   }
 
   /// Rebuilds the message and action buttons if Actions changed shape, otherwise refreshes the default/cancel button assignment.
@@ -164,6 +152,7 @@ public open class Dialog : Overlay {
     let row = Row{ GapCells: 2 }
     for action in Actions {
       let button = Button{ Text: action.Text }
+      button.OnPress = () -> choose(action)
       actionButtons.Add(button)
       row.Children.Add(button)
     }
@@ -188,15 +177,8 @@ public open class Dialog : Overlay {
     }
   }
 
-  private func capturePressed() {
-    var i = 0
-    while i < actionButtons.Count && i < Actions.Count {
-      if actionButtons[i].ConsumePress() {
-        result = Actions[i]
-        return
-      }
-      i = i + 1
-    }
+  private func choose(action DialogAction) {
+    if onResult != nil { onResult!!(action) }
   }
 
   private func compositionIsCurrent() bool {

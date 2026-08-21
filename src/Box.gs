@@ -731,97 +731,17 @@ public open class Box {
     if Title != "" {
       if ShowBorder {
         screen.WriteCell(frame.Column + 1, frame.Row, " ", chrome)
-        drawTitle(screen, frame, 2, Title, chrome)
-        let cleanTitle = stripTitleTags(Title)
-        let after = 2 + Glyph.WidthOf(cleanTitle)
+        screen.WriteClipped(frame, 2, 0, Title, chrome)
+        let after = 2 + Glyph.WidthOf(Title)
         if after < frame.WidthCells { screen.WriteCell(frame.Column + after, frame.Row, " ", chrome) }
       } else {
-        drawTitle(screen, frame, 1, Title, chrome)
+        screen.WriteClipped(frame, 1, 0, Title, chrome)
       }
     }
 
     Render(screen, ContentBounds, resolvedStyle)
     if ShowScrollbar { bar(screen, chrome) }
     paintChildren(screen, resolvedStyle)
-  }
-
-  private func drawTitle(screen Screen, frame CellRect, startCol int32, text string, defaultStyle Style) {
-    if !text.Contains("[bad:") && !text.Contains("[good:") {
-      screen.WriteClipped(frame, startCol, 0, text, defaultStyle)
-      return
-    }
-
-    var col = startCol
-    var idx = 0
-    while idx < text.Length {
-      let openBad = text.IndexOf("[bad:", idx)
-      let openGood = text.IndexOf("[good:", idx)
-
-      var nextTag = -1
-      var tagType = ""
-      if openBad >= 0 && (nextTag < 0 || openBad < nextTag) {
-        nextTag = openBad
-        tagType = "bad"
-      }
-      if openGood >= 0 && (nextTag < 0 || openGood < nextTag) {
-        nextTag = openGood
-        tagType = "good"
-      }
-
-      if nextTag < 0 {
-        let tail = text.Substring(idx)
-        screen.WriteClipped(frame, col, 0, tail, defaultStyle)
-        break
-      }
-
-      if nextTag > idx {
-        let prefix = text.Substring(idx, nextTag - idx)
-        screen.WriteClipped(frame, col, 0, prefix, defaultStyle)
-        col = col + Glyph.WidthOf(prefix)
-      }
-
-      let tagHeader = "[" + tagType + ":"
-      let closeBracket = text.IndexOf("]", nextTag + tagHeader.Length)
-      if closeBracket < 0 {
-        let tail = text.Substring(nextTag)
-        screen.WriteClipped(frame, col, 0, tail, defaultStyle)
-        break
-      }
-
-      let content = text.Substring(nextTag + tagHeader.Length, closeBracket - (nextTag + tagHeader.Length))
-      var tagStyle = defaultStyle
-      if tagType == "bad" {
-        tagStyle = Style{ Foreground: Color.Rgb(248, 81, 73), Background: defaultStyle.Background, Attributes: TextAttributes.Bold }
-      } else if tagType == "good" {
-        tagStyle = Style{ Foreground: Color.Rgb(63, 185, 80), Background: defaultStyle.Background, Attributes: TextAttributes.Bold }
-      }
-
-      screen.WriteClipped(frame, col, 0, content, tagStyle)
-      col = col + Glyph.WidthOf(content)
-      idx = closeBracket + 1
-    }
-  }
-
-  private func stripTitleTags(text string) string {
-    if !text.Contains("[bad:") && !text.Contains("[good:") { return text }
-    var s = text
-    while true {
-      let b = s.IndexOf("[bad:")
-      if b < 0 { break }
-      let e = s.IndexOf("]", b)
-      if e < 0 { break }
-      let val = s.Substring(b + 5, e - b - 5)
-      s = s.Substring(0, b) + val + s.Substring(e + 1)
-    }
-    while true {
-      let g = s.IndexOf("[good:")
-      if g < 0 { break }
-      let e = s.IndexOf("]", g)
-      if e < 0 { break }
-      let val = s.Substring(g + 6, e - g - 6)
-      s = s.Substring(0, g) + val + s.Substring(e + 1)
-    }
-    return s
   }
 
   private func paintChildren(screen Screen, inherited Style) {

@@ -22,7 +22,13 @@ public open class Toggle : Box {
   /// The checked state, flipped by activation.
   public prop IsChecked bool {
     get { return isChecked }
-    set { isChecked = value }
+    set {
+      if let group = owner {
+        group.SetSelection(this, value)
+        return
+      }
+      isChecked = value
+    }
   }
 
   /// The glyph drawn when IsChecked is true.

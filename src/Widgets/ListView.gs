@@ -10,8 +10,10 @@ public open class ListView : Box {
   private var source KeyedSource[ListItem, string]?
   private var selection SelectionState
   private var selectedId string
+  private var selectedSelectable bool
+  private var observedCount int32
 
-  /// The rows shown by this list; setting it replaces all items and re-resolves the selection via Refresh.
+  /// The rows shown by this list; setting it replaces all items and preserves selection by stable Id when possible.
   public prop Items List[ListItem] {
     get { return items }
     set {
@@ -33,7 +35,10 @@ public open class ListView : Box {
 
   /// Index of the selected item. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedIndex int32 {
-    get { return selection.Index }
+    get {
+      reconcileSelection()
+      return selection.Index
+    }
     set { setProgrammaticSelection(value) }
   }
 
@@ -53,12 +58,18 @@ public open class ListView : Box {
   /// The currently selected item, or nil when SelectedIndex is out of range or the active source is empty.
   public prop SelectedItem ListItem? {
     get {
+      reconcileSelection()
       if selection.Index < 0 || selection.Index >= itemCount() { return nil }
       return itemAt(selection.Index)
     }
   }
   /// Id of the currently selected item, or empty when nothing is selected.
-  public prop SelectedId string { get { return selectedId } }
+  public prop SelectedId string {
+    get {
+      reconcileSelection()
+      return selectedId
+    }
+  }
 
   /// Creates an empty list with a "> " selection marker and CanFocus enabled.
   public init() {
@@ -66,6 +77,8 @@ public open class ListView : Box {
     source = nil
     selection = SelectionState()
     selectedId = ""
+    selectedSelectable = false
+    observedCount = 0
     FirstVisibleItemIndex = 0
     FollowTail = false
     SelectedStyle = Style()
@@ -84,14 +97,15 @@ public open class ListView : Box {
     return item
   }
 
-  /// Re-resolves selection after direct mutation of the active Items or Source data, restoring the previous Id when possible.
+  /// Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
   public func Refresh() {
-    refreshSelection()
+    reconcileSelection(true)
   }
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
+    reconcileSelection()
     return selection.Consume()
   }
 
@@ -100,7 +114,7 @@ public open class ListView : Box {
   /// @param r The rect to paint within.
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
-    normalizeSelection()
+    reconcileSelection()
     if FollowTail { snapToTail() }
     FirstVisibleItemIndex = clampScroll(FirstVisibleItemIndex, r.HeightRows)
     let selectedStyle = SelectedStyle.MergedOver(ink)
@@ -112,7 +126,7 @@ public open class ListView : Box {
       let row = i - FirstVisibleItemIndex
       if row >= r.HeightRows { break }
       let item = itemAt(i)
-      let selected = i == SelectedIndex
+      let selected = i == selection.Index
       let itemStyle = item.Style.MergedOver(ink)
       let rowStyle = selected ? SelectedStyle.MergedOver(itemStyle) : itemStyle
       if markerWidth > 0 {
@@ -149,6 +163,7 @@ public open class ListView : Box {
     if inputIsRelease(ev) { return EventResult.Continue }
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
+    reconcileSelection()
 
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Up {
       FollowTail = false
@@ -222,6 +237,7 @@ public open class ListView : Box {
   }
 
   private func setProgrammaticSelection(want int32) {
+    reconcileSelection()
     let count = itemCount()
     if count == 0 {
       setSelection(0, false)
@@ -232,31 +248,62 @@ public open class ListView : Box {
   }
 
   private func setSelection(value int32, emit bool) bool {
-    if !selection.Set(value, emit) { return false }
-    selectedId = selectedIdAt(value)
-    return true
+    let count = itemCount()
+    let changed = selection.Set(value, emit)
+    if value >= 0 && value < count {
+      let item = itemAt(value)
+      selectedId = item.Id
+      selectedSelectable = item.IsSelectable
+    } else {
+      selectedId = ""
+      selectedSelectable = false
+    }
+    observedCount = count
+    return changed
   }
 
-  private func normalizeSelection() {
+  private func reconcileSelection() {
+    reconcileSelection(false)
+  }
+
+  private func reconcileSelection(force bool) {
     let count = itemCount()
     if count == 0 {
-      if selection.Index != 0 {
+      if selection.Index != 0 || selectedId != "" || selectedSelectable {
         selection.Index = 0
         selectedId = ""
+        selectedSelectable = false
         selection.Change = nil
       }
+      observedCount = 0
       return
     }
-    if selection.Index < 0 || selection.Index >= count {
-      selection.Index = clampIndex(selection.Index)
-      selectedId = selectedIdAt(selection.Index)
-      selection.Change = nil
-    }
-  }
 
-  private func selectedIdAt(index int32) string {
-    if index < 0 || index >= itemCount() { return "" }
-    return itemAt(index).Id
+    let previous = selection.Index
+    let current = Selection.ClampIndex(count, previous)
+    let currentItem = itemAt(current)
+    if selectedId != "" && currentItem.Id == selectedId {
+      if current != previous {
+        selection.Index = current
+        selection.Change = nil
+      }
+      if currentItem.IsSelectable {
+        selectedSelectable = true
+        observedCount = count
+        return
+      }
+      if !force && !selectedSelectable && observedCount == count { return }
+    }
+
+    var restored = findSelectableById(selectedId, count)
+    if restored < 0 { restored = nearestSelectable(current, directionFor(previous)) }
+    if restored < 0 { restored = current }
+    let restoredItem = itemAt(restored)
+    selection.Index = restored
+    selectedId = restoredItem.Id
+    selectedSelectable = restoredItem.IsSelectable
+    observedCount = count
+    selection.Change = nil
   }
 
   private func directionFor(want int32) int32 {
@@ -288,33 +335,20 @@ public open class ListView : Box {
     return Items[index]
   }
 
-  private func refreshSelection() {
-    let previous = selection.Index
-    let count = itemCount()
-    var restored = -1
-    if selectedId != "" {
-      if source != nil {
-        let candidate = source!!.IndexOfKey(selectedId)
-        if candidate >= 0 && candidate < count && itemAt(candidate).IsSelectable {
-          restored = candidate
-        }
-      } else {
-        var i = 0
-        while i < count {
-          let item = itemAt(i)
-          if item.Id == selectedId && item.IsSelectable {
-            restored = i
-            break
-          }
-          i = i + 1
-        }
-      }
+  private func findSelectableById(id string, count int32) int32 {
+    if id == "" { return -1 }
+    if source != nil {
+      let candidate = source!!.IndexOfKey(id)
+      if candidate >= 0 && candidate < count && itemAt(candidate).IsSelectable { return candidate }
+      return -1
     }
-    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
-    if restored < 0 && count > 0 { restored = clampIndex(previous) }
-    selection.Index = restored < 0 ? 0 : restored
-    selectedId = selectedIdAt(selection.Index)
-    selection.Change = nil
+    var i = 0
+    while i < count {
+      let item = itemAt(i)
+      if item.Id == id && item.IsSelectable { return i }
+      i = i + 1
+    }
+    return -1
   }
 
   private func drawRuns(screen Screen, r CellRect, x int32, row int32, runs List[TextRun], inherited Style) {

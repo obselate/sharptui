@@ -4,7 +4,7 @@ import System
 
 /// An endlessly morphing Julia set, diving along its own boundary.
 /// `sharptui --julia`. Drag to steer the shape, scroll to dive. q quits.
-class Julia : View {
+open class Julia : Box {
   private var t float64
   private var pfx float64
   private var pfy float64
@@ -15,18 +15,24 @@ class Julia : View {
   private var lw float64
   private var lr float64
   public init() { t = 0.0 }
-  public func Handle(ev UiEvent) EventResult {
-    if ev.Kind == UiEventKind.Tick { t = t + 0.008 }
-    if ev.Kind == UiEventKind.Tick { mix = Math.Max(0.0, mix - 0.006) }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.ScrollUp { zoff = Math.Min(zoff + 0.2, 2.8) }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.ScrollDown { zoff = Math.Max(zoff - 0.2, -0.8) }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse != MouseKind.Release && ev.Mouse != MouseKind.ScrollUp && ev.Mouse != MouseKind.ScrollDown && lr > 0.0 { mcr = 2.6 * (float64(ev.Position.Column) / lw - 0.5) }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse != MouseKind.Release && ev.Mouse != MouseKind.ScrollUp && ev.Mouse != MouseKind.ScrollDown && lr > 0.0 { mci = 2.0 * (float64(ev.Position.Row) / lr - 0.5) }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse != MouseKind.Release && ev.Mouse != MouseKind.ScrollUp && ev.Mouse != MouseKind.ScrollDown && lr > 0.0 { mix = 1.0 }
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Tick {
+      t = t + 0.008
+      mix = Math.Max(0.0, mix - 0.006)
+    }
+    if ev.Kind == UiEventKind.Mouse {
+      if ev.Mouse == MouseKind.ScrollUp { zoff = Math.Min(zoff + 0.2, 2.8) }
+      else if ev.Mouse == MouseKind.ScrollDown { zoff = Math.Max(zoff - 0.2, -0.8) }
+      else if ev.Mouse != MouseKind.Release && lr > 0.0 {
+        mcr = 2.6 * (float64(ev.Position.Column) / lw - 0.5)
+        mci = 2.0 * (float64(ev.Position.Row) / lr - 0.5)
+        mix = 1.0
+      }
+    }
     if ev.Key == Key.Character && ev.Text == "q" { return EventResult.Exit }
     return EventResult.Continue
   }
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     let w = screen.Size.WidthCells
     let rows = screen.Size.HeightRows
     lw = float64(w)

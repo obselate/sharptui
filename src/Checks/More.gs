@@ -187,6 +187,8 @@ public class MoreCheck {
       let ok = DialogAction{ Text: "OK" }
       let cancel = DialogAction{ Text: "Cancel", IsCancel: true }
       let dialog = Dialog{ Message: "Are you sure?" }
+      var result DialogAction?
+      dialog.OnResult = (action DialogAction) -> result = action
       dialog.Actions.Add(ok)
       dialog.Actions.Add(cancel)
       failed = failed + Checks.Expect(dialog.Placement.IsCentered && dialog.DimBackground,
@@ -208,19 +210,18 @@ public class MoreCheck {
       failed = failed + Checks.Expect(Object.ReferenceEquals(mdroot.FocusedElement, okButton),
         "Dialog action participates in focus routing")
       mdroot.Handle(keyEv(Key.Enter))
-      failed = failed + Checks.Expect(Object.ReferenceEquals(dialog.Result, ok),
-        "Enter on the focused action sets the typed result")
-      failed = failed + Checks.Expect(Object.ReferenceEquals(dialog.ConsumeResult(), ok),
-        "ConsumeResult returns the action and clears Result")
-      failed = failed + Checks.Expect(dialog.Result == nil, "ConsumeResult clears the result")
+      failed = failed + Checks.Expect(Object.ReferenceEquals(result, ok),
+        "Enter on the focused action invokes the typed result callback")
 
+      result = nil
       mdroot.Handle(mouseEv(cancelButton.Bounds.Column + 1, cancelButton.Bounds.Row))
-      failed = failed + Checks.Expect(Object.ReferenceEquals(dialog.ConsumeResult(), cancel),
-        "a mouse press consumes the action under the pointer")
+      failed = failed + Checks.Expect(Object.ReferenceEquals(result, cancel),
+        "a mouse press invokes the action under the pointer")
 
+      result = nil
       mdroot.Handle(keyEv(Key.Escape))
-      failed = failed + Checks.Expect(Object.ReferenceEquals(dialog.ConsumeResult(), cancel),
-        "Escape consumes the cancel action")
+      failed = failed + Checks.Expect(Object.ReferenceEquals(result, cancel),
+        "Escape invokes the cancel action")
 
       let spin = Spinner{}
       let spscr = Screen(20, 3)

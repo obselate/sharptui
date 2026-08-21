@@ -87,21 +87,30 @@ let title = Label{
 
 Focus must remain visible. Give a focusable control a `FocusedStyle` that differs from its normal `Style`. Do not use color as the only selection cue. A prefix, marker, border, or text change gives the same state to terminals with limited color support.
 
-## 04 / Resolve semantics
+## 04 / Define application tokens
 
-`Theme` separates the role from its state overlay. Its base roles are `Body`, `Accent`, `Muted`, `Success`, `Warning`, and `Error`. `ControlState` adds `Focused`, `Selected`, or `Disabled` to `None`.
-
-`Theme.Resolve(role, state)` applies overlays in one order: focused, selected, then disabled. Disabled wins when the states conflict.
+SharpTUI does not define a theme type. A palette is ordinary application data, so define the exact token names and value types your application needs.
 
 ```gs
-let theme = Theme()
-theme.Body = Style{ Foreground: Color.Rgb("E6EDF3") }
-theme.Focused = Style{ Foreground: Color.Rgb("7AA2F7"), Attributes: TextAttributes.Bold }
+class AppPalette {
+  public var MainText Color
+  public var Panel Style
 
-let focusedBody = theme.Resolve(ThemeRole.Body, ControlState.Focused)
+  init() {
+    MainText = Color.Rgb("E6EDF3")
+    Panel = Style{ Background: Color.Rgb("0E1117") }
+  }
+}
+
+let palette = AppPalette()
+
+let title = Label{
+  Text: "SharpTUI",
+  Style: Style{ Foreground: palette.MainText, Background: palette.Panel.Background },
+}
 ```
 
-Use the semantic role at the application boundary. Use `Style` for the exact local exception. Do not encode error, selection, and focus as unrelated RGB literals in each widget.
+Palette classes can contain any number of `Color`, `Style`, glyph, spacing, or application-specific values. SharpTUI widgets consume those values through their normal public properties. Controls keep explicit state styles such as `FocusedStyle` and `SelectedStyle`.
 
 ## 05 / Fit terminal text
 
@@ -126,5 +135,5 @@ Do not use `string.Length` to lay out terminal text. It can split a grapheme or 
 - Don't pass a negative `CellLength`, inset, point, size, width, or height.
 - Don't use `Placement.Centered` as a small-terminal constraint.
 - Don't pass `#RRGGBB` to `Color.Rgb`. Pass 6 digits only.
-- Don't remove the focus distinction when applying a theme.
+- Don't remove the focus distinction when applying a palette.
 - Don't clip terminal text by code-unit count.

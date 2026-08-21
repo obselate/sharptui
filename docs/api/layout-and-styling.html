@@ -92,14 +92,14 @@
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--measure-in-cells">Measure in cells</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--flow-before-overlay">Flow before overlay</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--set-a-style">Set a style</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--resolve-semantics">Resolve semantics</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--fit-terminal-text">Fit terminal text</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#dont">Don&#x27;t</a></td><td>7-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--measure-in-cells">Measure in cells</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--flow-before-overlay">Flow before overlay</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--set-a-style">Set a style</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--define-application-tokens">Define application tokens</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--fit-terminal-text">Fit terminal text</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#dont">Don&#x27;t</a></td><td>7-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
       <h3 class="block-title" id="register-title">Illustration and listing register</h3>
       <table class="contents-table register-table" aria-label="Illustration and listing register">
   <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
-  <tbody><tr><td>Figure</td><td>0-1</td><td>Layout and styling cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Measure in cells</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Flow before overlay</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Set a style</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Resolve semantics</td><td>5-1</td></tr><tr><td>Listing</td><td>6-1</td><td>Fit terminal text</td><td>6-1</td></tr></tbody>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Layout and styling cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Measure in cells</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Flow before overlay</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Set a style</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Define application tokens</td><td>5-1</td></tr><tr><td>Listing</td><td>6-1</td><td>Fit terminal text</td><td>6-1</td></tr></tbody>
 </table>
     </section>
     <div class="instruction">
@@ -333,7 +333,7 @@
   <span>4-1</span>
 </footer>
 </section>
-<section class="sheet" aria-labelledby="04--resolve-semantics">
+<section class="sheet" aria-labelledby="04--define-application-tokens">
   <header class="running-head">
   <span>Layout and styling</span>
   <span>STUI-LAY / Revision A</span>
@@ -343,23 +343,33 @@
       <div class="chapter-number">5</div>
       <div>
         <p class="chapter-label">Chapter 5</p>
-        <h2 id="04--resolve-semantics">Resolve semantics</h2>
+        <h2 id="04--define-application-tokens">Define application tokens</h2>
       </div>
     </div>
     <div class="chapter-copy">
-      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitheme"><code>Theme</code></a> separates the role from its state overlay. Its base roles are <code>Body</code>, <code>Accent</code>, <code>Muted</code>, <code>Success</code>, <code>Warning</code>, and <code>Error</code>. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicontrolstate"><code>ControlState</code></a> adds <code>Focused</code>, <code>Selected</code>, or <code>Disabled</code> to <code>None</code>.</p>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitheme"><code>Theme.Resolve(role, state)</code></a> applies overlays in one order: focused, selected, then disabled. Disabled wins when the states conflict.</p>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Resolve semantics</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>theme<span class="w"> </span>=<span class="w"> </span><span class="nf">Theme</span>()
-theme.<span class="nc">Body</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E6EDF3"</span>)<span class="w"> </span>}
-theme.<span class="nc">Focused</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"7AA2F7"</span>),<span class="w"> </span><span class="nc">Attributes</span>:<span class="w"> </span><span class="nc">TextAttributes</span>.<span class="nc">Bold</span><span class="w"> </span>}
+      <p>SharpTUI does not define a theme type. A palette is ordinary application data, so define the exact token names and value types your application needs.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Define application tokens</span></figcaption><pre class="language-gs"><code><span class="k">class</span><span class="w"> </span><span class="nc">AppPalette</span><span class="w"> </span>{
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">var</span><span class="w"> </span><span class="nc">MainText</span><span class="w"> </span><span class="nc">Color</span>
+<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">var</span><span class="w"> </span><span class="nc">Panel</span><span class="w"> </span><span class="nc">Style</span>
 
-<span class="k">let</span><span class="w"> </span>focusedBody<span class="w"> </span>=<span class="w"> </span>theme.<span class="nf">Resolve</span>(<span class="nc">ThemeRole</span>.<span class="nc">Body</span>,<span class="w"> </span><span class="nc">ControlState</span>.<span class="nc">Focused</span>)
+<span class="w">  </span><span class="k">init</span>()<span class="w"> </span>{
+<span class="w">    </span><span class="nc">MainText</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E6EDF3"</span>)
+<span class="w">    </span><span class="nc">Panel</span><span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"0E1117"</span>)<span class="w"> </span>}
+<span class="w">  </span>}
+}
+
+<span class="k">let</span><span class="w"> </span>palette<span class="w"> </span>=<span class="w"> </span><span class="nf">AppPalette</span>()
+
+<span class="k">let</span><span class="w"> </span>title<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{
+<span class="w">  </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"SharpTUI"</span>,
+<span class="w">  </span><span class="nc">Style</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span>palette.<span class="nc">MainText</span>,<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span>palette.<span class="nc">Panel</span>.<span class="nc">Background</span><span class="w"> </span>},
+}
 </code></pre></figure>
-<p>Use the semantic role at the application boundary. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a> for the exact local exception. Do not encode error, selection, and focus as unrelated RGB literals in each widget.</p>
+<p>Palette classes can contain any number of <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a>, glyph, spacing, or application-specific values. SharpTUI widgets consume those values through their normal public properties. Controls keep explicit state styles such as <code>FocusedStyle</code> and <code>SelectedStyle</code>.</p>
     </div>
   </div>
   <footer class="folio">
-  <span>Resolve semantics</span>
+  <span>Define application tokens</span>
   <span>5-1</span>
 </footer>
 </section>
@@ -438,7 +448,7 @@ theme.<span class="nc">Focused</span><span class="w"> </span>=<span class="w"> <
 <li>Don't pass a negative <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelllength"><code>CellLength</code></a>, inset, point, size, width, or height.</li>
 <li>Don't use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.Centered</code></a> as a small-terminal constraint.</li>
 <li>Don't pass <code>#RRGGBB</code> to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Rgb</code></a>. Pass 6 digits only.</li>
-<li>Don't remove the focus distinction when applying a theme.</li>
+<li>Don't remove the focus distinction when applying a palette.</li>
 <li>Don't clip terminal text by code-unit count.</li>
 </ul>
     </div>

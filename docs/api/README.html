@@ -92,14 +92,14 @@
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#01-authority">Authority</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#02-regenerate">Regenerate</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#03-guides">Guides</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#04-boundaries">Boundaries</a></td><td>4-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#01-authority">Authority</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#02-regenerate">Regenerate</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#03-guides">Guides</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#04-migration">Migration</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#05-boundaries">Boundaries</a></td><td>5-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
       <h3 class="block-title" id="register-title">Illustration and listing register</h3>
       <table class="contents-table register-table" aria-label="Illustration and listing register">
   <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
-  <tbody><tr><td>Figure</td><td>0-1</td><td>Documentation lookup route</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Regenerate</td><td>2-1</td></tr></tbody>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Documentation lookup route</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Regenerate</td><td>2-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Migration</td><td>4-1</td></tr><tr><td>Listing</td><td>4-2</td><td>Migration</td><td>4-1</td></tr><tr><td>Listing</td><td>4-3</td><td>Migration</td><td>4-1</td></tr></tbody>
 </table>
     </section>
     <div class="instruction">
@@ -128,7 +128,7 @@
       </div>
     </div>
     <div class="chapter-copy">
-      <p>Do not edit <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>. The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 91 public types and 561 declared members.</p>
+      <p>Do not edit <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>. The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 85 public types and 522 declared members.</p>
 <p><code>api/</code> locks the contract. <code>PublicApi.allowlist.txt</code> locks exported type names. <code>PublicApi.snapshot.txt</code> locks type kinds. <code>PublicApi.symbols.sha256</code> locks exported signatures. <code>PublicApi.documentation.xml</code> fills the remaining compiler XML gaps for enum values.</p>
     </div>
   </div>
@@ -192,17 +192,17 @@ python<span class="w"> </span>tools/render_api_html.py
 <tr>
 <td>Application tree</td>
 <td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">Getting started</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">HTML</a>)</td>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirow"><code>Row</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen</code></a></td>
 </tr>
 <tr>
 <td>Layout and appearance</td>
 <td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">Layout and styling</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">HTML</a>)</td>
-<td>Cell geometry, placement, color, style, theme</td>
+<td>Cell geometry, placement, color, style, palette patterns</td>
 </tr>
 <tr>
 <td>Events and shortcuts</td>
 <td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">Input and commands</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">HTML</a>)</td>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent</code></a>, keys, mouse, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent</code></a>, keys, mouse, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a></td>
 </tr>
 <tr>
 <td>Text</td>
@@ -238,7 +238,7 @@ python<span class="w"> </span>tools/render_api_html.py
   <span>3-1</span>
 </footer>
 </section>
-<section class="sheet" aria-labelledby="04-boundaries">
+<section class="sheet" aria-labelledby="04-migration">
   <header class="running-head">
   <span>API documentation</span>
   <span>STUI-00 / Revision A</span>
@@ -248,7 +248,102 @@ python<span class="w"> </span>tools/render_api_html.py
       <div class="chapter-number">4</div>
       <div>
         <p class="chapter-label">Chapter 4</p>
-        <h2 id="04-boundaries">Boundaries</h2>
+        <h2 id="04-migration">Migration</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>This release replaces polling and user-owned application lifecycle code with a retained <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree and callbacks. Update the consumer project SDK first:</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Migration</span></figcaption><pre class="language-xml"><code>&lt;Project Sdk="Gsharp.NET.Sdk/0.4.59"&gt;
+</code></pre></figure>
+<p>Then migrate each removed surface:</p>
+<div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Previous API</th>
+<th>Current API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>View</code>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(View)</code></a></td>
+<td>Build a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree and call <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a>. For custom drawing or input, subclass <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> and override <code>Render</code> or <code>Accept</code>. The app owns clearing, drawing, and event routing.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver"><code>TestDriver(View, width, height)</code></a></td>
+<td>Pass the retained root to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver"><code>TestDriver(root, width, height)</code></a>.</td>
+</tr>
+<tr>
+<td><code>Command</code> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind.Consume()</code></a></td>
+<td>Register the action directly with <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(gesture, phase, handler)</code></a>. Use the overload with <code>id</code> and <code>label</code> when a command surface needs metadata. Toggle the returned <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind.IsEnabled</code></a> property when availability changes.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.IsPressed</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.ConsumePress()</code></a></td>
+<td>Assign <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnPress</code></a>.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.Result</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.ConsumeResult()</code></a></td>
+<td>Assign <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.OnResult</code></a>.</td>
+</tr>
+<tr>
+<td><code>Theme</code>, <code>ThemeRole</code>, <code>ControlState</code></td>
+<td>Keep application palette entries as ordinary <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a> values and assign them to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a>, <code>FocusedStyle</code>, <code>SelectedStyle</code>, <code>HeaderStyle</code>, and other control-specific style properties.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker[T]</code></a>, <code>WorkerState</code>, <code>ConsumeResult</code>, <code>ConsumeError</code></td>
+<td>Call <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.StartWorker(work, completed, failed, cancelled)</code></a>. It returns a non-generic <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker</code></a> with <code>IsRunning</code> and <code>Cancel</code>; terminal callbacks run on the application loop.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Button, dialog, and key binding work now runs at activation time. Remove the polling loop that previously consumed pending state:</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-2</span><span>Migration</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
+<span class="k">let</span><span class="w"> </span>state<span class="w"> </span>=<span class="w"> </span><span class="nc">Badge</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"MODIFIED"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>save<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Save"</span><span class="w"> </span>}
+save.<span class="nc">OnPress</span><span class="w"> </span>=<span class="w"> </span>()<span class="w"> </span>-&gt;<span class="w"> </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>
+
+<span class="k">let</span><span class="w"> </span>apply<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Apply"</span><span class="w"> </span>}
+<span class="k">let</span><span class="w"> </span>confirm<span class="w"> </span>=<span class="w"> </span><span class="nc">Dialog</span>{<span class="w"> </span><span class="nc">Message</span>:<span class="w"> </span><span class="s2">"Apply changes?"</span>,<span class="w"> </span><span class="nc">Actions</span>:<span class="w"> </span>{<span class="w"> </span>apply<span class="w"> </span>}<span class="w"> </span>}
+confirm.<span class="nc">OnResult</span><span class="w"> </span>=<span class="w"> </span>(action<span class="w"> </span><span class="nc">DialogAction</span>)<span class="w"> </span>-&gt;<span class="w"> </span>{
+<span class="w">  </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>action.<span class="nc">Text</span>
+<span class="w">  </span>confirm.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">false</span>
+}
+
+app.<span class="nc">Keys</span>.<span class="nf">Add</span>(
+<span class="w">  </span><span class="s2">"save"</span>,
+<span class="w">  </span><span class="s2">"Save"</span>,
+<span class="w">  </span><span class="nc">KeyGesture</span>.<span class="nf">Ctrl</span>(<span class="s2">"s"</span>),
+<span class="w">  </span><span class="nc">BindingPhase</span>.<span class="nc">BeforeWidgets</span>,
+<span class="w">  </span>()<span class="w"> </span>-&gt;<span class="w"> </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>)
+</code></pre></figure>
+<p>Background work also delivers terminal state through callbacks instead of a state machine:</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-3</span><span>Migration</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
+<span class="k">let</span><span class="w"> </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">StatusBar</span>{}
+<span class="k">let</span><span class="w"> </span>worker<span class="w"> </span>=<span class="w"> </span>app.<span class="nc">StartWorker</span>[<span class="kt">string</span>]((token<span class="w"> </span><span class="nc">CancellationToken</span>)<span class="w"> </span>-&gt;<span class="w"> </span>{
+<span class="w">  </span>token.<span class="nf">ThrowIfCancellationRequested</span>()
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s2">"report ready"</span>
+},
+<span class="w">  </span>(report<span class="w"> </span><span class="kt">string</span>)<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span>report,
+<span class="w">  </span>(error<span class="w"> </span><span class="nc">Exception</span>)<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"failed: "</span><span class="w"> </span>+<span class="w"> </span>error.<span class="nc">Message</span>,
+<span class="w">  </span>()<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"cancelled"</span>)
+</code></pre></figure>
+<p>The <code>completed</code>, <code>failed</code>, and <code>cancelled</code> callbacks run on the application loop. Keep only the returned <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker</code></a> when the caller needs <code>Cancel()</code> or <code>IsRunning</code>.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Migration</span>
+  <span>4-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="05-boundaries">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">5</div>
+      <div>
+        <p class="chapter-label">Chapter 5</p>
+        <h2 id="05-boundaries">Boundaries</h2>
       </div>
     </div>
     <div class="chapter-copy">
@@ -257,7 +352,7 @@ python<span class="w"> </span>tools/render_api_html.py
   </div>
   <footer class="folio">
   <span>Boundaries</span>
-  <span>4-1</span>
+  <span>5-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="appendix-title">

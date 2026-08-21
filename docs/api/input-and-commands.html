@@ -197,30 +197,21 @@
 
 <span class="k">import</span><span class="w"> </span><span class="nc">SharpTui</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">InputView</span><span class="w"> </span>:<span class="w"> </span><span class="nc">View</span><span class="w"> </span>{
-<span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>root<span class="w"> </span><span class="nc">Box</span>
+open<span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">InputRoot</span><span class="w"> </span>:<span class="w"> </span><span class="nc">Box</span><span class="w"> </span>{
 <span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>status<span class="w"> </span><span class="nc">Label</span>
-<span class="w">  </span><span class="k">private</span><span class="w"> </span><span class="k">var</span><span class="w"> </span>save<span class="w"> </span><span class="nc">Command</span>
 
 <span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">init</span>()<span class="w"> </span>{
 <span class="w">    </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"ready"</span><span class="w"> </span>}
-<span class="w">    </span>root<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{<span class="w"> </span><span class="nc">Padding</span>:<span class="w"> </span><span class="nc">CellInsets</span>.<span class="nf">All</span>(<span class="m">1</span>),<span class="w"> </span><span class="nc">Children</span>:<span class="w"> </span>{<span class="w"> </span>status<span class="w"> </span>}<span class="w"> </span>}
-<span class="w">    </span>save<span class="w"> </span>=<span class="w"> </span><span class="nf">Command</span>(<span class="s2">"save"</span>,<span class="w"> </span><span class="s2">"Save"</span>,<span class="w"> </span><span class="nc">KeyGesture</span>.<span class="nf">Ctrl</span>(<span class="s2">"s"</span>))
+<span class="w">    </span><span class="nc">Padding</span><span class="w"> </span>=<span class="w"> </span><span class="nc">CellInsets</span>.<span class="nf">All</span>(<span class="m">1</span>)
+<span class="w">    </span><span class="nc">Children</span>.<span class="nf">Add</span>(status)
 <span class="w">  </span>}
 
 <span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Configure</span>(app<span class="w"> </span><span class="nc">App</span>)<span class="w"> </span>{
-<span class="w">    </span>app.<span class="nc">Keys</span>.<span class="nf">Add</span>(save,<span class="w"> </span><span class="nc">BindingPhase</span>.<span class="nc">AfterWidgets</span>)
+<span class="w">    </span>app.<span class="nc">Keys</span>.<span class="nf">Add</span>(<span class="s2">"save"</span>,<span class="w"> </span><span class="s2">"Save"</span>,<span class="w"> </span><span class="nc">KeyGesture</span>.<span class="nf">Ctrl</span>(<span class="s2">"s"</span>),
+<span class="w">      </span><span class="nc">BindingPhase</span>.<span class="nc">AfterWidgets</span>,<span class="w"> </span>()<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"saved"</span>)
 <span class="w">  </span>}
 
-<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Draw</span>(screen<span class="w"> </span><span class="nc">Screen</span>)<span class="w"> </span>{
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>save.<span class="nf">Consume</span>()<span class="w"> </span>{<span class="w"> </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"saved"</span><span class="w"> </span>}
-<span class="w">    </span>screen.<span class="nf">Clear</span>()
-<span class="w">    </span>root.<span class="nf">Draw</span>(screen)
-<span class="w">  </span>}
-
-<span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Handle</span>(ev<span class="w"> </span><span class="nc">UiEvent</span>)<span class="w"> </span><span class="nc">EventResult</span><span class="w"> </span>{
-<span class="w">    </span><span class="k">let</span><span class="w"> </span>routed<span class="w"> </span>=<span class="w"> </span>root.<span class="nf">Handle</span>(ev)
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>routed<span class="w"> </span>!=<span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Continue</span><span class="w"> </span>{<span class="w"> </span><span class="k">return</span><span class="w"> </span>routed<span class="w"> </span>}
+<span class="w">  </span>protected<span class="w"> </span>override<span class="w"> </span><span class="k">func</span><span class="w"> </span><span class="nf">Accept</span>(ev<span class="w"> </span><span class="nc">UiEvent</span>)<span class="w"> </span><span class="nc">EventResult</span><span class="w"> </span>{
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>ev.<span class="nc">Kind</span><span class="w"> </span>==<span class="w"> </span><span class="nc">UiEventKind</span>.<span class="nc">Paste</span><span class="w"> </span>{
 <span class="w">      </span>status.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>ev.<span class="nc">Text</span>
 <span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="nc">EventResult</span>.<span class="nc">Handled</span>
@@ -237,9 +228,9 @@
 
 <span class="k">func</span><span class="w"> </span><span class="nf">Main</span>(args<span class="w"> </span>[]<span class="kt">string</span>)<span class="w"> </span><span class="kt">int32</span><span class="w"> </span>{
 <span class="w">  </span><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
-<span class="w">  </span><span class="k">let</span><span class="w"> </span>view<span class="w"> </span>=<span class="w"> </span><span class="nf">InputView</span>()
-<span class="w">  </span>view.<span class="nf">Configure</span>(app)
-<span class="w">  </span>app.<span class="nf">Run</span>(view)
+<span class="w">  </span><span class="k">let</span><span class="w"> </span>root<span class="w"> </span>=<span class="w"> </span><span class="nf">InputRoot</span>()
+<span class="w">  </span>root.<span class="nf">Configure</span>(app)
+<span class="w">  </span>app.<span class="nf">Run</span>(root)
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 }
 </code></pre></figure>
@@ -292,7 +283,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture.Ctrl("s").Matches(ev)</code></a> tests the same gesture used by the command above.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture.Ctrl("s").Matches(ev)</code></a> tests the same gesture used by the binding above.</p>
 <p>Do not compare a typed character through an assumed keyboard layout. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikey"><code>Key.Character</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuievent"><code>UiEvent.Text</code></a> carry the decoded input.</p>
     </div>
   </div>
@@ -315,7 +306,7 @@
       </div>
     </div>
     <div class="chapter-copy">
-      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a> carries a stable <code>Id</code>, a display <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label</code></a>, a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture</code></a>, enabled state, and one consumable pending activation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> records a gesture and a routing phase. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a> owns bindings in registration order.</p>
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> carries a stable <code>Id</code>, display <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilabel"><code>Label</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeygesture"><code>KeyGesture</code></a>, routing phase, enabled state, and callback. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap</code></a> owns bindings in registration order.</p>
 <div class="table-scroll"><table class="manual-table">
 <thead>
 <tr>
@@ -325,20 +316,12 @@
 </thead>
 <tbody>
 <tr>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command(id, label, gesture)</code></a></td>
-<td>Creates an enabled command.</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(id, label, gesture, phase, handler)</code></a></td>
+<td>Adds and returns a named binding.</td>
 </tr>
 <tr>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command.Consume()</code></a></td>
-<td>Reports and clears one command activation.</td>
-</tr>
-<tr>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(command, phase)</code></a></td>
-<td>Activates the command when its gesture matches.</td>
-</tr>
-<tr>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(gesture, phase)</code></a></td>
-<td>Returns a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> whose <code>Consume()</code> reports one match.</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Add(gesture, phase, handler)</code></a></td>
+<td>Adds and returns an unnamed binding.</td>
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeymap"><code>Keymap.Offer(ev, phase)</code></a></td>
@@ -346,8 +329,8 @@
 </tr>
 </tbody>
 </table></div>
-<p>The example above consumes <code>save</code> in <code>Draw</code>. <code>AfterWidgets</code> activates it after <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View.Handle</code></a> returns, then the event loop draws the updated retained state.</p>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command.IsEnabled = false</code></a> rejects activation. A disabled command does not consume the event.</p>
+<p>The example invokes its save callback after the retained tree declines Ctrl+S. The callback mutates the status directly. There is no pending command state to poll during drawing.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind.IsEnabled = false</code></a> rejects activation. A disabled binding does not consume the event.</p>
     </div>
   </div>
   <footer class="folio">
@@ -384,7 +367,7 @@
 </tr>
 <tr>
 <td>2</td>
-<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiview"><code>View.Handle(ev)</code></a> runs. A non-<code>Continue</code> result stops routing.</td>
+<td><code>root.Handle(ev)</code> runs. A non-<code>Continue</code> result stops routing.</td>
 </tr>
 <tr>
 <td>3</td>
@@ -396,7 +379,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a> wraps the tree as a view. Its view handler calls <code>root.Handle(ev)</code>. A custom view must route its retained root before its fallback shortcuts.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a> routes the tree directly. A custom root control receives fallback input through its <code>Accept</code> override after focused descendants decline it.</p>
 <p>Use <code>BeforeWidgets</code> only for a command that must preempt all controls. Use <code>AfterWidgets</code> for application shortcuts that must not interrupt text entry.</p>
     </div>
   </div>
@@ -477,7 +460,7 @@
 <li>Don't read <code>Mouse</code>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button</code></a>, or <code>Position</code> from a non-mouse event.</li>
 <li>Don't treat <code>Repeat</code> or <code>Release</code> as a shortcut gesture match.</li>
 <li>Don't bind ordinary editing keys in <code>BeforeWidgets</code>.</li>
-<li>Don't consume a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicommand"><code>Command</code></a> or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibind"><code>Bind</code></a> twice. <code>Consume()</code> clears its pending activation.</li>
+<li>Don't poll a flag for a binding match. Put the state transition in the binding handler.</li>
 <li>Don't remove or obscure focus when a keyboard user changes controls.</li>
 </ul>
     </div>

@@ -2,9 +2,9 @@
 
 ## Principle
 
-SharpTUI retains a tree. Construct it once. Mutate the same objects when state changes. Draw the tree into a `Screen` after each event batch.
+SharpTUI retains a tree. Construct it once. Mutate the same objects when state changes. `App` routes input and draws the tree after each event batch.
 
-Do not rebuild the tree in `Draw`. Do not draw application state only into a status line. Change the widget that owns the state.
+Do not rebuild the tree after each event. Do not mirror widget state through an application loop. Change the widget that owns the state.
 
 For every member, see [reference.md](reference.md).
 
@@ -14,7 +14,7 @@ For every member, see [reference.md](reference.md).
 
 | Type | Role | Fact |
 | --- | --- | --- |
-| `App` | Terminal loop | Runs a `Box` tree or a custom `View`. |
+| `App` | Terminal loop | Routes and draws one `Box` tree. |
 | `Box` | Retained node | Every drawable control and container derives from it. |
 | `Row` | Horizontal container | Lays children on the row axis. |
 | `Column` | Vertical container | Lays children on the column axis. |
@@ -49,55 +49,30 @@ func Main(args []string) int32 {
 
 `CellLength.Cells(20)` uses a fixed 20-cell width. Its count must be 0 or more. `GrowWeight` distributes spare space only within its immediate in-flow parent.
 
-## 02 / Use a view
+## 02 / Change retained state
 
-`View` is for an application that owns state and a retained tree. `Draw(screen)` paints one frame. `Handle(ev)` returns `Continue`, `Handled`, or `Exit`.
-
-| Result | Meaning | Next stage |
-| --- | --- | --- |
-| `Continue` | The view declined the event. | Later routing may run. |
-| `Handled` | The view consumed the event. | Routing stops. |
-| `Exit` | The app must stop. | The loop exits. |
+Controls invoke application work directly. The callback mutates retained widgets. There is no event-polling loop and no manual draw call.
 
 ```gs
 package Demo
 
 import SharpTui
 
-class Counter : View {
-  private var root Box
-  private var value Label
-  private var count int32
-
-  public init() {
-    count = 0
-    value = Label{ Text: "0" }
-    root = Column{
-      Padding: CellInsets.All(1),
-      Children: { Label{ Text: "press +" }, value },
-    }
-  }
-
-  public func Draw(screen Screen) {
-    screen.Clear()
-    root.Draw(screen)
-  }
-
-  public func Handle(ev UiEvent) EventResult {
-    let routed = root.Handle(ev)
-    if routed != EventResult.Continue { return routed }
-    if KeyGesture.Character("+").Matches(ev) {
-      count = count + 1
-      value.Text = count.ToString()
-      return EventResult.Handled
-    }
-    return EventResult.Continue
-  }
-}
-
 func Main(args []string) int32 {
+  var count = 0
+  let value = Label{ Text: "0" }
+  let increment = Button{ Text: "+" }
+  increment.OnPress = () -> {
+    count = count + 1
+    value.Text = count.ToString()
+  }
+  let root = Column{
+    Padding: CellInsets.All(1),
+    GapCells: 1,
+    Children: { value, increment },
+  }
   let app = App()
-  app.Run(Counter())
+  app.Run(root)
   return 0
 }
 ```
@@ -106,18 +81,18 @@ func Main(args []string) int32 {
 
 | Stage | Result |
 | --- | --- |
-| `BeforeWidgets` | The application keymap runs before the view. A match returns `Handled`. |
-| `View.Handle(ev)` | The view runs. A non-`Continue` result stops routing. |
-| `AfterWidgets` | The application keymap runs after the view returns `Continue`. A match returns `Handled`. |
+| `BeforeWidgets` | The application keymap runs before the tree. A match returns `Handled`. |
+| `root.Handle(ev)` | Focused controls and their ancestors receive the event. |
+| `AfterWidgets` | The application keymap runs after the tree returns `Continue`. A match returns `Handled`. |
 | `QuitGestures` | Fallback quit gestures run last. A match returns `Exit`. |
 
-Inside a custom `View`, route the retained root before view fallback shortcuts. A focused widget gets its event before that fallback logic. Mutating `value.Text` retains the new state. The event loop marks accepted input work dirty and draws the next frame.
+Mutating `value.Text` retains the new state. The event loop marks accepted input work dirty and draws the next frame. A custom root control can override `Accept` for application-specific fallback input without owning the loop.
 
-`App.StartWorker[T](work)` owns one background operation and returns its terminal state to the application loop. Use `App.Post(work)` for results from external producers. `App.RequestDraw()` requests one coalesced repaint when no input event already causes one.
+`App.StartWorker[T](work, completed, failed, cancelled)` owns one background operation and invokes one terminal callback on the application loop. Use `App.Post(work)` for results from external producers. `App.RequestDraw()` requests one coalesced repaint when no input event already causes one.
 
 ## 03 / Test the same path
 
-`TestDriver` runs a `Box` tree or `View` without a terminal or clock. Its width and height are terminal cells. Both values must be 0 or more.
+`TestDriver` runs a `Box` tree without a terminal or clock. Its width and height are terminal cells. Both values must be 0 or more.
 
 | Method | Result |
 | --- | --- |
@@ -128,11 +103,10 @@ Inside a custom `View`, route the retained root before view fallback shortcuts. 
 | `Advance(elapsed)` | Moves caller-controlled time forward. |
 
 ```gs
-let driver = TestDriver(Counter(), 40, 8)
+let driver = TestDriver(root, 40, 8)
 let result = driver.Send(UiEvent{
   Kind: UiEventKind.Key,
-  Key: Key.Character,
-  Text: "+",
+  Key: Key.Enter,
   Phase: KeyPhase.Press,
 })
 let frame = driver.Draw()
@@ -144,5 +118,5 @@ The driver exposes its `App`, `Screen`, current `NowMilliseconds`, and the focus
 
 - Don't recreate widgets to show a value change. Mutate the retained widget.
 - Don't mutate the tree from a background thread. Use `App.StartWorker` for app-owned work or `App.Post` for results from an external producer.
-- Don't omit `screen.Clear()` before drawing a custom `View` unless the view deliberately owns every cell.
-- Don't return `Handled` for an event the view did not consume.
+- Don't call `screen.Clear()`, `root.Draw()`, or `root.Handle()` from application code. `App` owns those lifecycle calls.
+- Don't return `Handled` from a custom root control for an event it did not consume.

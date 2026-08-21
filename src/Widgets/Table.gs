@@ -142,9 +142,11 @@ public open class TableView : Box {
   private var source KeyedSource[TableRow, string]?
   private var selection SelectionState
   private var selectedRowId string
+  private var selectedRowSelectable bool
+  private var observedRowCount int32
   /// Column definitions in display order.
   public prop Columns List[TableColumn] { get; set; }
-  /// Data rows shown by this table; setting it replaces all rows and re-resolves the selection via Refresh.
+  /// Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.
   public prop Rows List[TableRow] {
     get { return rows }
     set {
@@ -164,11 +166,19 @@ public open class TableView : Box {
   }
   /// Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedRowIndex int32 {
-    get { return selection.Index }
+    get {
+      reconcileSelection()
+      return selection.Index
+    }
     set { setProgrammaticSelection(value) }
   }
   /// Id of the selected row, or empty when no row is selected.
-  public prop SelectedRowId string { get { return selectedRowId } }
+  public prop SelectedRowId string {
+    get {
+      reconcileSelection()
+      return selectedRowId
+    }
+  }
   /// Index of the first data row visible in the viewport.
   public prop FirstVisibleRowIndex int32 { get; set; }
   /// Index of the first visible column in the horizontal viewport.
@@ -203,6 +213,8 @@ public open class TableView : Box {
     source = nil
     selection = SelectionState()
     selectedRowId = ""
+    selectedRowSelectable = false
+    observedRowCount = 0
     FirstVisibleRowIndex = 0
     FirstVisibleColumnIndex = 0
     HeaderStyle = Style()
@@ -215,12 +227,13 @@ public open class TableView : Box {
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedRowIndex does not produce one.
   /// @returns The pending SelectionChange, or nil when none is pending.
   public func ConsumeSelectionChange() SelectionChange? {
+    reconcileSelection()
     return selection.Consume()
   }
 
-  /// Re-resolves selection after direct mutation of the active Rows or Source data, restoring the previous Id when possible.
+  /// Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
   public func Refresh() {
-    refreshSelection()
+    reconcileSelection(true)
   }
 
   protected override func ScrollExtentRows() int32 {
@@ -238,9 +251,9 @@ public open class TableView : Box {
   /// @param r The rect to paint within.
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
+    reconcileSelection()
     if r.HeightRows <= 0 || Columns.Count == 0 { return }
     let height = r.HeightRows - 1
-    normalizeSelection()
     FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
 
     let widths = columnWidths(r.WidthCells)
@@ -269,7 +282,7 @@ public open class TableView : Box {
     let bounds = ContentBounds
     let height = bounds.HeightRows - 1
     if height <= 0 { return EventResult.Continue }
-    normalizeSelection()
+    reconcileSelection()
 
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, height)) }
@@ -521,42 +534,72 @@ public open class TableView : Box {
   }
 
   private func setSelection(value int32, emit bool) bool {
+    let count = rowCount()
     let changed = selection.Set(value, emit)
-    selectedRowId = selectedIdAt(value)
+    if value >= 0 && value < count {
+      let row = rowAt(value)
+      selectedRowId = row.Id
+      selectedRowSelectable = row.IsSelectable
+    } else {
+      selectedRowId = ""
+      selectedRowSelectable = false
+    }
+    observedRowCount = count
     return changed
   }
 
-  private func normalizeSelection() {
+  private func reconcileSelection() {
+    reconcileSelection(false)
+  }
+
+  private func reconcileSelection(force bool) {
     let count = rowCount()
     if count == 0 {
-      if selection.Index != 0 || selectedRowId != "" {
+      if selection.Index != 0 || selectedRowId != "" || selectedRowSelectable {
         selection.Index = 0
         selectedRowId = ""
+        selectedRowSelectable = false
         selection.Change = nil
       }
+      observedRowCount = 0
       return
     }
-    var normalized = nearestSelectable(clampIndex(selection.Index), directionFor(selection.Index))
-    if normalized < 0 { normalized = clampIndex(selection.Index) }
-    let normalizedId = selectedIdAt(normalized)
-    if normalized == selection.Index && normalizedId == selectedRowId { return }
-    selection.Index = normalized
-    selectedRowId = normalizedId
+
+    let previous = selection.Index
+    let current = Selection.ClampIndex(count, previous)
+    let currentRow = rowAt(current)
+    if selectedRowId != "" && currentRow.Id == selectedRowId {
+      if current != previous {
+        selection.Index = current
+        selection.Change = nil
+      }
+      if currentRow.IsSelectable {
+        selectedRowSelectable = true
+        observedRowCount = count
+        return
+      }
+      if !force && !selectedRowSelectable && observedRowCount == count { return }
+    }
+
+    var restored = findSelectableById(selectedRowId, count)
+    if restored < 0 { restored = nearestSelectable(current, directionFor(previous)) }
+    if restored < 0 { restored = current }
+    let restoredRow = rowAt(restored)
+    selection.Index = restored
+    selectedRowId = restoredRow.Id
+    selectedRowSelectable = restoredRow.IsSelectable
+    observedRowCount = count
     selection.Change = nil
   }
 
   private func setProgrammaticSelection(want int32) {
+    reconcileSelection()
     if rowCount() == 0 {
       setSelection(0, false)
       return
     }
     let selected = nearestSelectable(clampIndex(want), directionFor(want))
     setSelection(selected < 0 ? clampIndex(want) : selected, false)
-  }
-
-  private func selectedIdAt(index int32) string {
-    if index < 0 || index >= rowCount() { return "" }
-    return rowAt(index).Id
   }
 
   private func directionFor(want int32) int32 {
@@ -588,33 +631,20 @@ public open class TableView : Box {
     return Rows[index]
   }
 
-  private func refreshSelection() {
-    let previous = selection.Index
-    let count = rowCount()
-    var restored = -1
-    if selectedRowId != "" {
-      if source != nil {
-        let candidate = source!!.IndexOfKey(selectedRowId)
-        if candidate >= 0 && candidate < count && rowAt(candidate).IsSelectable {
-          restored = candidate
-        }
-      } else {
-        var i = 0
-        while i < count {
-          let row = rowAt(i)
-          if row.Id == selectedRowId && row.IsSelectable {
-            restored = i
-            break
-          }
-          i = i + 1
-        }
-      }
+  private func findSelectableById(id string, count int32) int32 {
+    if id == "" { return -1 }
+    if source != nil {
+      let candidate = source!!.IndexOfKey(id)
+      if candidate >= 0 && candidate < count && rowAt(candidate).IsSelectable { return candidate }
+      return -1
     }
-    if restored < 0 { restored = nearestSelectable(clampIndex(previous), directionFor(previous)) }
-    if restored < 0 && count > 0 { restored = clampIndex(previous) }
-    selection.Index = restored < 0 ? 0 : restored
-    selectedRowId = selectedIdAt(selection.Index)
-    selection.Change = nil
+    var i = 0
+    while i < count {
+      let row = rowAt(i)
+      if row.Id == id && row.IsSelectable { return i }
+      i = i + 1
+    }
+    return -1
   }
 
 }

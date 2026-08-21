@@ -16,11 +16,10 @@ func freshInk(line string) Style {
 /// space runs it once more and highlights what changed since the previous
 /// run. Runs via `sh -c`, so quoting behaves like a shell would.
 /// `sharptui --watch "COMMAND ARGS"`.
-class Watcher : View {
+open class Watcher : Column {
   private var pane ListView
   private var entry TextInput
   private var bar StatusBar
-  private var root Box
   private var frame Box
   private var command string
   private var history List[WatchRun]
@@ -44,12 +43,10 @@ class Watcher : View {
       Title: this.command == "" ? "no command yet" : this.command,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { pane } }
 
-    root = Column{ Children: {
-      frame,
-      Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "command", Children: { entry } },
-      bar,
-    }}
-    if this.command == "" { root.Focus(entry) } else { root.Focus(pane) }
+    Children.Add(frame)
+    Children.Add(Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "command", Children: { entry } })
+    Children.Add(bar)
+    if this.command == "" { Focus(entry) } else { Focus(pane) }
     if this.command != "" { again() } else { showEmpty() }
   }
 
@@ -74,7 +71,7 @@ class Watcher : View {
   /// Takes the typed command, starts history over, and runs it once.
   private func adopt() {
     let next = entry.Text.Trim()
-    root.Focus(pane)
+    Focus(pane)
     if next == "" || next == command { return }
     command = next
     frame.Title = command
@@ -130,7 +127,7 @@ class Watcher : View {
     shownMoved = hasPrev ? watchCount(fresh) : 0
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     if history.Count == 0 {
       bar.LeftText = command == "" ? "no command yet" : "not run yet - space runs it"
     } else {
@@ -143,13 +140,11 @@ class Watcher : View {
     }
     bar.RightText = entry.IsFocused ? "enter runs it - esc leaves the box"
       : "space runs it again - c changes it - [ ] browse history - q quits"
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     // A key acts on press; Kitty terminals also report releases.
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
 
     // Typing is wherever focus is: tab can land in the command box without
     // any shortcut, so plain keys must never fire while it holds focus.
@@ -159,10 +154,9 @@ class Watcher : View {
         return EventResult.Handled
       }
       if ev.Key == Key.Escape {
-        root.Focus(pane)
+        Focus(pane)
         return EventResult.Handled
       }
-      root.Handle(ev)
       return EventResult.Continue
     }
 
@@ -170,7 +164,7 @@ class Watcher : View {
       if ev.Text == "q" { return EventResult.Exit }
       if ev.Text == "c" {
         entry.Text = command
-        root.Focus(entry)
+        Focus(entry)
         return EventResult.Handled
       }
       if ev.Text == " " || ev.Text == "r" {
@@ -186,7 +180,6 @@ class Watcher : View {
         return EventResult.Handled
       }
     }
-    root.Handle(ev)
     return EventResult.Continue
   }
 }

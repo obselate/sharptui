@@ -1211,25 +1211,29 @@ func uiBenchButtonPress() {
   let button = uiBenchButton(w)
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
+  var presses = 0
+  button.OnPress = () -> presses = presses + 1
   button.Focus(button)
   uiBenchDraw(button, screen, sink)
 
   let warmupStep = func(i int32) {
+    let expected = presses + 1
     button.Handle(keyEv(Key.Enter))
     uiBenchDraw(button, screen, sink)
-    if !button.ConsumePress() { Console.WriteLine("SharpTUI button press warmup failed") }
+    if presses != expected { Console.WriteLine("SharpTUI button press warmup failed") }
   }
   let measureStep = func(i int32) {
+    let expected = presses + 1
     button.Handle(keyEv(Key.Enter))
     uiBenchDraw(button, screen, sink)
-    if !button.ConsumePress() { Console.WriteLine("SharpTUI button press measurement failed") }
+    if presses != expected { Console.WriteLine("SharpTUI button press measurement failed") }
   }
-  uiBenchRun("button press and consume", 64, 500, warmupStep, measureStep,
+  uiBenchRun("button press callback", 64, 500, warmupStep, measureStep,
     func(before int64, after int64, genBefore int32, genAfter int32) int32 {
-      if button.IsPressed { Console.WriteLine("SharpTUI button press validation failed") }
+      let expected = presses + 1
       button.Handle(keyEv(Key.Enter))
       let bytes = uiBenchDraw(button, screen, sink)
-      if bytes != 0 || !button.IsPressed || !button.ConsumePress() || button.IsPressed {
+      if bytes != 0 || presses != expected {
         Console.WriteLine("SharpTUI button press final validation failed")
       }
       return bytes
@@ -1243,6 +1247,8 @@ func uiBenchDialogNavigation() {
   let root = uiBenchDialogScene(dialog)
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
+  var results = 0
+  dialog.OnResult = (action DialogAction) -> results = results + 1
   uiBenchDraw(root, screen, sink)
 
   let step = func(i int32) {
@@ -1250,10 +1256,10 @@ func uiBenchDialogNavigation() {
     uiBenchDraw(root, screen, sink)
   }
   uiBenchRun("dialog action navigation", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
-    if dialog.FocusedElement == nil || dialog.Result != nil { Console.WriteLine("SharpTUI dialog navigation validation failed") }
+    if dialog.FocusedElement == nil || results != 0 { Console.WriteLine("SharpTUI dialog navigation validation failed") }
     root.Handle(keyEv(Key.Tab))
     let bytes = uiBenchDraw(root, screen, sink)
-    if bytes == 0 || dialog.FocusedElement == nil || dialog.Result != nil {
+    if bytes == 0 || dialog.FocusedElement == nil || results != 0 {
       Console.WriteLine("SharpTUI dialog navigation final validation failed")
     }
     return bytes

@@ -65,6 +65,7 @@ service, or API key.
 ## Documentation
 
 - [API guides and complete reference](docs/api/README.md) ([HTML edition](docs/api/README.html))
+- [Migration from the polling API](docs/api/README.md#04-migration)
 - [G# language and tooling](https://github.com/DavidOBando/gsharp)
 - [Performance and allocation numbers](docs/performance.md)
 - [ChatGPT plugin privacy](docs/plugin-privacy.md)

@@ -106,7 +106,7 @@ public struct NumericRange {
 public open class Sparkline : Box {
   private var valueRange NumericRange
 
-  /// The series to plot, one glyph per value, oldest first.
+  /// The series to plot, one glyph per value, oldest first. Non-finite values render as blank cells and do not affect automatic ranges.
   public prop Values List[float64] { get; set; }
   /// The scale used to map values to glyph levels.
   public prop ValueRange NumericRange {
@@ -152,11 +152,18 @@ public open class Sparkline : Box {
     var low = ValueRange.Minimum
     var high = ValueRange.Maximum
     if ValueRange.IsAuto {
-      low = Values[0]
-      high = Values[0]
+      var found = false
       for v in Values {
-        if v < low { low = v }
-        if v > high { high = v }
+        if finite(v) {
+          if !found {
+            low = v
+            high = v
+            found = true
+          } else {
+            if v < low { low = v }
+            if v > high { high = v }
+          }
+        }
       }
     }
 
@@ -172,6 +179,7 @@ public open class Sparkline : Box {
   }
 
   private func glyphFor(v float64, low float64, high float64) string {
+    if !finite(v) { return " " }
     if high <= low { return levels[levels.Count - 1] }
     var t = (v - low) / (high - low)
     if t < 0.0 { t = 0.0 }
@@ -179,6 +187,10 @@ public open class Sparkline : Box {
     var idx = int32(Math.Floor(t * float64(levels.Count - 1)))
     if idx >= levels.Count { idx = levels.Count - 1 }
     return levels[idx]
+  }
+
+  private func finite(value float64) bool {
+    return !Double.IsNaN(value) && !Double.IsInfinity(value)
   }
 
 }

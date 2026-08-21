@@ -144,8 +144,8 @@
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button</code></a></td>
-<td>pending press</td>
-<td>One explicit action. Read it with <code>ConsumePress</code>.</td>
+<td><code>OnPress</code></td>
+<td>Invokes one explicit action.</td>
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitoggle"><code>Toggle</code></a></td>
@@ -174,20 +174,16 @@
 </tr>
 </tbody>
 </table></div>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 1-1</span><span>Basic controls</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>save<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Save"</span><span class="w"> </span>}
-<span class="k">let</span><span class="w"> </span>autosave<span class="w"> </span>=<span class="w"> </span><span class="nc">Toggle</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Autosave"</span>,<span class="w"> </span><span class="nc">IsChecked</span>:<span class="w"> </span><span class="k">true</span><span class="w"> </span>}
+<figure class="listing"><figcaption class="listing-head"><span>Listing 1-1</span><span>Basic controls</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>autosave<span class="w"> </span>=<span class="w"> </span><span class="nc">Toggle</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Autosave"</span>,<span class="w"> </span><span class="nc">IsChecked</span>:<span class="w"> </span><span class="k">true</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>mode<span class="w"> </span>=<span class="w"> </span><span class="nc">Select</span>{<span class="w"> </span><span class="nc">Options</span>:<span class="w"> </span>{<span class="w"> </span><span class="s2">"Draft"</span>,<span class="w"> </span><span class="s2">"Review"</span>,<span class="w"> </span><span class="s2">"Final"</span><span class="w"> </span>},<span class="w"> </span><span class="nc">Placeholder</span>:<span class="w"> </span><span class="s2">"choose mode"</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>state<span class="w"> </span>=<span class="w"> </span><span class="nc">Badge</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"MODIFIED"</span><span class="w"> </span>}
-
-<span class="k">if</span><span class="w"> </span>save.<span class="nf">ConsumePress</span>()<span class="w"> </span>{
-<span class="w">  </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>
-}
+<span class="k">let</span><span class="w"> </span>save<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Save"</span>,<span class="w"> </span><span class="nc">OnPress</span>:<span class="w"> </span>()<span class="w"> </span>-&gt;<span class="w"> </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span><span class="w"> </span>}
 
 <span class="k">if</span><span class="w"> </span>mode.<span class="nf">ConsumeSelectionChange</span>()<span class="w"> </span>!=<span class="w"> </span><span class="k">nil</span><span class="w"> </span>{
 <span class="w">  </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span>mode.<span class="nc">Options</span>[mode.<span class="nc">SelectedIndex</span>]
 }
 </code></pre></figure>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.IsPressed</code></a> reports the same pending state without clearing it. <code>ConsumePress</code> is the action boundary. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitoggle"><code>Toggle</code></a> flips on Enter, space, or click. Set <code>CheckedGlyph</code> and <code>UncheckedGlyph</code> only when the default bracket glyphs do not convey state.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnPress</code></a> runs on Enter, space, or click. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitoggle"><code>Toggle</code></a> flips on the same inputs. Set <code>CheckedGlyph</code> and <code>UncheckedGlyph</code> only when the default bracket glyphs do not convey state.</p>
 <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiradiogroup"><code>RadioGroup.Add(toggle)</code></a> gives its toggles radio behavior. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselect"><code>Select</code></a> opens a keyboard- and mouse-navigable option list. Set <code>Options</code>, then call <code>Refresh()</code> after direct list mutation. Programmatic <code>SelectedIndex</code> changes do not produce <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>SelectionChange</code></a>.</p>
 <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparatororientation"><code>SeparatorOrientation.Horizontal</code></a> divides rows. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparatororientation"><code>SeparatorOrientation.Vertical</code></a> divides columns. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiseparator"><code>Separator.Glyph</code></a> is the visible rule. Keep it structural.</p>
     </div>
@@ -262,20 +258,18 @@ choice.<span class="nf">Add</span>(<span class="nc">Toggle</span>{<span class="w
 overlay.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">true</span>
 </code></pre></figure>
 <p><code>Content</code> is one <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a>. Assigning it replaces the existing content. <code>IsVisible</code> controls the overlay lifecycle. <code>DefaultAction</code> receives Enter after focused content declines it. <code>CancelAction</code> receives Enter after Escape reaches the scope. Both targets must be visible descendants.</p>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog</code></a> is a centered, dimmed, bordered <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuioverlay"><code>Overlay</code></a> with a wrapped <code>Message</code> and a row of action buttons. Set <code>Actions</code> or mutate its list. <code>ConsumeResult</code> returns and clears the selected <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction</code></a>.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog</code></a> is a centered, dimmed, bordered <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuioverlay"><code>Overlay</code></a> with a wrapped <code>Message</code> and a row of action buttons. Set <code>Actions</code> or mutate its list. <code>OnResult</code> receives the selected <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction</code></a>.</p>
 <figure class="listing"><figcaption class="listing-head"><span>Listing 3-2</span><span>Overlays</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>apply<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Apply"</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>dismiss<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Cancel"</span>,<span class="w"> </span><span class="nc">IsCancel</span>:<span class="w"> </span><span class="k">true</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>dialog<span class="w"> </span>=<span class="w"> </span><span class="nc">Dialog</span>{
 <span class="w">  </span><span class="nc">Message</span>:<span class="w"> </span><span class="s2">"Replace the selected text?"</span>,
 <span class="w">  </span><span class="nc">Actions</span>:<span class="w"> </span>{<span class="w"> </span>apply,<span class="w"> </span>dismiss<span class="w"> </span>},
 }
-
-<span class="k">let</span><span class="w"> </span>result<span class="w"> </span>=<span class="w"> </span>dialog.<span class="nf">ConsumeResult</span>()
-<span class="k">if</span><span class="w"> </span>result<span class="w"> </span>!=<span class="w"> </span><span class="k">nil</span><span class="w"> </span>&amp;&amp;<span class="w"> </span>result.<span class="nc">IsCancel</span><span class="w"> </span>{
-<span class="w">  </span>dialog.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">false</span>
+dialog.<span class="nc">OnResult</span><span class="w"> </span>=<span class="w"> </span>(action<span class="w"> </span><span class="nc">DialogAction</span>)<span class="w"> </span>-&gt;<span class="w"> </span>{
+<span class="w">  </span><span class="k">if</span><span class="w"> </span>action.<span class="nc">IsCancel</span><span class="w"> </span>{<span class="w"> </span>dialog.<span class="nc">IsVisible</span><span class="w"> </span>=<span class="w"> </span><span class="k">false</span><span class="w"> </span>}
 }
 </code></pre></figure>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction.IsCancel</code></a> names the Escape action. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.Result</code></a> does not clear the pending result. Use <code>ConsumeResult</code> when a result must be handled once.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialogaction"><code>DialogAction.IsCancel</code></a> names the Escape action. One activation invokes <code>OnResult</code> once. The dialog does not keep a second pending-result state.</p>
 <h3 id="overlay-rules">Overlay rules</h3>
 <ul>
 <li>Don't leave an overlay visible when the decision ends. Set <code>IsVisible</code> false.</li>

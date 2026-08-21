@@ -185,8 +185,10 @@ public open class MarkdownView : Box {
     if width <= 0 { return lines }
 
     for b in blocks {
-      if b.Kind == BlockKind.Head1 || b.Kind == BlockKind.Head2 || b.Kind == BlockKind.Head3 || b.Kind == BlockKind.Para {
-        for wrapped in WrapTextRuns(b.Runs, width) { lines.Add(wrapped) }
+      if b.Kind == BlockKind.Head1 || b.Kind == BlockKind.Head2 || b.Kind == BlockKind.Head3
+        || b.Kind == BlockKind.Head4 || b.Kind == BlockKind.Head5 || b.Kind == BlockKind.Head6
+        || b.Kind == BlockKind.Para {
+        for wrapped in WrapTextRuns(b.Runs, width) { lines.Add(clipLine(wrapped, width)) }
         lines.Add(List[TextRun]())
         continue
       }
@@ -211,13 +213,13 @@ public open class MarkdownView : Box {
           let line = List[TextRun]()
           line.Add(TextRun("  ", Style()))
           for s in wrapped { line.Add(s) }
-          lines.Add(line)
+          lines.Add(clipLine(line, width))
         }
         continue
       }
       if b.Kind == BlockKind.Rule {
         let line = List[TextRun]()
-        line.Add(TextRun("".PadRight(width, char(0x2500)), Style()))
+        line.Add(TextRun("".PadRight(width, char(0x2500)), Theme.Marker))
         lines.Add(line)
         continue
       }
@@ -237,12 +239,12 @@ public open class MarkdownView : Box {
     for w in WrapTextRuns(b.Runs, textWidth) {
       let line = List[TextRun]()
       if i == 0 {
-        line.Add(TextRun("".PadRight(indent) + b.Marker + " ", Style()))
+        line.Add(TextRun("".PadRight(indent) + b.Marker + " ", Theme.Marker))
       } else {
-        line.Add(TextRun("".PadRight(indent + prefixWidth), Style()))
+        line.Add(TextRun("".PadRight(indent + prefixWidth), Theme.Marker))
       }
       for s in w { line.Add(s) }
-      lines.Add(line)
+      lines.Add(clipLine(line, width))
       i = i + 1
     }
   }
@@ -252,8 +254,6 @@ public open class MarkdownView : Box {
     if cols <= 0 || b.Cells.Count < cols { return }
     let rows = b.Cells.Count / cols
     let widths = tableWidths(b, cols, rows, width)
-    let dim = Style()
-
     var r = 0
     while r < rows {
       let wrapped = List[List[List[TextRun]]]()
@@ -271,28 +271,28 @@ public open class MarkdownView : Box {
         let line = List[TextRun]()
         c = 0
         while c < cols {
-          if c > 0 { line.Add(TextRun(" " + char(0x2502).ToString() + " ", dim)) }
+          if c > 0 { line.Add(TextRun(" " + char(0x2502).ToString() + " ", Theme.Marker)) }
           let part = k < wrapped[c].Count ? wrapped[c][k] : List[TextRun]()
           cellInto(line, part, widths[c], b.Marker[c])
           c = c + 1
         }
-        lines.Add(line)
+        lines.Add(clipLine(line, width))
         k = k + 1
       }
-      if r == 0 { lines.Add(ruleRow(widths, cols, dim)) }
+      if r == 0 { lines.Add(clipLine(ruleRow(widths, cols, Theme.Marker), width)) }
       r = r + 1
     }
     lines.Add(List[TextRun]())
   }
 
-  private func ruleRow(widths List[int32], cols int32, dim Style) List[TextRun] {
+  private func ruleRow(widths List[int32], cols int32, marker Style) List[TextRun] {
     var text = ""
     for i in 0 ... cols {
       if i > 0 { text = text + char(0x2500).ToString() + char(0x253C).ToString() + char(0x2500).ToString() }
       text = text + "".PadRight(widths[i], char(0x2500))
     }
     let line = List[TextRun]()
-    line.Add(TextRun(text, dim))
+    line.Add(TextRun(text, marker))
     return line
   }
 
@@ -358,10 +358,29 @@ public open class MarkdownView : Box {
 
     for w in WrapTextRuns(b.Runs, textWidth) {
       let line = List[TextRun]()
-      line.Add(TextRun(bar, Style()))
+      line.Add(TextRun(bar, Theme.Marker))
       for s in w { line.Add(s) }
-      lines.Add(line)
+      lines.Add(clipLine(line, width))
     }
+  }
+
+  private func clipLine(line List[TextRun], width int32) List[TextRun] {
+    if TextRunWidth(line) <= width { return line }
+    let out = List[TextRun]()
+    var room = width
+    for s in line {
+      if room <= 0 { break }
+      let sw = Glyph.WidthOf(s.Text)
+      if sw <= room {
+        out.Add(s)
+        room = room - sw
+      } else {
+        let cut = CellText.Clip(s.Text, room)
+        if cut != "" { out.Add(TextRun(cut, s.Style)) }
+        break
+      }
+    }
+    return out
   }
 
 

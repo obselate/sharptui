@@ -489,7 +489,7 @@ public open class TextArea : Box {
     endRun()
     record()
     deleteMark()
-    insert(text)
+    insertMultiline(text)
     return true
   }
 
@@ -797,6 +797,11 @@ public open class TextArea : Box {
     endRun()
     record()
     if marked { deleteMark() }
+    insertMultiline(text)
+    return true
+  }
+
+  private func insertMultiline(text string) {
     let parts = text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n')
     for i in 0 ... parts.Length {
       if i > 0 {
@@ -810,7 +815,6 @@ public open class TextArea : Box {
       if parts[i] != "" { insert(parts[i]) }
     }
     mark()
-    return true
   }
 
   private func cutMark() bool {

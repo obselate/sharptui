@@ -2,12 +2,11 @@ package SharpTui
 
 import System
 
-/// Drives a SharpTUI view without entering a terminal or reading a clock.
+/// Drives a SharpTUI tree without entering a terminal or reading a clock.
 public class TestDriver {
   private var app App
-  private var view View
   private var screen Screen
-  private var root Box?
+  private var root Box
   private var nowMilliseconds int64
 
   /// The application used for routing, posted work, and animations.
@@ -16,27 +15,9 @@ public class TestDriver {
   public prop Screen Screen { get { return screen } }
   /// The current caller-controlled absolute time in milliseconds.
   public prop NowMilliseconds int64 { get { return nowMilliseconds } }
-  /// The focused descendant when the driven view is a Box tree.
+  /// The focused descendant in the driven tree.
   public prop FocusedElement Box? {
-    get {
-      guard let tree = root else { return nil }
-      return tree.FocusedElement
-    }
-  }
-
-  /// Creates a driver for a custom View.
-  /// @param view The view to route and draw.
-  /// @param width The screen width in cells.
-  /// @param height The screen height in rows.
-  public init(view View, width int32, height int32) {
-    if view == nil { throw ArgumentNullException("view") }
-    if width < 0 { throw ArgumentOutOfRangeException("width") }
-    if height < 0 { throw ArgumentOutOfRangeException("height") }
-    app = App()
-    this.view = view
-    screen = Screen(width, height)
-    root = nil
-    nowMilliseconds = 0
+    get { return root.FocusedElement }
   }
 
   /// Creates a driver for a retained Box tree.
@@ -49,7 +30,6 @@ public class TestDriver {
     if height < 0 { throw ArgumentOutOfRangeException("height") }
     app = App()
     this.root = root
-    view = Shell(root)
     screen = Screen(width, height)
     nowMilliseconds = 0
   }
@@ -58,7 +38,7 @@ public class TestDriver {
   /// @param ev The event to route.
   /// @returns The routing result.
   public func Send(ev UiEvent) EventResult {
-    let result = app.Route(view, ev)
+    let result = app.Route(root, ev)
     Pump()
     return result
   }
@@ -87,12 +67,13 @@ public class TestDriver {
     app.DrainPostedWork()
   }
 
-  /// Draws the view and returns the ANSI diff emitted by the screen.
+  /// Draws the tree and returns the ANSI diff emitted by the screen.
   /// @returns The captured ANSI diff for this frame.
   public func Draw() string {
     Pump()
     screen.DefaultStyle = app.DefaultStyle
-    view.Draw(screen)
+    screen.Clear()
+    root.Draw(screen)
     return screen.Flush()
   }
 }

@@ -9,45 +9,7 @@ import System.Threading
 /// Controls how an event affects app routing and lifetime.
 public enum EventResult { Continue; Handled; Exit }
 
-/// A drawable application surface.
-public interface View {
-  /// Paints one frame. Called after every batch of events.
-  /// @param screen The screen to paint into.
-  func Draw(screen Screen);
-
-  /// Handles one typed user-interface event.
-  /// @param ev The event to handle.
-  /// @returns Handled when the view consumed the event, Exit to stop the app, otherwise Continue.
-  func Handle(ev UiEvent) EventResult {
-    return EventResult.Continue
-  }
-}
-
-/// Wraps a Box tree as a View, so an app that is just a tree needs no class.
-internal class Shell : View {
-  private var root Box
-
-  public prop Root Box {
-    get { return root }
-    set { root = value }
-  }
-
-  public init(root Box) {
-    this.root = root
-  }
-
-  public func Draw(screen Screen) {
-    screen.Clear()
-    Root.Draw(screen)
-  }
-
-  public func Handle(ev UiEvent) EventResult {
-    return Root.Handle(ev)
-  }
-
-}
-
-/// Owns the terminal session and drives the paint and input loop for a View or Box tree.
+/// Owns the terminal session and drives the paint and input loop for a Box tree.
 public class App {
   private var term Terminal
   private var input Input
@@ -94,13 +56,13 @@ public class App {
     set { mouseTracking = value }
   }
 
-  /// Application bindings offered before and after View event handling.
+  /// Application bindings offered before and after tree event handling.
   public prop Keys Keymap {
     get { return keys }
     set { keys = value }
   }
 
-  /// Fallback quit gestures. Views receive each event before these are tested.
+  /// Fallback quit gestures. The tree receives each event before these are tested.
   public prop QuitGestures List[KeyGesture] { get { return quitGestures } }
 
   internal prop IsDrawRequested bool { get { return invalidated != 0 } }
@@ -133,57 +95,9 @@ public class App {
     screen = Screen(term.Columns(), term.Rows())
   }
 
-  /// Runs a bare tree. Escape and Ctrl+C quit.
+  /// Runs a retained tree. Escape and Ctrl+C quit.
   /// @param root The root box of the tree to run.
   public func Run(root Box) {
-    Run(Shell(root))
-  }
-
-  /// Wakes the app for one repaint. Repeated pending calls coalesce.
-  public func RequestDraw() {
-    if Interlocked.Exchange(ref invalidated, 1) == 0 {
-      wake.Set()
-    }
-  }
-
-  /// Posts no-argument UI work for execution on the application loop.
-  /// Repeated pending posts share one wakeup and one repaint.
-  /// @param work The callback to run on the loop thread.
-  public func Post(work Action) {
-    if work == nil { throw ArgumentNullException("work") }
-    lock postGate { posted.Enqueue(work) }
-    if Interlocked.Exchange(ref postsPending, 1) == 0 { wake.Set() }
-  }
-
-  /// Starts one app-owned background operation.
-  /// @param work The operation to run with a cooperative cancellation token.
-  /// @returns A running handle for cancellation and terminal observation.
-  public func StartWorker[T](work Func[CancellationToken, T]) Worker[T] {
-    if work == nil { throw ArgumentNullException("work") }
-    let worker = Worker[T](this, work)
-    lock workerGate { workerCancellations.Add(worker.Cancellation) }
-    worker.Start()
-    return worker
-  }
-
-  internal func DeliverWorker(work Action) {
-    var queued = false
-    lock postGate {
-      if workerPostsAccepted {
-        posted.Enqueue(work)
-        queued = true
-      }
-    }
-    if !queued {
-      work()
-      return
-    }
-    if Interlocked.Exchange(ref postsPending, 1) == 0 { wake.Set() }
-  }
-
-  /// Runs an advanced custom View.
-  /// @param view The view to run as the application.
-  public func Run(view View) {
     if !term.IsTty() {
       Console.Error.WriteLine("sharptui: standard input and output must be terminals")
       return
@@ -202,13 +116,56 @@ public class App {
     defer term.Restore()
 
     try {
-      loop(view)
+      loop(root)
     } catch (e IOException) {
       Console.Error.WriteLine("sharptui: lost the terminal: " + e.Message)
     }
   }
 
-  private func loop(view View) {
+  /// Wakes the app for one repaint. Repeated pending calls coalesce.
+  public func RequestDraw() {
+    if Interlocked.Exchange(ref invalidated, 1) == 0 {
+      wake.Set()
+    }
+  }
+
+  /// Posts no-argument UI work for execution on the application loop.
+  /// Repeated pending posts share one wakeup and one repaint.
+  /// @param work The callback to run on the loop thread.
+  public func Post(work Action) {
+    if work == nil { throw ArgumentNullException("work") }
+    lock postGate { posted.Enqueue(work) }
+    if Interlocked.Exchange(ref postsPending, 1) == 0 { wake.Set() }
+  }
+
+  /// Starts one app-owned background operation and delivers its terminal callback on the app loop.
+  /// @param work The operation to run with a cooperative cancellation token.
+  /// @param completed Work invoked with the completed result.
+  /// @param failed Work invoked with an unhandled operation error.
+  /// @param cancelled Work invoked when cancellation wins completion.
+  /// @returns A running cancellation handle.
+  public func StartWorker[T](work Func[CancellationToken, T], completed Action[T],
+      failed Action[Exception], cancelled Action) Worker {
+    if work == nil { throw ArgumentNullException("work") }
+    if completed == nil { throw ArgumentNullException("completed") }
+    if failed == nil { throw ArgumentNullException("failed") }
+    if cancelled == nil { throw ArgumentNullException("cancelled") }
+    let worker = Worker()
+    lock workerGate { workerCancellations.Add(worker.Cancellation) }
+    worker.Start(this, work, completed, failed, cancelled)
+    return worker
+  }
+
+  internal func DeliverWorker(work Action) bool {
+    lock postGate {
+      if !workerPostsAccepted { return false }
+      posted.Enqueue(work)
+    }
+    if Interlocked.Exchange(ref postsPending, 1) == 0 { wake.Set() }
+    return true
+  }
+
+  private func loop(root Box) {
     lock postGate { workerPostsAccepted = true }
     defer StopWorkers()
     var running = true
@@ -254,7 +211,7 @@ public class App {
         }
         if now >= nextTick {
           dirty = true
-          if Route(view, tickEvent()) == EventResult.Exit { running = false }
+          if Route(root, tickEvent()) == EventResult.Exit { running = false }
           interval = tickMilliseconds()
           scheduledInterval = interval
           nextTick = interval > 0 ? clock.ElapsedMilliseconds + interval : 0
@@ -264,7 +221,7 @@ public class App {
       var ev = UiEvent{}
       while running && input.TryDequeue(out ev) {
         dirty = true
-        if Route(view, ev) == EventResult.Exit {
+        if Route(root, ev) == EventResult.Exit {
           running = false
           break
         }
@@ -276,7 +233,8 @@ public class App {
       }
 
       if running && dirty {
-        view.Draw(screen)
+        screen.Clear()
+        root.Draw(screen)
         let written = term.Present(screen)
         if Trace.Enabled() {
           Trace.Mark("painted " + written.ToString() + " bytes")
@@ -348,10 +306,10 @@ public class App {
     return animations.NextDeadline(nowMilliseconds)
   }
 
-  internal func Route(view View, ev UiEvent) EventResult {
+  internal func Route(root Box, ev UiEvent) EventResult {
     if Keys.Offer(ev, BindingPhase.BeforeWidgets) { return EventResult.Handled }
 
-    let result = view.Handle(ev)
+    let result = root.Handle(ev)
     if result != EventResult.Continue { return result }
 
     if Keys.Offer(ev, BindingPhase.AfterWidgets) { return EventResult.Handled }

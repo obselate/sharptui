@@ -129,7 +129,7 @@ public class DataCheck {
       sourceRoot.Draw(Screen(4, 4))
       failed = failed + Checks.Expect(source.LineCount() == 4, "MarkdownView invalidates when Source changes")
 
-      let links = ParseMarkdown("see [one][r] then ![pic](p.png) and [two](u)", MarkdownTheme())
+      let links = ParseMarkdown("see [one][r] then ![pic](p.png) and [two](u)\n\n[r]: one", MarkdownTheme())
       failed = failed + Checks.Expect(flat(links[0].Runs) == "see one then pic and two (u)",
         "reference links, images and inline links each stop at their own end")
       failed = failed + Checks.Expect(flat(ParseMarkdown("[http://x](http://x) and [top](#top)", MarkdownTheme())[0].Runs)
@@ -269,6 +269,15 @@ public class DataCheck {
       failed = failed + Checks.Expect(!hay.ReplaceSelection("x"), "replace without a selection reports false")
       failed = failed + Checks.Expect(hay.Undo() && hay.Text.Contains("gamma 日本語"),
         "replace undoes as one edit")
+
+      let multilineReplace = TextArea{ Text: "abc" }
+      failed = failed + Checks.Expect(multilineReplace.Find("b", SearchDirection.Forward)
+          && multilineReplace.ReplaceSelection("x\ny")
+          && multilineReplace.Text == "ax\nyc"
+          && multilineReplace.Caret.LineIndex == 1 && multilineReplace.Caret.GraphemeIndex == 1,
+        "replace preserves line structure and caret position for multiline text")
+      failed = failed + Checks.Expect(multilineReplace.Undo() && multilineReplace.Text == "abc",
+        "multiline replace undoes as one edit")
 
       let wide = TextArea()
       wide.Text = "日本語日本語日本語日本語"

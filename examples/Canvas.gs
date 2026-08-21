@@ -4,14 +4,12 @@ import SharpTui
 import System
 
 /// A retained packed-subcell canvas animated by the application controller.
-class CanvasDemo : View {
-  private var root Box
+open class CanvasDemo : Column {
   private var surface CanvasSurface
-  private var canvas CanvasView
   private var phase float64
 
-  public init() {
-    canvas = CanvasView(1, 1, CanvasMode.Braille)
+  public init(animations AnimationController) {
+    let canvas = CanvasView(1, 1, CanvasMode.Braille)
     canvas.GrowWeight = 1
     canvas.ShowBorder = true
     canvas.Title = "canvas / braille"
@@ -19,13 +17,12 @@ class CanvasDemo : View {
     surface = canvas.Surface
     let title = Label{ Text: "retained subcells", Style: Style{ Foreground: Ink.Text, Background: Color.Inherit } }
     let footer = Label{ Text: "animation controller · q quits", Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
-    root = Column{ Children: { title, canvas, footer } }
+    Children.Add(title)
+    Children.Add(canvas)
+    Children.Add(footer)
     phase = 0.0
     paint()
-  }
-
-  public func Start(app App) {
-    app.Animations.Play(Animation.Repeat(Animation.Tween(
+    animations.Play(Animation.Repeat(Animation.Tween(
       TimeSpan.FromMilliseconds(2200.0),
       func(progress float64) {
         phase = progress * Math.PI * 2.0
@@ -33,7 +30,7 @@ class CanvasDemo : View {
       }, Easing.CubicInOut)))
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     var width = screen.Size.WidthCells - 2
     var height = screen.Size.HeightRows - 4
     if width < 1 { width = 1 }
@@ -42,13 +39,11 @@ class CanvasDemo : View {
       surface.Resize(width, height)
       paint()
     }
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     if ev.Key == Key.Character && ev.Text == "q" { return EventResult.Exit }
-    return root.Handle(ev)
+    return EventResult.Continue
   }
 
   private func paint() {
@@ -70,8 +65,6 @@ class CanvasDemo : View {
 func canvas() int32 {
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
-  let view = CanvasDemo()
-  view.Start(app)
-  app.Run(view)
+  app.Run(CanvasDemo(app.Animations))
   return 0
 }

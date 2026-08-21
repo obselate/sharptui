@@ -66,14 +66,13 @@ func capture(exe string, args List[string]) string {
 }
 
 /// A recursive text search with a preview. `sharptui --grep PATTERN [DIR]`.
-class Hunt : View {
+open class Hunt : Column {
   private var list ListView
   private var preview ListView
   private var pane Box
   private var entry TextInput
   private var glob TextInput
   private var bar StatusBar
-  private var root Box
   private var found List[Hit]
   private var where string
   private var at int32
@@ -111,20 +110,18 @@ class Hunt : View {
     pane = Box{ GrowWeight: 1, ShowBorder: true, Title: "preview", ShowScrollbar: true,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { preview } }
 
-    root = Column{ Children: {
-      Row{ GrowWeight: 1, GapCells: 1, Children: {
-        Box{ GrowWeight: 1, ShowBorder: true, Title: "matches", ShowScrollbar: true,
-          Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
-        pane,
-      }},
-      Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "pattern", Children: {
-        Row{ GapCells: 1, Children: { entry, glob } },
-      }},
-      bar,
-    }}
+    Children.Add(Row{ GrowWeight: 1, GapCells: 1, Children: {
+      Box{ GrowWeight: 1, ShowBorder: true, Title: "matches", ShowScrollbar: true,
+        Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
+      pane,
+    }})
+    Children.Add(Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "pattern", Children: {
+      Row{ GapCells: 1, Children: { entry, glob } },
+    }})
+    Children.Add(bar)
 
     if pattern != "" { hunt() }
-    if pattern == "" { root.Focus(entry) } else { root.Focus(list) }
+    if pattern == "" { Focus(entry) } else { Focus(list) }
   }
 
   /// Typing is wherever focus is: tab can land in an input box without any
@@ -280,7 +277,7 @@ class Hunt : View {
     preview.FirstVisibleItemIndex = top
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     show()
     let engine = useRg ? "rg" : "grep"
     let caseLabel = caseSensitive ? "case" : "nocase"
@@ -290,24 +287,21 @@ class Hunt : View {
     bar.LeftText = count + " in " + where + " [" + engine + " " + caseLabel + " " + modeLabel + globLabel + "]"
     bar.RightText = typing() ? "enter searches - esc leaves the box"
       : "/ pattern - g glob - c case - x fixed/regex - tab swaps panes - q quits"
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     // A key acts on press; Kitty terminals also report releases.
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
     if typing() {
       if ev.Key == Key.Enter {
         hunt()
-        root.Focus(list)
+        Focus(list)
         return EventResult.Handled
       }
       if ev.Key == Key.Escape {
-        root.Focus(list)
+        Focus(list)
         return EventResult.Handled
       }
-      root.Handle(ev)
       return EventResult.Continue
     }
 
@@ -315,11 +309,11 @@ class Hunt : View {
       if ev.Text == "q" { return EventResult.Exit }
       if ev.Text == "/" {
         entry.Text = ""
-        root.Focus(entry)
+        Focus(entry)
         return EventResult.Handled
       }
       if ev.Text == "g" {
-        root.Focus(glob)
+        Focus(glob)
         return EventResult.Handled
       }
       if ev.Text == "c" {
@@ -333,7 +327,6 @@ class Hunt : View {
         return EventResult.Handled
       }
     }
-    root.Handle(ev)
     return EventResult.Continue
   }
 }

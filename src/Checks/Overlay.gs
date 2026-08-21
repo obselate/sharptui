@@ -46,6 +46,10 @@ internal class OverlayCheck {
       let field = OverlayProbe{ Marker: "f" }
       let confirm = Button{ Text: "confirm" }
       let cancel = Button{ Text: "cancel" }
+      var confirms = 0
+      var cancels = 0
+      confirm.OnPress = () -> confirms = confirms + 1
+      cancel.OnPress = () -> cancels = cancels + 1
       let panel = Column{ Children: { field, confirm, cancel } }
       let overlay = Overlay{
         Content: panel,
@@ -80,13 +84,13 @@ internal class OverlayCheck {
         "Overlay rejects background mouse input")
 
       root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
-      failed = failed + Checks.Expect(confirm.ConsumePress(),
+      failed = failed + Checks.Expect(confirms == 1,
         "Overlay offers Enter to DefaultAction after focused content declines")
       root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter, Phase: KeyPhase.Release })
-      failed = failed + Checks.Expect(!confirm.ConsumePress(),
+      failed = failed + Checks.Expect(confirms == 1,
         "Overlay ignores DefaultAction key release")
       root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Escape })
-      failed = failed + Checks.Expect(cancel.ConsumePress(),
+      failed = failed + Checks.Expect(cancels == 1,
         "Overlay offers Escape to CancelAction")
       failed = failed + Checks.Expect(screen.Flush().Contains(Ansi.Csi + "2m"),
         "Overlay can dim the background")

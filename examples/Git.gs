@@ -120,7 +120,7 @@ func gitExec(dir string, args List[string]) string {
 
 /// A beginner-friendly interactive Git workbench.
 /// `sharptui --git [DIR]`.
-class Git : View {
+open class Git : Box {
   private var dir string
   private var repoOk bool
   private var currentBranch string
@@ -133,7 +133,6 @@ class Git : View {
   private var diffList ListView
   private var historyList ListView
   private var bar StatusBar
-  private var root Box
 
   private var unstagedBox Box
   private var stagedBox Box
@@ -156,20 +155,15 @@ class Git : View {
   private var presetListView ListView
   private var helpBox Box
   private var helpList ListView
-  private var settingsFooter Label
 
   private var promptOverlay Overlay
   private var promptBox Box
   private var promptInput TextInput
   private var promptHeader Label
-  private var promptFooter Label
   private var promptMode string
 
-  private var discardOverlay Overlay
-  private var discardBox Box
-  private var discardHeader Label
-  private var discardWarn Label
-  private var discardFooter Label
+  private var discardOverlay Dialog
+  private var discardAction DialogAction
   private var fileToDiscard string
   private var discardUntracked bool
 
@@ -234,36 +228,50 @@ class Git : View {
     helpBox = Box{ Height: CellLength.Cells(12), GrowWeight: 1, Title: "beginner keybinds & git guidance", ShowBorder: true, Children: { helpList } }
     helpBox.IsVisible = false
 
-    settingsFooter = Label{ Text: "[enter]: apply - [left/right]: switch tab - [esc]: close", Alignment: HorizontalAlignment.Center }
+    let applySettingsButton = Button{ Text: "apply" }
+    applySettingsButton.OnPress = () -> applySettings()
+    let closeSettingsButton = Button{ Text: "close" }
+    closeSettingsButton.OnPress = () -> closeSettings()
     settingsBox = Box{ Width: CellLength.Cells(78), Height: CellLength.Cells(18), ShowBorder: true, Title: "settings & theme",
-      Children: { Column{ GrowWeight: 1, GapCells: 1, Children: { settingsTabs, presetListView, helpBox, settingsFooter } } } }
+      Children: { Column{ GrowWeight: 1, GapCells: 1, Children: {
+        settingsTabs, presetListView, helpBox,
+        Row{ GapCells: 2, Children: { applySettingsButton, closeSettingsButton } },
+      } } } }
     settingsOverlay = Overlay{ Content: settingsBox, DimBackground: true }
+    settingsOverlay.DefaultAction = applySettingsButton
+    settingsOverlay.CancelAction = closeSettingsButton
     settingsOverlay.IsVisible = false
 
     promptHeader = Label{ Text: "" }
     promptInput = TextInput{ Placeholder: "", Height: CellLength.Cells(1) }
-    promptFooter = Label{ Text: "", Alignment: HorizontalAlignment.Center }
+    let acceptPromptButton = Button{ Text: "accept" }
+    acceptPromptButton.OnPress = () -> executePrompt()
+    let cancelPromptButton = Button{ Text: "cancel" }
+    cancelPromptButton.OnPress = () -> closePrompt()
     promptBox = Box{ Width: CellLength.Cells(64), Height: CellLength.Cells(7), ShowBorder: true, Title: "",
-      Children: { Column{ GapCells: 1, Children: { promptHeader, promptInput, promptFooter } } } }
+      Children: { Column{ GapCells: 1, Children: {
+        promptHeader, promptInput,
+        Row{ GapCells: 2, Children: { acceptPromptButton, cancelPromptButton } },
+      } } } }
     promptOverlay = Overlay{ Content: promptBox, DimBackground: true }
+    promptOverlay.DefaultAction = acceptPromptButton
+    promptOverlay.CancelAction = cancelPromptButton
     promptOverlay.IsVisible = false
 
-    discardHeader = Label{ Text: "Are you sure you want to revert changes to this file?", Alignment: HorizontalAlignment.Center }
-    discardWarn = Label{ Text: "Unsaved edits will be lost permanently!", Alignment: HorizontalAlignment.Center }
-    discardFooter = Label{ Text: "[enter]/[y]: confirm - [esc]/[n]: cancel", Alignment: HorizontalAlignment.Center }
-    discardBox = Box{ Width: CellLength.Cells(60), Height: CellLength.Cells(6), ShowBorder: true, Title: "confirm discard changes",
-      Children: { Column{ GapCells: 1, Children: { discardHeader, discardWarn, discardFooter } } } }
-    discardOverlay = Overlay{ Content: discardBox, DimBackground: true }
+    discardAction = DialogAction{ Text: "discard" }
+    discardOverlay = Dialog{
+      Message: "Revert changes to this file? Unsaved edits will be lost permanently.",
+      Actions: List[DialogAction]{ discardAction, DialogAction{ Text: "cancel", IsCancel: true } },
+    }
+    discardOverlay.OnResult = (action DialogAction) -> finishDiscard(Object.ReferenceEquals(action, discardAction))
     discardOverlay.IsVisible = false
 
-    root = Box{ Children: {
-      mainCol,
-      settingsOverlay,
-      promptOverlay,
-      discardOverlay,
-    }}
+    Children.Add(mainCol)
+    Children.Add(settingsOverlay)
+    Children.Add(promptOverlay)
+    Children.Add(discardOverlay)
 
-    root.Focus(unstagedList)
+    Focus(unstagedList)
     refreshTheme()
     refreshAll()
   }
@@ -296,7 +304,7 @@ class Git : View {
   /// Reapplies the palette everywhere, restyling rows from cached state without running git.
   /// The four main pane borders are restyled every frame by markPane instead.
   private func refreshTheme() {
-    root.Style = Style{ Foreground: palette.Text, Background: palette.Back }
+    Style = Style{ Foreground: palette.Text, Background: palette.Back }
     bar.Style = Style{ Foreground: palette.Dim, Background: palette.HeaderBack }
 
     listStyles(unstagedList, palette.Warm)
@@ -310,18 +318,13 @@ class Git : View {
     presetListView.FocusedStyle = Style{ Foreground: palette.Accent, Background: palette.Back }
     helpBox.Style = Style{ Foreground: palette.Accent, Background: palette.HeaderBack }
     helpList.Style = Style{ Foreground: palette.Text, Background: palette.Back }
-    settingsFooter.Style = Style{ Foreground: palette.Dim, Background: palette.HeaderBack }
     settingsBox.Style = Style{ Foreground: palette.Accent, Background: palette.HeaderBack }
 
     promptBox.Style = Style{ Foreground: palette.Good, Background: palette.HeaderBack }
     promptHeader.Style = Style{ Foreground: palette.Text, Background: palette.HeaderBack }
     promptInput.Style = Style{ Foreground: palette.Text, Background: palette.Back }
-    promptFooter.Style = Style{ Foreground: palette.Dim, Background: palette.HeaderBack }
 
-    discardBox.Style = Style{ Foreground: palette.Bad, Background: palette.HeaderBack }
-    discardHeader.Style = Style{ Foreground: palette.Text, Background: palette.HeaderBack }
-    discardWarn.Style = Style{ Foreground: palette.Bad, Background: palette.HeaderBack }
-    discardFooter.Style = Style{ Foreground: palette.Dim, Background: palette.HeaderBack }
+    discardOverlay.Style = Style{ Foreground: palette.Bad, Background: palette.HeaderBack }
 
     rebuildFileItems()
     rebuildHistoryItems()
@@ -651,15 +654,13 @@ class Git : View {
       promptBox.Title = "save snapshot [git commit]"
       promptHeader.Text = "Enter a message describing this saved snapshot:"
       promptInput.Placeholder = "a short summary of what you changed"
-      promptFooter.Text = "[enter]: snapshot - [esc]: cancel"
     } else {
       promptBox.Title = "new workstream [git branch]"
       promptHeader.Text = "Name the new workstream (branch):"
       promptInput.Placeholder = "my-new-idea"
-      promptFooter.Text = "[enter]: create - [esc]: cancel"
     }
     promptOverlay.IsVisible = true
-    root.Focus(promptInput)
+    Focus(promptInput)
   }
 
   private func openCommitPrompt() {
@@ -674,12 +675,15 @@ class Git : View {
     let text = promptInput.Text.Trim()
     if text == "" { return }
     promptOverlay.IsVisible = false
-    root.Focus(unstagedList)
     if promptMode == "commit" {
       runNoted(List[string]{ "commit", "-m", text }, "saved snapshot: " + text)
     } else {
       runNoted(List[string]{ "switch", "-c", text }, "created and switched to workstream " + text)
     }
+  }
+
+  private func closePrompt() {
+    promptOverlay.IsVisible = false
   }
 
   private func promptDiscard() {
@@ -693,7 +697,6 @@ class Git : View {
 
   /// Untracked files are removed with clean; tracked edits are reverted with checkout.
   private func executeDiscard() {
-    discardOverlay.IsVisible = false
     if fileToDiscard == "" { return }
     if discardUntracked {
       runNoted(List[string]{ "clean", "-fd", "--", fileToDiscard }, "deleted untracked " + fileToDiscard)
@@ -703,17 +706,34 @@ class Git : View {
     fileToDiscard = ""
   }
 
+  private func finishDiscard(confirm bool) {
+    discardOverlay.IsVisible = false
+    if confirm { executeDiscard() }
+  }
+
   private func toggleSettings() {
     settingsOverlay.IsVisible = !settingsOverlay.IsVisible
-    if settingsOverlay.IsVisible { updateSettingsTab() }
-    else { root.Focus(unstagedList) }
+    if settingsOverlay.IsVisible {
+      updateSettingsTab()
+      Focus(settingsTabs)
+    }
   }
 
   private func updateSettingsTab() {
     presetListView.IsVisible = settingsTabs.SelectedIndex == 0
     helpBox.IsVisible = settingsTabs.SelectedIndex == 1
-    if settingsTabs.SelectedIndex == 0 { root.Focus(presetListView) }
-    else { root.Focus(helpList) }
+  }
+
+  private func applySettings() {
+    if settingsTabs.SelectedIndex == 0 {
+      applyPreset(presetListView.SelectedIndex)
+      note = "applied theme: " + palette.Name
+    }
+    settingsOverlay.IsVisible = false
+  }
+
+  private func closeSettings() {
+    settingsOverlay.IsVisible = false
   }
 
   private func applyPreset(index int32) {
@@ -722,7 +742,7 @@ class Git : View {
     refreshTheme()
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     // The diff target depends on which file pane holds focus, so a focus
     // flip must refresh it just like a selection change does.
     let focusFlip = stagedList.IsFocused != lastStagedFocus
@@ -764,67 +784,10 @@ class Git : View {
       bar.RightText = "[tab]: pane - [p]: pull - [P]: push - [c]: snapshot - [s]: settings - [q]: quit"
     }
 
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
-
-    if promptOverlay.IsVisible {
-      if ev.Key == Key.Escape {
-        promptOverlay.IsVisible = false
-        root.Focus(unstagedList)
-        return EventResult.Handled
-      }
-      if ev.Key == Key.Enter {
-        executePrompt()
-        return EventResult.Handled
-      }
-      // Focus traversal must not escape the modal into the panes behind it.
-      if ev.Key == Key.Tab { return EventResult.Handled }
-      return root.Handle(ev)
-    }
-
-    if discardOverlay.IsVisible {
-      if ev.Key == Key.Escape || (ev.Key == Key.Character && ev.Text == "n") {
-        discardOverlay.IsVisible = false
-        return EventResult.Handled
-      }
-      if ev.Key == Key.Enter || (ev.Key == Key.Character && ev.Text == "y") {
-        executeDiscard()
-        return EventResult.Handled
-      }
-      return EventResult.Handled
-    }
-
-    if settingsOverlay.IsVisible {
-      if ev.Key == Key.Escape {
-        settingsOverlay.IsVisible = false
-        root.Focus(unstagedList)
-        return EventResult.Handled
-      }
-      if ev.Key == Key.Enter {
-        if settingsTabs.SelectedIndex == 0 {
-          applyPreset(presetListView.SelectedIndex)
-          note = "applied theme: " + palette.Name
-        }
-        settingsOverlay.IsVisible = false
-        root.Focus(unstagedList)
-        return EventResult.Handled
-      }
-      if ev.Key == Key.Left || ev.Key == Key.Right {
-        let count = settingsTabs.Titles.Count
-        var next = settingsTabs.SelectedIndex + (ev.Key == Key.Left ? -1 : 1)
-        if next < 0 { next = count - 1 }
-        if next >= count { next = 0 }
-        settingsTabs.SelectedIndex = next
-        updateSettingsTab()
-        return EventResult.Handled
-      }
-      if ev.Key == Key.Tab { return EventResult.Handled }
-      return root.Handle(ev)
-    }
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
 
     if ev.Key == Key.Character && ev.Text == "q" { return EventResult.Exit }
     if ev.Key == Key.Character && ev.Text == "s" {
@@ -843,7 +806,7 @@ class Git : View {
         initRepo()
         return EventResult.Handled
       }
-      return root.Handle(ev)
+      return EventResult.Continue
     }
 
     if ev.Key == Key.Character && ev.Text == "c" {
@@ -888,14 +851,6 @@ class Git : View {
       switchToSelected()
       return EventResult.Handled
     }
-    if ev.Key == Key.Tab {
-      if unstagedList.IsFocused { root.Focus(stagedList) }
-      else if stagedList.IsFocused { root.Focus(diffList) }
-      else if diffList.IsFocused { root.Focus(historyList) }
-      else { root.Focus(unstagedList) }
-      return EventResult.Handled
-    }
-
-    return root.Handle(ev)
+    return EventResult.Continue
   }
 }

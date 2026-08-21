@@ -20,8 +20,6 @@ type|SharpTui.CellText|class
 type|SharpTui.Color|struct
 type|SharpTui.Column|class
 type|SharpTui.ColumnWidth|struct
-type|SharpTui.Command|class
-type|SharpTui.ControlState|enum
 type|SharpTui.Dialog|class
 type|SharpTui.DialogAction|class
 type|SharpTui.Easing|enum
@@ -77,8 +75,6 @@ type|SharpTui.TextPosition|struct
 type|SharpTui.TextRun|struct
 type|SharpTui.TextSelection|struct
 type|SharpTui.TextWrapping|enum
-type|SharpTui.Theme|class
-type|SharpTui.ThemeRole|enum
 type|SharpTui.Toggle|class
 type|SharpTui.TreeNode|class
 type|SharpTui.TreeRow|struct
@@ -86,6 +82,4 @@ type|SharpTui.TreeSource|interface
 type|SharpTui.TreeView|class
 type|SharpTui.UiEvent|struct
 type|SharpTui.UiEventKind|enum
-type|SharpTui.View|interface
-type|SharpTui.WorkerState|enum
-type|SharpTui.Worker`1|class
+type|SharpTui.Worker|class

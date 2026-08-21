@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `9f3f8c17a528d5a23a9cf53c157492a521a8bfc7f7259168293b0c544ad851c5`.
+Public-symbol SHA-256: `4e690081e22865de3d664ab085f45cefbf0377426e3b757bd8adeb679f63cafd`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -29,8 +29,6 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.Color](#sharptuicolor)
 - [SharpTui.Column](#sharptuicolumn)
 - [SharpTui.ColumnWidth](#sharptuicolumnwidth)
-- [SharpTui.Command](#sharptuicommand)
-- [SharpTui.ControlState](#sharptuicontrolstate)
 - [SharpTui.Dialog](#sharptuidialog)
 - [SharpTui.DialogAction](#sharptuidialogaction)
 - [SharpTui.Easing](#sharptuieasing)
@@ -86,8 +84,6 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.TextRun](#sharptuitextrun)
 - [SharpTui.TextSelection](#sharptuitextselection)
 - [SharpTui.TextWrapping](#sharptuitextwrapping)
-- [SharpTui.Theme](#sharptuitheme)
-- [SharpTui.ThemeRole](#sharptuithemerole)
 - [SharpTui.Toggle](#sharptuitoggle)
 - [SharpTui.TreeNode](#sharptuitreenode)
 - [SharpTui.TreeRow](#sharptuitreerow)
@@ -95,9 +91,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.TreeView](#sharptuitreeview)
 - [SharpTui.UiEvent](#sharptuiuievent)
 - [SharpTui.UiEventKind](#sharptuiuieventkind)
-- [SharpTui.View](#sharptuiview)
-- [SharpTui.WorkerState](#sharptuiworkerstate)
-- [SharpTui.Worker`1](#sharptuiworker1)
+- [SharpTui.Worker](#sharptuiworker)
 
 ## SharpTui.Animation
 
@@ -194,7 +188,7 @@ G# kind: `enum`.
 
 ## SharpTui.App
 
-Owns the terminal session and drives the paint and input loop for a View or Box tree.
+Owns the terminal session and drives the paint and input loop for a Box tree.
 
 G# kind: `class`.
 
@@ -206,9 +200,9 @@ G# kind: `class`.
 
 - `prop Animations AnimationController { get; }` — Owns animations and their shared frame deadline.
 - `prop DefaultStyle Style { get; set; }` — The style used for unstyled drawing in the application.
-- `prop Keys Keymap { get; set; }` — Application bindings offered before and after View event handling.
+- `prop Keys Keymap { get; set; }` — Application bindings offered before and after tree event handling.
 - `prop MouseTracking MouseTracking { get; set; }` — Terminal mouse reporting selected when Run enters the terminal.
-- `prop QuitGestures List[KeyGesture] { get; }` — Fallback quit gestures. Views receive each event before these are tested.
+- `prop QuitGestures List[KeyGesture] { get; }` — Fallback quit gestures. The tree receives each event before these are tested.
 - `prop TickInterval TimeSpan { get; set; }` — The interval between tick events. TimeSpan.Zero disables ticks.
 
 ### Methods
@@ -216,13 +210,14 @@ G# kind: `class`.
 - `func Post(work Action)` — Posts no-argument UI work for execution on the application loop. Repeated pending posts share one wakeup and one repaint.
   - `work`: The callback to run on the loop thread.
 - `func RequestDraw()` — Wakes the app for one repaint. Repeated pending calls coalesce.
-- `func Run(root Box)` — Runs a bare tree. Escape and Ctrl+C quit.
+- `func Run(root Box)` — Runs a retained tree. Escape and Ctrl+C quit.
   - `root`: The root box of the tree to run.
-- `func Run(view View)` — Runs an advanced custom View.
-  - `view`: The view to run as the application.
-- `func StartWorker(work Func[CancellationToken, T]) Worker[T]` — Starts one app-owned background operation.
+- `func StartWorker(work Func[CancellationToken, T], completed Action[T], failed Action[Exception], cancelled Action) Worker` — Starts one app-owned background operation and delivers its terminal callback on the app loop.
   - `work`: The operation to run with a cooperative cancellation token.
-  - Returns: A running handle for cancellation and terminal observation.
+  - `completed`: Work invoked with the completed result.
+  - `failed`: Work invoked with an unhandled operation error.
+  - `cancelled`: Work invoked when cancellation wins completion.
+  - Returns: A running cancellation handle.
 
 ## SharpTui.Badge
 
@@ -248,13 +243,11 @@ G# kind: `class`.
 ### Properties
 
 - `prop Gesture KeyGesture { get; }` — The gesture that triggers this binding.
-- `prop IsPending bool { get; }` — True when the gesture has matched and Consume has not yet reported it.
+- `prop Handler Action { get; }` — Work invoked when the binding matches.
+- `prop Id string { get; }` — Stable binding identity.
+- `prop IsEnabled bool { get; set; }` — Whether this binding accepts activation.
+- `prop Label string { get; }` — Text shown for this binding in command surfaces.
 - `prop Phase BindingPhase { get; }` — Which routing phase this binding is offered during.
-
-### Methods
-
-- `func Consume() bool` — Reports and clears a pending activation.
-  - Returns: True when a pending activation was consumed.
 
 ## SharpTui.BindingPhase
 
@@ -264,8 +257,8 @@ G# kind: `enum`.
 
 ### Values
 
-- `BeforeWidgets` — Offers the binding before the application view handles the event.
-- `AfterWidgets` — Offers the binding after the application view declines the event.
+- `BeforeWidgets` — Offers the binding before the application tree handles the event.
+- `AfterWidgets` — Offers the binding after the application tree declines the event.
 
 ## SharpTui.Box
 
@@ -324,13 +317,8 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
-- `prop IsPressed bool { get; }` — True when the button was activated since the last ConsumePress.
+- `prop OnPress Action { get; set; }` — Work invoked when the button is activated.
 - `prop Text string { get; set; }` — The label centred within the button.
-
-### Methods
-
-- `func ConsumePress() bool` — Returns and clears whether the button was pressed since the last call.
-  - Returns: True when the button had a pending press.
 
 ## SharpTui.CanvasMode
 
@@ -642,47 +630,6 @@ G# kind: `struct`.
   - `right`: The second column width.
   - Returns: True when left and right differ in policy or amount.
 
-## SharpTui.Command
-
-A shared, consumable activation model for commands exposed by UI surfaces.
-
-G# kind: `class`.
-
-### Constructors
-
-- `init(id string, label string, gesture KeyGesture)` — Creates an enabled command with a gesture.
-  - `id`: The stable command identity.
-  - `label`: The text shown by a command surface.
-  - `gesture`: The key gesture that activates the command.
-
-### Properties
-
-- `prop Gesture KeyGesture { get; }` — The key gesture that can activate this command through a Keymap.
-- `prop Id string { get; }` — Stable command identity.
-- `prop IsEnabled bool { get; set; }` — Whether this command accepts activation.
-- `prop IsPending bool { get; }` — True when an activation is waiting to be consumed.
-- `prop Label string { get; }` — Text shown by a command surface.
-
-### Methods
-
-- `func Activate() bool` — Activates the command when it is enabled.
-  - Returns: True when the command accepted the activation.
-- `func Consume() bool` — Reports and clears one pending activation.
-  - Returns: True when an activation was consumed.
-
-## SharpTui.ControlState
-
-Visual state overlays applied while resolving a theme role.
-
-G# kind: `enum`.
-
-### Values
-
-- `None` — No visual state overlay.
-- `Focused` — The control currently has focus.
-- `Selected` — The control is selected.
-- `Disabled` — The control is disabled.
-
 ## SharpTui.Dialog
 
 A centered, dimmed modal overlay showing a message and a row of action buttons.
@@ -698,12 +645,7 @@ Inherits `Overlay`; see that type for inherited members.
 
 - `prop Actions List[DialogAction] { get; set; }` — The actions offered as buttons, in display order. Setting it rebuilds the dialog's children.
 - `prop Message string { get; set; }` — The wrapped body text. Setting it rebuilds the dialog's children.
-- `prop Result DialogAction { get; }` — The action whose button was most recently pressed, or nil. Reading it does not clear the pending press; use ConsumeResult for that.
-
-### Methods
-
-- `func ConsumeResult() DialogAction` — Returns and clears the most recently pressed action, or nil when no button has been pressed.
-  - Returns: The most recently pressed action, or nil when none is pending.
+- `prop OnResult Action[DialogAction] { get; set; }` — Work invoked with the selected action.
 
 ## SharpTui.DialogAction
 
@@ -894,13 +836,18 @@ G# kind: `class`.
 
 ### Methods
 
-- `func Add(gesture KeyGesture, phase BindingPhase) Bind` — Adds a typed binding and returns it for Consume.
+- `func Add(gesture KeyGesture, phase BindingPhase, handler Action) Bind` — Adds an unnamed binding.
   - `gesture`: The key combination that triggers the binding.
   - `phase`: The routing phase the binding is offered during.
+  - `handler`: Work invoked when the binding matches.
   - Returns: The registered binding.
-- `func Add(command Command, phase BindingPhase)` — Registers a command binding.
-  - `command`: The command activated by the matching gesture.
+- `func Add(id string, label string, gesture KeyGesture, phase BindingPhase, handler Action) Bind` — Adds a named binding for use by command surfaces.
+  - `id`: The stable binding identity.
+  - `label`: The text shown by command surfaces.
+  - `gesture`: The key combination that triggers this binding.
   - `phase`: The routing phase the binding is offered during.
+  - `handler`: Work invoked when the binding matches.
+  - Returns: The registered binding.
 - `func Offer(ev UiEvent, phase BindingPhase) bool` — Offers an event to one routing phase.
   - `ev`: The event to offer.
   - `phase`: The routing phase to test bindings against.
@@ -955,7 +902,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop FirstVisibleItemIndex int32 { get; set; }` — Index of the first item visible in the viewport.
 - `prop FollowTail bool { get; set; }` — When true the list pins to its tail: every render selects the last selectable item and scrolls the viewport to the end, so appended items are always in view. Navigating or scrolling away from the tail (Up, PageUp, Home, wheel-up, or a click) turns it off; it never re-engages on its own.
-- `prop Items List[ListItem] { get; set; }` — The rows shown by this list; setting it replaces all items and re-resolves the selection via Refresh.
+- `prop Items List[ListItem] { get; set; }` — The rows shown by this list; setting it replaces all items and preserves selection by stable Id when possible.
 - `prop SelectedId string { get; }` — Id of the currently selected item, or empty when nothing is selected.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected item. Setting it selects programmatically and does not emit a SelectionChange.
 - `prop SelectedItem ListItem { get; }` — The currently selected item, or nil when SelectedIndex is out of range or the active source is empty.
@@ -970,7 +917,7 @@ Inherits `Box`; see that type for inherited members.
   - Returns: The newly appended item.
 - `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   - Returns: The pending selection change, or nil when none is pending.
-- `func Refresh()` — Re-resolves selection after direct mutation of the active Items or Source data, restoring the previous Id when possible.
+- `func Refresh()` — Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
 
 ## SharpTui.MarkdownTheme
 
@@ -1393,7 +1340,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop ValueRange NumericRange { get; set; }` — The scale used to map values to glyph levels.
-- `prop Values List[float64] { get; set; }` — The series to plot, one glyph per value, oldest first.
+- `prop Values List[float64] { get; set; }` — The series to plot, one glyph per value, oldest first. Non-finite values render as blank cells and do not affect automatic ranges.
 
 ## SharpTui.Spinner
 
@@ -1596,7 +1543,7 @@ Inherits `Box`; see that type for inherited members.
 - `prop FirstVisibleColumnIndex int32 { get; set; }` — Index of the first visible column in the horizontal viewport.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — Index of the first data row visible in the viewport.
 - `prop HeaderStyle Style { get; set; }` — Style applied to the header row.
-- `prop Rows List[TableRow] { get; set; }` — Data rows shown by this table; setting it replaces all rows and re-resolves the selection via Refresh.
+- `prop Rows List[TableRow] { get; set; }` — Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.
 - `prop SelectedRowId string { get; }` — Id of the selected row, or empty when no row is selected.
 - `prop SelectedRowIndex int32 { get; set; }` — Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
 - `prop SelectedRowStyle Style { get; set; }` — Style merged over the selected row's inherited style.
@@ -1606,7 +1553,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedRowIndex does not produce one.
   - Returns: The pending SelectionChange, or nil when none is pending.
-- `func Refresh()` — Re-resolves selection after direct mutation of the active Rows or Source data, restoring the previous Id when possible.
+- `func Refresh()` — Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
 
 ## SharpTui.Tabs
 
@@ -1633,7 +1580,7 @@ Inherits `Box`; see that type for inherited members.
 
 ## SharpTui.TestDriver
 
-Drives a SharpTUI view without entering a terminal or reading a clock.
+Drives a SharpTUI tree without entering a terminal or reading a clock.
 
 G# kind: `class`.
 
@@ -1643,15 +1590,11 @@ G# kind: `class`.
   - `root`: The root box to route and draw.
   - `width`: The screen width in cells.
   - `height`: The screen height in rows.
-- `init(view View, width int32, height int32)` — Creates a driver for a custom View.
-  - `view`: The view to route and draw.
-  - `width`: The screen width in cells.
-  - `height`: The screen height in rows.
 
 ### Properties
 
 - `prop App App { get; }` — The application used for routing, posted work, and animations.
-- `prop FocusedElement Box { get; }` — The focused descendant when the driven view is a Box tree.
+- `prop FocusedElement Box { get; }` — The focused descendant in the driven tree.
 - `prop NowMilliseconds int64 { get; }` — The current caller-controlled absolute time in milliseconds.
 - `prop Screen Screen { get; }` — The test screen used for drawing and frame capture.
 
@@ -1659,7 +1602,7 @@ G# kind: `class`.
 
 - `func Advance(elapsed TimeSpan)` — Advances absolute time and pumps posted work and animations.
   - `elapsed`: The non-negative amount of time to advance.
-- `func Draw() string` — Draws the view and returns the ANSI diff emitted by the screen.
+- `func Draw() string` — Draws the tree and returns the ANSI diff emitted by the screen.
   - Returns: The captured ANSI diff for this frame.
 - `func Pump()` — Runs all currently posted work and samples animations at NowMilliseconds.
 - `func Resize(width int32, height int32)` — Resizes the deterministic screen in terminal cells.
@@ -1822,50 +1765,6 @@ G# kind: `enum`.
 - `None` — Preserves explicit lines without automatic wrapping.
 - `Word` — Wraps content at word boundaries within the available width.
 
-## SharpTui.Theme
-
-Compact semantic styles for application surfaces.
-
-G# kind: `class`.
-
-### Constructors
-
-- `init()` — Creates a theme whose roles and overlays inherit their surrounding style.
-
-### Properties
-
-- `prop Accent Style { get; set; }` — The base accent style.
-- `prop Body Style { get; set; }` — The base body style.
-- `prop Disabled Style { get; set; }` — The style overlay for disabled controls.
-- `prop Error Style { get; set; }` — The base error style.
-- `prop Focused Style { get; set; }` — The style overlay for focused controls.
-- `prop Muted Style { get; set; }` — The base muted style.
-- `prop Selected Style { get; set; }` — The style overlay for selected controls.
-- `prop Success Style { get; set; }` — The base success style.
-- `prop Warning Style { get; set; }` — The base warning style.
-
-### Methods
-
-- `func Resolve(role ThemeRole, state ControlState) Style` — Resolves a role and applies focused, selected, then disabled overlays.
-  - `role`: The semantic base role to resolve.
-  - `state`: The control states to apply.
-  - Returns: The merged style for the role and states.
-
-## SharpTui.ThemeRole
-
-Semantic style roles shared by controls and application surfaces.
-
-G# kind: `enum`.
-
-### Values
-
-- `Body` — The normal content style.
-- `Accent` — The emphasized application style.
-- `Muted` — The secondary content style.
-- `Success` — The successful outcome style.
-- `Warning` — The cautionary outcome style.
-- `Error` — The failed outcome style.
-
 ## SharpTui.Toggle
 
 A checkbox that flips its checked state on Enter, space, or a click. A Toggle added to a RadioGroup behaves as a radio button: selecting it deselects the group's other toggles, and activating the already-checked one leaves it checked.
@@ -1997,48 +1896,16 @@ G# kind: `enum`.
 - `Tick` — Signals an application timer tick.
 - `Unknown` — Indicates that no recognized event variant is present.
 
-## SharpTui.View
+## SharpTui.Worker
 
-A drawable application surface.
-
-G# kind: `interface`.
-
-### Methods
-
-- `func Draw(screen Screen)` — Paints one frame. Called after every batch of events.
-  - `screen`: The screen to paint into.
-- `func Handle(ev UiEvent) EventResult` — Handles one typed user-interface event.
-  - `ev`: The event to handle.
-  - Returns: Handled when the view consumed the event, Exit to stop the app, otherwise Continue.
-
-## SharpTui.WorkerState
-
-Reports the lifecycle state of one background worker.
-
-G# kind: `enum`.
-
-### Values
-
-- `Running` — The operation is running on a background thread.
-- `Completed` — The operation completed and has a result to consume.
-- `Failed` — The operation failed and has an exception to consume.
-- `Cancelled` — The operation exited after cancellation was requested.
-
-## SharpTui.Worker`1
-
-Runs one typed background operation and marshals its terminal state onto an App.
+Cancels and observes one app-owned background operation.
 
 G# kind: `class`.
 
 ### Properties
 
-- `prop State WorkerState { get; }` — Reports the current worker lifecycle state.
+- `prop IsRunning bool { get; }` — True until completion, failure, or cancellation reaches the application loop.
 
 ### Methods
 
-- `func Cancel()` — Requests cooperative cancellation. State remains Running until the operation exits.
-- `func ConsumeError() Exception` — Consumes the failure exception once.
-  - Returns: The exception, or nil when no unconsumed failure exists.
-- `func ConsumeResult(out value T) bool` — Consumes the completed result once.
-  - `value`: Receives the result when available.
-  - Returns: True when a result was consumed.
+- `func Cancel()` — Requests cooperative cancellation.

@@ -24,30 +24,21 @@ package Demo
 
 import SharpTui
 
-class InputView : View {
-  private var root Box
+open class InputRoot : Box {
   private var status Label
-  private var save Command
 
   public init() {
     status = Label{ Text: "ready" }
-    root = Box{ Padding: CellInsets.All(1), Children: { status } }
-    save = Command("save", "Save", KeyGesture.Ctrl("s"))
+    Padding = CellInsets.All(1)
+    Children.Add(status)
   }
 
   public func Configure(app App) {
-    app.Keys.Add(save, BindingPhase.AfterWidgets)
+    app.Keys.Add("save", "Save", KeyGesture.Ctrl("s"),
+      BindingPhase.AfterWidgets, () -> status.Text = "saved")
   }
 
-  public func Draw(screen Screen) {
-    if save.Consume() { status.Text = "saved" }
-    screen.Clear()
-    root.Draw(screen)
-  }
-
-  public func Handle(ev UiEvent) EventResult {
-    let routed = root.Handle(ev)
-    if routed != EventResult.Continue { return routed }
+  protected override func Accept(ev UiEvent) EventResult {
     if ev.Kind == UiEventKind.Paste {
       status.Text = ev.Text
       return EventResult.Handled
@@ -64,9 +55,9 @@ class InputView : View {
 
 func Main(args []string) int32 {
   let app = App()
-  let view = InputView()
-  view.Configure(app)
-  app.Run(view)
+  let root = InputRoot()
+  root.Configure(app)
+  app.Run(root)
   return 0
 }
 ```
@@ -84,25 +75,23 @@ func Main(args []string) int32 {
 | `Modifiers` | Lock flags are ignored. |
 | `Phase` | Must be `Press`. |
 
-`KeyGesture.Ctrl("s").Matches(ev)` tests the same gesture used by the command above.
+`KeyGesture.Ctrl("s").Matches(ev)` tests the same gesture used by the binding above.
 
 Do not compare a typed character through an assumed keyboard layout. `Key.Character` and `UiEvent.Text` carry the decoded input.
 
 ## 03 / Bind a command
 
-`Command` carries a stable `Id`, a display `Label`, a `KeyGesture`, enabled state, and one consumable pending activation. `Bind` records a gesture and a routing phase. `Keymap` owns bindings in registration order.
+`Bind` carries a stable `Id`, display `Label`, `KeyGesture`, routing phase, enabled state, and callback. `Keymap` owns bindings in registration order.
 
 | API | Result |
 | --- | --- |
-| `Command(id, label, gesture)` | Creates an enabled command. |
-| `Command.Consume()` | Reports and clears one command activation. |
-| `Keymap.Add(command, phase)` | Activates the command when its gesture matches. |
-| `Keymap.Add(gesture, phase)` | Returns a `Bind` whose `Consume()` reports one match. |
+| `Keymap.Add(id, label, gesture, phase, handler)` | Adds and returns a named binding. |
+| `Keymap.Add(gesture, phase, handler)` | Adds and returns an unnamed binding. |
 | `Keymap.Offer(ev, phase)` | Offers one routing phase directly. |
 
-The example above consumes `save` in `Draw`. `AfterWidgets` activates it after `View.Handle` returns, then the event loop draws the updated retained state.
+The example invokes its save callback after the retained tree declines Ctrl+S. The callback mutates the status directly. There is no pending command state to poll during drawing.
 
-`Command.IsEnabled = false` rejects activation. A disabled command does not consume the event.
+`Bind.IsEnabled = false` rejects activation. A disabled binding does not consume the event.
 
 ## 04 / Keep routing ordered
 
@@ -111,11 +100,11 @@ The example above consumes `save` in `Draw`. `AfterWidgets` activates it after `
 | Stage | Result |
 | --- | --- |
 | 1 | `Keymap` offers `BeforeWidgets`. A match returns `Handled`. |
-| 2 | `View.Handle(ev)` runs. A non-`Continue` result stops routing. |
+| 2 | `root.Handle(ev)` runs. A non-`Continue` result stops routing. |
 | 3 | `Keymap` offers `AfterWidgets`. A match returns `Handled`. |
 | 4 | `QuitGestures` run. A match returns `Exit`. |
 
-`App.Run(root)` wraps the tree as a view. Its view handler calls `root.Handle(ev)`. A custom view must route its retained root before its fallback shortcuts.
+`App.Run(root)` routes the tree directly. A custom root control receives fallback input through its `Accept` override after focused descendants decline it.
 
 Use `BeforeWidgets` only for a command that must preempt all controls. Use `AfterWidgets` for application shortcuts that must not interrupt text entry.
 
@@ -140,5 +129,5 @@ Focus is an accessibility state. Give every focusable control a distinct `Focuse
 - Don't read `Mouse`, `Button`, or `Position` from a non-mouse event.
 - Don't treat `Repeat` or `Release` as a shortcut gesture match.
 - Don't bind ordinary editing keys in `BeforeWidgets`.
-- Don't consume a `Command` or `Bind` twice. `Consume()` clears its pending activation.
+- Don't poll a flag for a binding match. Put the state transition in the binding handler.
 - Don't remove or obscure focus when a keyboard user changes controls.

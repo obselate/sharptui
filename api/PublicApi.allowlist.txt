@@ -20,8 +20,6 @@ SharpTui.CellText
 SharpTui.Color
 SharpTui.Column
 SharpTui.ColumnWidth
-SharpTui.Command
-SharpTui.ControlState
 SharpTui.Dialog
 SharpTui.DialogAction
 SharpTui.Easing
@@ -77,8 +75,6 @@ SharpTui.TextPosition
 SharpTui.TextRun
 SharpTui.TextSelection
 SharpTui.TextWrapping
-SharpTui.Theme
-SharpTui.ThemeRole
 SharpTui.Toggle
 SharpTui.TreeNode
 SharpTui.TreeRow
@@ -86,6 +82,4 @@ SharpTui.TreeSource
 SharpTui.TreeView
 SharpTui.UiEvent
 SharpTui.UiEventKind
-SharpTui.View
-SharpTui.WorkerState
-SharpTui.Worker`1
+SharpTui.Worker

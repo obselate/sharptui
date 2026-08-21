@@ -321,48 +321,50 @@ surface.<span class="nf">Line</span>(<span class="m">2</span>,<span class="w"> <
 <span class="k">let</span><span class="w"> </span>worker<span class="w"> </span>=<span class="w"> </span>app.<span class="nc">StartWorker</span>[<span class="kt">string</span>]((token<span class="w"> </span><span class="nc">CancellationToken</span>)<span class="w"> </span>-&gt;<span class="w"> </span>{
 <span class="w">  </span>token.<span class="nf">ThrowIfCancellationRequested</span>()
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s2">"report ready"</span>
-})
-
-<span class="k">var</span><span class="w"> </span>report<span class="w"> </span><span class="kt">string</span>
-<span class="k">if</span><span class="w"> </span>worker.<span class="nf">ConsumeResult</span>(<span class="k">out</span><span class="w"> </span>report)<span class="w"> </span>{
-<span class="w">  </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span>report
-}
+},
+<span class="w">  </span>(report<span class="w"> </span><span class="kt">string</span>)<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span>report,
+<span class="w">  </span>(error<span class="w"> </span><span class="nc">Exception</span>)<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"failed: "</span><span class="w"> </span>+<span class="w"> </span>error.<span class="nc">Message</span>,
+<span class="w">  </span>()<span class="w"> </span>-&gt;<span class="w"> </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"cancelled"</span>)
 </code></pre></figure>
 <div class="table-scroll"><table class="manual-table">
 <thead>
 <tr>
-<th><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworkerstate"><code>WorkerState</code></a></th>
+<th>API</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>Running</code></td>
-<td>Background operation is active.</td>
+<td><code>completed</code> callback</td>
+<td>Receives the result on the application loop.</td>
 </tr>
 <tr>
-<td><code>Completed</code></td>
-<td>One result is ready to consume.</td>
+<td><code>failed</code> callback</td>
+<td>Receives the exception on the application loop.</td>
 </tr>
 <tr>
-<td><code>Failed</code></td>
-<td>One exception is ready to consume.</td>
+<td><code>cancelled</code> callback</td>
+<td>Runs when cancellation wins completion.</td>
 </tr>
 <tr>
-<td><code>Cancelled</code></td>
-<td>The operation exited after cancellation was requested.</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker.IsRunning</code></a></td>
+<td>True until one terminal callback reaches the application loop.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker.Cancel()</code></a></td>
+<td>Requests cooperative cancellation.</td>
 </tr>
 </tbody>
 </table></div>
-<p><code>ConsumeResult(out value)</code> and <code>ConsumeError()</code> consume each terminal payload once. <code>Cancel()</code> requests cooperative cancellation. State remains <code>Running</code> until the operation exits. The app requests cancellation for its active workers when its loop stops.</p>
+<p>The app invokes exactly one terminal callback. The returned <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker"><code>Worker</code></a> is only the cancellation and activity handle. The app requests cancellation for active workers when its loop stops.</p>
 <h3 id="work-rules">Work rules</h3>
 <ul>
 <li>Don't mutate widgets from <code>work</code>. Return data, then update retained UI after delivery.</li>
-<li>Don't discard a running handle when the operation may need explicit cancellation or terminal observation.</li>
-<li>Don't report completion before <code>ConsumeResult</code> succeeds. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworkerstate"><code>WorkerState.Completed</code></a> means a result is ready, not yet applied.</li>
-<li>Don't hide failure. Consume the error and render the fact near the affected work.</li>
+<li>Don't discard a running handle when the operation may need explicit cancellation.</li>
+<li>Don't poll for completion. Put the state transition in the terminal callbacks.</li>
+<li>Don't hide failure. Render the error from the failure callback.</li>
 </ul>
-<p>For deterministic UI testing, see the <a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html#03--test-the-same-path">getting-started guide</a> and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver">the <code>TestDriver</code> reference</a>. For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasmode">canvas</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation">animation</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker1">worker</a>.</p>
+<p>For deterministic UI testing, see the <a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html#03--test-the-same-path">getting-started guide</a> and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver">the <code>TestDriver</code> reference</a>. For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicanvasmode">canvas</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuianimation">animation</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiworker">worker</a>.</p>
     </div>
   </div>
   <footer class="folio">

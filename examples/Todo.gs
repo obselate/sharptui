@@ -160,13 +160,12 @@ func choreContinuation(line string, indent string, tags List[string]) string? {
 
 /// A marker harvest. `sharptui --todo [DIR] [TAG,TAG,...]` — the second
 /// argument swaps the marker words, e.g. `--todo . TODO,WIP,PERF`.
-class Chores : View {
+open class Chores : Column {
   private var list ListView
   private var preview ListView
   private var tabs Tabs
   private var filter TextInput
   private var bar StatusBar
-  private var root Box
   private var pane Box
   private var dir string
   private var all List[Chore]
@@ -203,15 +202,13 @@ class Chores : View {
 
     filterBox = Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "filter", Children: { filter } }
 
-    root = Column{ Children: {
-      tabs,
-      Box{ GrowWeight: 2, ShowBorder: true, ShowScrollbar: true, Title: "tag    where",
-        Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
-      pane,
-      filterBox,
-      bar,
-    }}
-    root.Focus(list)
+    Children.Add(tabs)
+    Children.Add(Box{ GrowWeight: 2, ShowBorder: true, ShowScrollbar: true, Title: "tag    where",
+      Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } })
+    Children.Add(pane)
+    Children.Add(filterBox)
+    Children.Add(bar)
+    Focus(list)
     reload()
   }
 
@@ -308,7 +305,7 @@ class Chores : View {
     }
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     if tabs.ConsumeSelectionChange() != nil { apply() }
     if list.ConsumeSelectionChange() != nil { refreshPreview() }
     bar.LeftText = shown.Count.ToString() + " of " + all.Count.ToString()
@@ -317,8 +314,6 @@ class Chores : View {
     if tagEdit { hint = "enter applies the tags and rescans - esc keeps the old ones" }
     else if filter.IsFocused { hint = "enter filters - esc clears it" }
     bar.RightText = hint
-    screen.Clear()
-    root.Draw(screen)
   }
 
   /// Turns the bottom box into a tag editor, prefilled with the active set.
@@ -331,7 +326,7 @@ class Chores : View {
     for t in tags { spec = spec == "" ? t : spec + "," + t }
     filter.Text = spec
     filterBox.Title = "tags"
-    root.Focus(filter)
+    Focus(filter)
   }
 
   /// Leaves tag editing; applies the typed set when told to.
@@ -340,16 +335,16 @@ class Chores : View {
     tagEdit = false
     filter.Text = savedFilter
     filterBox.Title = "filter"
-    root.Focus(list)
+    Focus(list)
     if keep {
       tabs.SelectedIndex = 0
       reload()
     }
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     // A key acts on press; Kitty terminals also report releases.
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
 
     // Typing is wherever focus is: tab can land in the bottom box without
     // any shortcut, so plain keys must never fire while it holds focus.
@@ -361,10 +356,9 @@ class Chores : View {
         }
         if ev.Key == Key.Escape { filter.Text = "" }
         apply()
-        root.Focus(list)
+        Focus(list)
         return EventResult.Handled
       }
-      root.Handle(ev)
       return EventResult.Continue
     }
 
@@ -377,7 +371,7 @@ class Chores : View {
       if ev.Text == "/" {
         if tagEdit { closeTags(false) }
         filter.Text = ""
-        root.Focus(filter)
+        Focus(filter)
         return EventResult.Handled
       }
       if ev.Text == "t" {
@@ -394,7 +388,6 @@ class Chores : View {
       apply()
       return EventResult.Handled
     }
-    root.Handle(ev)
     return EventResult.Continue
   }
 }

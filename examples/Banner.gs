@@ -7,25 +7,23 @@ import System.Collections.Generic
 
 /// The picker's animated wordmark alone on a blank screen, for recording the
 /// README banner from a real terminal. `sharptui --banner`. q quits.
-class Banner : View {
-  private var host App?
+open class Banner : Box {
+  private var host App
   private var t float64
   private var mode int32
   private var logo List[string]
 
-  public init() {
+  public init(host App) {
+    this.host = host
     logo = sharpLogo()
   }
 
-  /// The banner owns its app so it can idle between shines, like the picker.
-  public func Arm(app App) { host = app }
-
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     if ev.Kind == UiEventKind.Tick {
       if mode == 1 {
         mode = 2
         t = 0.0
-        if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(33.0) }
+        host.TickInterval = TimeSpan.FromMilliseconds(33.0)
       } else {
         t = t + 0.033
         if mode == 0 && t >= 2.4 { rest() }
@@ -39,11 +37,10 @@ class Banner : View {
 
   private func rest() {
     mode = 1
-    if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(3400.0) }
+    host.TickInterval = TimeSpan.FromMilliseconds(3400.0)
   }
 
-  public func Draw(screen Screen) {
-    screen.Clear()
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     let w = screen.Size.WidthCells
     let oy = (screen.Size.HeightRows - 5) / 2
     for row in 0 ... 3 {

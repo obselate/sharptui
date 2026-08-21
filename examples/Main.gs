@@ -100,21 +100,35 @@ func procRun(exe string, args List[string], dir string, env List[string]) ProcRu
   return r
 }
 
+open class LogoLayer : Box {
+  private var paint Action[Screen]
+
+  public init(paint Action[Screen]) {
+    this.paint = paint
+    Placement = Placement.At(CellPoint{})
+  }
+
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
+    paint(screen)
+  }
+}
+
 /// The launcher menu shown when no flag picks an app directly.
-class Pick : View {
+open class Pick : Column {
   private var list ListView
   private var bar StatusBar
-  private var root Box
   private var logo List[string]
-  private var host App?
+  private var host App
   private var t float64
   private var mode int32
 
   public prop Choice int32 { get; set; }
 
-  public init() {
+  public init(host App, sweep bool) {
+    this.host = host
     Choice = -1
-    mode = 1
+    mode = 0
+    t = 0.0
     logo = sharpLogo()
     list = ListView{ GrowWeight: 1, Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent } }
@@ -132,39 +146,27 @@ class Pick : View {
 
     let ink = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
     let dim = Style{ Foreground: Ink.Dim, Background: Color.Inherit }
-    root = Column{ Children: {
-      Label{ Text: "", Height: CellLength.Cells(1) },
-      Label{ Text: logo[0], Alignment: HorizontalAlignment.Center, Style: ink },
-      Label{ Text: logo[1], Alignment: HorizontalAlignment.Center, Style: ink },
-      Label{ Text: logo[2], Alignment: HorizontalAlignment.Center, Style: ink },
-      Label{ Text: "a retained-tree TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim },
-      Label{ Text: "", Height: CellLength.Cells(1) },
-      Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
-        Style: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
-      bar,
-    }}
-    root.Focus(list)
-  }
-
-  /// Arms the header animation. The picker owns its app so it can retune the
-  /// tick rate itself: 30 fps while a sweep or shine is live, one wakeup every
-  /// few seconds in between. `sweep` plays the full startup reveal; without it
-  /// the logo starts settled and just shines.
-  public func Animate(app App, sweep bool) {
-    host = app
-    t = 0.0
-    if sweep { mode = 0 } else { rest() }
+    Children.Add(Label{ Text: "", Height: CellLength.Cells(1) })
+    Children.Add(Label{ Text: logo[0], Alignment: HorizontalAlignment.Center, Style: ink })
+    Children.Add(Label{ Text: logo[1], Alignment: HorizontalAlignment.Center, Style: ink })
+    Children.Add(Label{ Text: logo[2], Alignment: HorizontalAlignment.Center, Style: ink })
+    Children.Add(Label{ Text: "a retained-tree TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim })
+    Children.Add(Label{ Text: "", Height: CellLength.Cells(1) })
+    Children.Add(Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
+      Style: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } })
+    Children.Add(bar)
+    Children.Add(LogoLayer((screen Screen) -> paintLogo(screen)))
+    Focus(list)
+    if !sweep { rest() }
   }
 
   /// Back to the settled logo, dozing until the next shine is due.
   private func rest() {
     mode = 1
-    if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(3400.0) }
+    host.TickInterval = TimeSpan.FromMilliseconds(3400.0)
   }
 
-  public func Draw(screen Screen) {
-    screen.Clear()
-    root.Draw(screen)
+  private func paintLogo(screen Screen) {
     if mode == 0 { intro(screen) }
     if mode == 2 { shine(screen) }
   }
@@ -211,12 +213,12 @@ class Pick : View {
     return int32(Math.Min(base + lit * (full - base) + hot * 230.0, 255.0))
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     if ev.Kind == UiEventKind.Tick {
       if mode == 1 {
         mode = 2
         t = 0.0
-        if let h = host { h.TickInterval = TimeSpan.FromMilliseconds(33.0) }
+        host.TickInterval = TimeSpan.FromMilliseconds(33.0)
       } else {
         t = t + 0.033
         if mode == 0 && t >= 2.4 { rest() }
@@ -225,13 +227,13 @@ class Pick : View {
       return EventResult.Handled
     }
     // A key acts on press; Kitty terminals also report releases.
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
     if ev.Key == Key.Enter {
       Choice = list.SelectedIndex
       return EventResult.Exit
     }
     if ev.Key == Key.Character && ev.Text == "q" { return EventResult.Exit }
-    return root.Handle(ev)
+    return EventResult.Continue
   }
 }
 
@@ -276,11 +278,10 @@ func Main(args []string) int32 {
 /// after that the logo just shines every few seconds, and the picker dials its
 /// own tick rate down between shines so idling costs one wakeup per ~3.4s.
 func pick(sweep bool) Pick {
-  let picker = Pick()
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
   app.TickInterval = TimeSpan.FromMilliseconds(33.0)
-  picker.Animate(app, sweep)
+  let picker = Pick(app, sweep)
   app.Run(picker)
   return picker
 }
@@ -290,9 +291,7 @@ func banner() int32 {
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
   app.TickInterval = TimeSpan.FromMilliseconds(33.0)
-  let view = Banner()
-  view.Arm(app)
-  app.Run(view)
+  app.Run(Banner(app))
   return 0
 }
 
@@ -304,7 +303,7 @@ func golf() int32 {
   return 0
 }
 
-func run(view View) int32 {
+func run(view Box) int32 {
   let app = App()
   app.DefaultStyle = Style{
     Foreground: Ink.Text,

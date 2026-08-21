@@ -152,7 +152,6 @@ public class WidgetCheck {
       presented.Items.Add(heading)
       presented.Items.Add(inbox)
       presented.Items.Add(archive)
-      presented.Refresh()
       let presentedRoot = Box{ Children: { presented } }
       let presentedScreen = Screen(12, 3)
       presentedRoot.Draw(presentedScreen)
@@ -171,12 +170,15 @@ public class WidgetCheck {
         && presented.ConsumeSelectionChange() == nil,
         "ListView keeps a stable Id across item replacement without emitting a change")
       archive.IsSelectable = false
-      presented.Refresh()
       failed = failed + Checks.Expect(presented.SelectedIndex == 2 && presented.SelectedId == "inbox",
-        "ListView leaves an item that becomes non-selectable")
+        "ListView leaves an item that becomes non-selectable without Refresh")
 
       let generated = ListView{}
       let generatedFirst = generated.Add("first")
+      failed = failed + Checks.Expect(generated.SelectedIndex == 0
+          && Object.ReferenceEquals(generated.SelectedItem, generatedFirst)
+          && generated.SelectedId == generatedFirst.Id,
+        "ListView.Add establishes complete selection state for the first item")
       let generatedSecond = generated.Add("second")
       generated.SelectedIndex = 1
       generated.Items = List[ListItem]{ ListItem{ Id: generatedSecond.Id, Text: "second replacement" } }
@@ -184,6 +186,45 @@ public class WidgetCheck {
           && generatedFirst.Id != generatedSecond.Id && generated.SelectedIndex == 0
           && generated.SelectedId == generatedSecond.Id,
         "ListItem supplies a unique lifetime Id and caller Id restores replacement selection")
+
+      let directListItems = List[ListItem]{
+        ListItem{ Id: "first", Text: "first" },
+        ListItem{ Id: "selected", Text: "selected" },
+        ListItem{ Id: "last", Text: "last" },
+      }
+      let directList = ListView{
+        Items: directListItems,
+        Width: CellLength.Cells(20),
+        Height: CellLength.Cells(3),
+        SelectionMarker: "",
+      }
+      directList.SelectedIndex = 1
+      directListItems.Insert(0, ListItem{ Id: "before", Text: "before" })
+      failed = failed + Checks.Expect(directList.SelectedIndex == 2 && directList.SelectedId == "selected",
+        "ListView preserves Id selection after direct insertion without Refresh")
+      directListItems.RemoveAt(2)
+      failed = failed + Checks.Expect(directList.SelectedIndex == 2 && directList.SelectedId == "last",
+        "ListView falls forward after direct removal of the selected item")
+      directListItems[0].Text = "changed"
+      let directListRoot = Box{ Children: { directList } }
+      let directListScreen = Screen(20, 3)
+      directListRoot.Draw(directListScreen)
+      failed = failed + Checks.Expect(directListScreen.Probe(0, 0) == "c",
+        "ListView renders direct item content mutation without Refresh")
+
+      let deferredList = ListView{ Items: { ListItem{ Id: "heading", Text: "heading", IsSelectable: false } } }
+      failed = failed + Checks.Expect(deferredList.SelectedId == "heading",
+        "ListView retains a fallback selection when no row is selectable")
+      deferredList.Items.Add(ListItem{ Id: "ready", Text: "ready" })
+      failed = failed + Checks.Expect(deferredList.SelectedIndex == 1 && deferredList.SelectedId == "ready",
+        "ListView selects the first available row after direct append without Refresh")
+      deferredList.Items[0].IsSelectable = false
+      deferredList.Items[1].IsSelectable = false
+      deferredList.Refresh()
+      deferredList.Items[0].IsSelectable = true
+      deferredList.Refresh()
+      failed = failed + Checks.Expect(deferredList.SelectedIndex == 0 && deferredList.SelectedId == "heading",
+        "ListView.Refresh discovers same-count eligibility changes away from a fallback selection")
 
       let tail = ListView{ Width: CellLength.Cells(8), Height: CellLength.Cells(2), SelectionMarker: "", FollowTail: true }
       tail.Add("one")
@@ -254,6 +295,13 @@ public class WidgetCheck {
         "RadioGroup clears the previous selection")
       failed = failed + Checks.Expect(rroot.Handle(keyEv(Key.Enter)) == EventResult.Handled && two.IsChecked && !one.IsChecked,
         "pressing the selected Toggle keeps the group selection")
+      one.IsChecked = true
+      failed = failed + Checks.Expect(one.IsChecked && !two.IsChecked
+          && Object.ReferenceEquals(group.SelectedToggle, one),
+        "setting grouped Toggle.IsChecked preserves exclusive selection")
+      one.IsChecked = false
+      failed = failed + Checks.Expect(!one.IsChecked && !two.IsChecked && group.SelectedToggle == nil,
+        "clearing grouped Toggle.IsChecked clears the group selection")
 
       let declaredOne = Toggle{ Text: "declared one" }
       let declaredTwo = Toggle{ Text: "declared two" }
@@ -269,14 +317,17 @@ public class WidgetCheck {
         "RadioGroup attaches declarative Children before selection handling")
 
       let button = Button{ Text: "apply" }
+      var buttonPresses = 0
+      button.OnPress = () -> buttonPresses = buttonPresses + 1
       let buttonRoot = Box{ Children: { button } }
       buttonRoot.Draw(Screen(20, 3))
       buttonRoot.Focus(button)
       buttonRoot.Handle(keyEv(Key.Enter))
-      failed = failed + Checks.Expect(button.IsPressed, "Button.IsPressed records Enter")
-      failed = failed + Checks.Expect(button.ConsumePress(), "Button.ConsumePress reports the pending press")
-      failed = failed + Checks.Expect(!button.IsPressed && !button.ConsumePress(),
-        "Button.ConsumePress clears the pending press once")
+      failed = failed + Checks.Expect(buttonPresses == 1,
+        "Button invokes OnPress once for Enter")
+      buttonRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter, Phase: KeyPhase.Release })
+      failed = failed + Checks.Expect(buttonPresses == 1,
+        "Button ignores Enter release callbacks")
 
       let half = ProgressBar{ Value: 5.0, Maximum: 10.0, Width: CellLength.Cells(10) }
       let hroot = Box{ Children: { half } }
@@ -334,6 +385,19 @@ public class WidgetCheck {
         && autoSparkScreen.Probe(1, 0) == char(0x2588).ToString(),
         "Sparkline.ValueRange.Auto derives its scale from Values")
 
+      let missingSparkline = Sparkline{
+        Values: { Double.NaN, 4.0, 8.0, Double.PositiveInfinity },
+        Width: CellLength.Cells(4),
+      }
+      let missingSparkRoot = Box{ Children: { missingSparkline } }
+      let missingSparkScreen = Screen(4, 2)
+      missingSparkRoot.Draw(missingSparkScreen)
+      failed = failed + Checks.Expect(missingSparkScreen.Probe(0, 0) == " "
+          && missingSparkScreen.Probe(1, 0) == char(0x2581).ToString()
+          && missingSparkScreen.Probe(2, 0) == char(0x2588).ToString()
+          && missingSparkScreen.Probe(3, 0) == " ",
+        "Sparkline excludes non-finite samples from automatic ranges and renders them blank")
+
       let table = makeTable()
       let tabroot = Box{ Children: { table } }
       let tabscr = Screen(20, 10)
@@ -367,6 +431,45 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && table.ConsumeSelectionChange() == nil,
         "TableView.Refresh clears pending output after direct Rows mutation")
 
+      let directTableRows = List[TableRow]{
+        tblRow("first", "first"),
+        tblRow("selected", "selected"),
+        tblRow("last", "last"),
+      }
+      let directTable = TableView{
+        Rows: directTableRows,
+        Width: CellLength.Cells(20),
+        Height: CellLength.Cells(5),
+      }
+      directTable.Columns.Add(TableColumn{ Header: "Name", ColumnWidth: ColumnWidth.Cells(12) })
+      directTable.SelectedRowIndex = 1
+      directTableRows.Insert(0, tblRow("before", "before"))
+      failed = failed + Checks.Expect(directTable.SelectedRowIndex == 2 && directTable.SelectedRowId == "selected",
+        "TableView preserves Id selection after direct insertion without Refresh")
+      directTableRows.RemoveAt(2)
+      failed = failed + Checks.Expect(directTable.SelectedRowIndex == 2 && directTable.SelectedRowId == "last",
+        "TableView falls forward after direct removal of the selected row")
+      directTableRows[0].Cells[0] = TableCell("changed")
+      let directTableRoot = Box{ Children: { directTable } }
+      let directTableScreen = Screen(20, 5)
+      directTableRoot.Draw(directTableScreen)
+      failed = failed + Checks.Expect(directTableScreen.Probe(0, directTable.Bounds.Row + 1) == "c",
+        "TableView renders direct row content mutation without Refresh")
+
+      let deferredTable = TableView{ Rows: { TableRow{ Id: "heading", IsSelectable: false } } }
+      failed = failed + Checks.Expect(deferredTable.SelectedRowId == "heading",
+        "TableView retains a fallback selection when no row is selectable")
+      deferredTable.Rows.Add(TableRow{ Id: "ready" })
+      failed = failed + Checks.Expect(deferredTable.SelectedRowIndex == 1 && deferredTable.SelectedRowId == "ready",
+        "TableView selects the first available row after direct append without Refresh")
+      deferredTable.Rows[0].IsSelectable = false
+      deferredTable.Rows[1].IsSelectable = false
+      deferredTable.Refresh()
+      deferredTable.Rows[0].IsSelectable = true
+      deferredTable.Refresh()
+      failed = failed + Checks.Expect(deferredTable.SelectedRowIndex == 0 && deferredTable.SelectedRowId == "heading",
+        "TableView.Refresh discovers same-count eligibility changes away from a fallback selection")
+
       let stable = makeTable()
       stable.SelectedRowIndex = 3
       stable.Rows = List[TableRow]{ tblRow("item8", "8"), tblRow("item3", "3"), tblRow("item9", "9") }
@@ -375,7 +478,6 @@ public class WidgetCheck {
 
       let skipped = makeTable()
       skipped.Rows[1].IsSelectable = false
-      skipped.Refresh()
       skipped.SelectedRowIndex = 0
       let skippedRoot = Box{ Children: { skipped } }
       skippedRoot.Draw(Screen(20, 10))
@@ -682,15 +784,10 @@ private class MillionTreeSource : TreeSource {
   public func Toggle(index int32) {}
 }
 
-private class WidgetScenarioView : View {
-  private var root Box
+private class WidgetScenarioView : Box {
   private var surface CanvasSurface
   private var status Label
-  private var worker Worker[string]?
-  private var trigger Command
 
-  public prop Root Box { get { return root } }
-  public prop Trigger Command { get { return trigger } }
   public prop Surface CanvasSurface { get { return surface } }
 
   public init() {
@@ -704,35 +801,27 @@ private class WidgetScenarioView : View {
     canvas.Height = CellLength.Cells(2)
     surface = canvas.Surface
     status = Label{ Text: "idle", Width: CellLength.Cells(28) }
-    root = Column{
+    Children.Add(Column{
       Width: CellLength.Cells(28),
       Height: CellLength.Cells(8),
       Children: { tree, canvas, status },
-    }
-    trigger = Command("scenario.command", "scenario command", KeyGesture.Ctrl("k"))
-    worker = nil
+    })
   }
 
-  public func Attach(worker Worker[string]) {
-    this.worker = worker
+  public func ActivateCommand() {
+    status.Text = "command activated"
   }
 
-  public func ApplyPending() {
-    if trigger.Consume() { status.Text = "command activated" }
-    if let active = worker {
-      var value string
-      if active.ConsumeResult(out value) { status.Text = value }
-      if active.ConsumeError() != nil { status.Text = "worker failed" }
-    }
+  public func CompleteWorker(value string) {
+    status.Text = value
   }
 
-  public func Draw(screen Screen) {
-    ApplyPending()
-    root.Draw(screen)
+  public func FailWorker(error Exception) {
+    status.Text = "worker failed"
   }
 
-  public func Handle(ev UiEvent) EventResult {
-    return root.Handle(ev)
+  public func CancelWorker() {
+    status.Text = "worker cancelled"
   }
 }
 
@@ -769,19 +858,17 @@ private func runWidgetScenario() int32 {
   let sourcedList = ListView{ Source: listSource }
   sourcedList.SelectedIndex = 1
   listSource.MoveSelectedFirst()
-  sourcedList.Refresh()
   failed = failed + Checks.Expect(sourcedList.SelectedIndex == 0
       && sourcedList.SelectedId == "selected",
-    "list source refresh restores selection through source-owned key lookup")
+    "list source mutation restores selection through source-owned key lookup without Refresh")
 
   let tableSource = CheckTableSource()
   let sourcedTable = TableView{ Source: tableSource }
   sourcedTable.SelectedRowIndex = 1
   tableSource.MoveSelectedFirst()
-  sourcedTable.Refresh()
   failed = failed + Checks.Expect(sourcedTable.SelectedRowIndex == 0
       && sourcedTable.SelectedRowId == "selected",
-    "table source refresh restores selection through source-owned key lookup")
+    "table source mutation restores selection through source-owned key lookup without Refresh")
 
   let million = MillionTreeSource()
   let virtualTree = TreeView{
@@ -1069,8 +1156,9 @@ private func runWidgetScenario() int32 {
     "Finish then Cancel keeps the first request and applies its terminal sample")
 
   let view = WidgetScenarioView()
-  let driver = TestDriver(view.Root, 30, 8)
-  driver.App.Keys.Add(view.Trigger, BindingPhase.BeforeWidgets)
+  let driver = TestDriver(view, 30, 8)
+  driver.App.Keys.Add("scenario.command", "scenario command", KeyGesture.Ctrl("k"),
+    BindingPhase.BeforeWidgets, view.ActivateCommand)
 
   let first = driver.Draw()
   failed = failed + Checks.Expect(first.Contains("virtual child"), "TestDriver draws virtual source data")
@@ -1095,71 +1183,68 @@ private func runWidgetScenario() int32 {
     Modifiers: KeyModifiers.Ctrl,
     Phase: KeyPhase.Press,
   })
-  view.ApplyPending()
   let commandFrame = driver.Draw()
   failed = failed + Checks.Expect(commandFrame.Contains("command activated"),
-    "normal App key routing activates a Command")
+    "normal App key routing invokes a named binding")
 
   let ready = AutoResetEvent(false)
   let worker = driver.App.StartWorker[string]((token CancellationToken) -> {
     ready.Set()
     return "worker complete"
-  })
-  view.Attach(worker)
+  }, view.CompleteWorker, view.FailWorker, view.CancelWorker)
   ready.WaitOne(1000)
   var turns = 0
-  while turns < 1000 && worker.State == WorkerState.Running {
+  while turns < 1000 && worker.IsRunning {
     driver.Pump()
     Thread.Yield()
     turns = turns + 1
   }
-  view.ApplyPending()
   driver.Resize(31, 8)
   let finalFrame = driver.Draw()
   failed = failed + Checks.Expect(finalFrame.Contains("virtual child"),
     "worker completion preserves virtual source data")
   failed = failed + Checks.Expect(finalFrame.Contains("worker complete"),
     "worker completion becomes visible after App pumping")
-  failed = failed + Checks.Expect(worker.State == WorkerState.Completed,
-    "worker reaches completed state on the UI thread")
+  failed = failed + Checks.Expect(!worker.IsRunning,
+    "worker reaches terminal state on the UI thread")
 
+  var workerError Exception?
   let failedWorker = driver.App.StartWorker[string]((token CancellationToken) -> {
     throw InvalidOperationException("worker failure")
-  })
+  }, (value string) -> {}, (error Exception) -> workerError = error, () -> {})
   turns = 0
-  while turns < 1000 && failedWorker.State == WorkerState.Running {
+  while turns < 1000 && failedWorker.IsRunning {
     driver.Pump()
     Thread.Yield()
     turns = turns + 1
   }
-  let workerError = failedWorker.ConsumeError()
-  failed = failed + Checks.Expect(failedWorker.State == WorkerState.Failed
-      && workerError != nil && workerError!!.Message == "worker failure"
-      && failedWorker.ConsumeError() == nil,
-    "worker failures become terminal and are consumed once")
+  failed = failed + Checks.Expect(!failedWorker.IsRunning
+      && workerError != nil && workerError!!.Message == "worker failure",
+    "worker failures invoke once on the application loop")
 
   let cancellationStarted = AutoResetEvent(false)
   let cancellationRelease = AutoResetEvent(false)
+  var workerCancelled = false
+  var ignoredResult = false
   let cancelledWorker = driver.App.StartWorker[string]((token CancellationToken) -> {
     cancellationStarted.Set()
     cancellationRelease.WaitOne()
     return "ignored cancellation"
-  })
+  }, (value string) -> ignoredResult = true,
+    (error Exception) -> {}, () -> workerCancelled = true)
   cancellationStarted.WaitOne(1000)
   cancelledWorker.Cancel()
-  let stayedRunning = cancelledWorker.State == WorkerState.Running
+  let stayedRunning = cancelledWorker.IsRunning
   cancellationRelease.Set()
   turns = 0
-  while turns < 1000 && cancelledWorker.State == WorkerState.Running {
+  while turns < 1000 && cancelledWorker.IsRunning {
     driver.Pump()
     Thread.Yield()
     turns = turns + 1
   }
-  var cancelledValue string
   failed = failed + Checks.Expect(stayedRunning
-      && cancelledWorker.State == WorkerState.Cancelled
-      && !cancelledWorker.ConsumeResult(out cancelledValue),
-    "worker cancellation becomes terminal only after ignored work exits")
+      && !cancelledWorker.IsRunning && workerCancelled && !ignoredResult,
+    "worker cancellation invokes only the cancellation callback")
   driver.Send(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab, Phase: KeyPhase.Press })
   failed = failed + Checks.Expect(driver.FocusedElement != nil,
     "TestDriver exposes focus after normal input routing")

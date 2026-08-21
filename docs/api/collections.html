@@ -202,7 +202,7 @@
 }
 </code></pre></figure>
 <p><code>SelectedIndex</code> is programmatic selection. It does not emit <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>SelectionChange</code></a>. <code>ConsumeSelectionChange</code> returns and clears a user-navigation change with <code>PreviousIndex</code> and <code>SelectedIndex</code>. <code>SelectedId</code> and <code>SelectedItem</code> report the current item.</p>
-<p>Set <code>Source</code> to a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeyedsource2"><code>KeyedSource[ListItem, string]</code></a> for indexed data. It provides <code>Count()</code>, zero-based <code>ItemAt(index)</code>, and <code>IndexOfKey(id)</code>. Call <code>Refresh()</code> after direct mutation of <code>Items</code> or the active source.</p>
+<p>Set <code>Source</code> to a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeyedsource2"><code>KeyedSource[ListItem, string]</code></a> for indexed data. It provides <code>Count()</code>, zero-based <code>ItemAt(index)</code>, and <code>IndexOfKey(id)</code>. Item data and counts are read live. Before selection is observed, routed, or rendered, the list preserves the selected stable Id through <code>IndexOfKey</code> or a fallback <code>Items</code> scan. <code>Refresh()</code> is only needed to discover a same-count <code>IsSelectable</code> change away from a non-selectable fallback selection.</p>
 <p><code>FollowTail</code> is for logs. It selects the last selectable row and keeps the viewport at the end. Upward navigation, upward scrolling, Home, PageUp, or a click turns it off. It does not re-enable itself.</p>
     </div>
   </div>
@@ -265,11 +265,11 @@
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView</code></a></td>
-<td>Use <code>Rows</code> or <code>Source</code>, then call <code>Refresh()</code> after direct changes.</td>
+<td><code>Rows</code> and <code>Source</code> are read live. Stable selection reconciles automatically after direct changes.</td>
 </tr>
 </tbody>
 </table></div>
-<p><code>SelectedRowIndex</code> is programmatic and silent. <code>ConsumeSelectionChange</code> is user input. <code>SelectedRowId</code> restores identity across replacement when possible. <code>FirstVisibleRowIndex</code> and <code>FirstVisibleColumnIndex</code> are the explicit viewports.</p>
+<p><code>SelectedRowIndex</code> is programmatic and silent. <code>ConsumeSelectionChange</code> is user input. <code>SelectedRowId</code> restores identity across replacement when possible. <code>FirstVisibleRowIndex</code> and <code>FirstVisibleColumnIndex</code> are the explicit viewports. <code>Refresh()</code> is only needed to discover a same-count <code>IsSelectable</code> change away from a non-selectable fallback selection.</p>
     </div>
   </div>
   <footer class="folio">
@@ -347,7 +347,7 @@ tree.<span class="nf">Refresh</span>()
 <li>Don't use list index as a durable identity. Use <code>Id</code> for list, table, and tree restoration.</li>
 <li>Don't infer a user action from <code>SelectedIndex</code>. Read <code>ConsumeSelectionChange</code>.</li>
 <li>Don't make headings selectable. Use <code>IsSelectable: false</code>.</li>
-<li>Don't mutate collection data and skip the owning widget's <code>Refresh()</code>.</li>
+<li>Call <code>Refresh()</code> only where the widget documents explicit cache invalidation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistview"><code>ListView</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView</code></a> reconcile live data automatically.</li>
 <li>Don't let a selected row be color-only. Keep <code>SelectionMarker</code>, hierarchy markers, or focus state visible.</li>
 </ul>
 <p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistitem">list types</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitablecell">table types</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitreenode">tree types</a>.</p>

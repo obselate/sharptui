@@ -10,11 +10,10 @@ import System.IO
 enum EditLayout { Split, EditorOnly, PreviewOnly }
 
 /// A markdown editor with a live preview. `sharptui --edit FILE` (any *.md argument works too).
-class Edit : View {
+open class Edit : Column {
   private var area TextArea
   private var doc MarkdownView
   private var bar StatusBar
-  private var root Box
   private var leftBox Box
   private var rightBox Box
   private var path string
@@ -28,13 +27,7 @@ class Edit : View {
   private var lastQuery string
   private var layout EditLayout
 
-  // Rebuild discipline: track caret line and a debounce clock so the preview
-  // is not re-sourced on every keystroke, only on line change or edit-idle.
   private var lastCaretLine int32
-  private var pendingRebuild bool
-  private var lastEditTickMs int64
-
-  // Word/line counts, refreshed only when previewSource actually changes.
   private var wordCount int32
   private var lineCount int32
 
@@ -45,8 +38,6 @@ class Edit : View {
     lastQuery = ""
     layout = EditLayout.Split
     lastCaretLine = 0
-    pendingRebuild = false
-    lastEditTickMs = 0
     wordCount = 0
     lineCount = 0
 
@@ -74,14 +65,12 @@ class Edit : View {
     findBox = Row{ Height: CellLength.Cells(1), GrowWeight: 0, GapCells: 2, Children: { find, swap } }
     searching = false
 
-    root = Column{ Children: {
-      Row{ GrowWeight: 1, GapCells: 1, Children: { leftBox, rightBox } },
-      bar,
-    }}
-    root.Focus(area)
+    Children.Add(Row{ GrowWeight: 1, GapCells: 1, Children: { leftBox, rightBox } })
+    Children.Add(bar)
+    Focus(area)
   }
 
-  public func Draw(screen Screen) {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
     syncScroll()
     syncPreview()
 
@@ -94,13 +83,11 @@ class Edit : View {
     bar.RightText = (area.Caret.LineIndex + 1).ToString() + ":" + (area.Caret.GraphemeIndex + 1).ToString()
       + "  " + lineCount.ToString() + "L " + wordCount.ToString() + "W"
 
-    screen.Clear()
-    root.Draw(screen)
   }
 
-  public func Handle(ev UiEvent) EventResult {
+  protected override func Accept(ev UiEvent) EventResult {
     // A key acts on press; Kitty terminals also report releases.
-    if ev.Phase == KeyPhase.Release { return root.Handle(ev) }
+    if ev.Phase == KeyPhase.Release { return EventResult.Continue }
     if KeyGesture.Ctrl("q").Matches(ev) { return EventResult.Exit }
     if KeyGesture.Ctrl("f").Matches(ev) {
       openFind()
@@ -127,8 +114,6 @@ class Edit : View {
         replaceOne()
         return EventResult.Handled
       }
-      if isEditingEvent(ev) { markEditPending() }
-      root.Handle(ev)
       return EventResult.Continue
     }
     // The preview pane consumes no plain characters, so it can host vim-style / n N without colliding with typing.
@@ -155,41 +140,25 @@ class Edit : View {
       message = "unsaved changes, ctrl+s to save or ctrl+q to quit"
       return EventResult.Handled
     }
-    if isEditingEvent(ev) { markEditPending() }
-    root.Handle(ev)
     return EventResult.Continue
-  }
-
-  private func isCtrl(ev UiEvent) bool {
-    return (int32(ev.Modifiers) & int32(KeyModifiers.Ctrl)) != 0
-  }
-
-  // Only these can actually mutate area's text; navigation keys should not arm the rebuild timer.
-  private func isEditingEvent(ev UiEvent) bool {
-    if ev.Kind == UiEventKind.Paste { return true }
-    if ev.Key == Key.Character && !isCtrl(ev) { return true }
-    if ev.Key == Key.Character && isCtrl(ev) &&
-        (ev.Text == "z" || ev.Text == "y" || ev.Text == "x" || ev.Text == "v") { return true }
-    if ev.Key == Key.Enter || ev.Key == Key.Backspace || ev.Key == Key.Delete { return true }
-    return false
   }
 
   private func openFind() {
     if !searching {
       searching = true
-      root.Children.Insert(1, findBox)
+      Children.Insert(1, findBox)
     }
     if find.Text != "" { lastQuery = find.Text }
     message = ""
-    root.Focus(find)
+    Focus(find)
   }
 
   private func closeFind() {
     if !searching { return }
     searching = false
-    root.Children.Remove(findBox)
+    Children.Remove(findBox)
     message = ""
-    root.Focus(area)
+    Focus(area)
   }
 
   private func runSearch(direction SearchDirection) {
@@ -223,16 +192,16 @@ class Edit : View {
     if layout == EditLayout.EditorOnly {
       leftBox.IsVisible = true
       rightBox.IsVisible = false
-      root.Focus(area)
+      Focus(area)
       return
     }
     leftBox.IsVisible = false
     rightBox.IsVisible = true
-    root.Focus(doc)
+    Focus(doc)
   }
 
   private func trySave() {
-    forcePreviewSync()
+    syncPreview()
     try {
       File.WriteAllText(path, area.Text)
       saved = true
@@ -242,19 +211,12 @@ class Edit : View {
     }
   }
 
-  /// Marks a possible edit so the idle check in Draw knows to look again.
-  private func markEditPending() {
-    pendingRebuild = true
-    lastEditTickMs = Environment.TickCount64
-  }
-
   /// Caret line fraction mapped onto the preview's wrapped line count; approximate since
   /// block spacing (headings, tables) makes source lines and rendered lines diverge.
   private func syncScroll() {
     let line = area.Caret.LineIndex
     if line == lastCaretLine { return }
     lastCaretLine = line
-    if pendingRebuild { forcePreviewSync() }
     let total = lineCount > 1 ? lineCount - 1 : 1
     let previewLines = doc.LineCount()
     if previewLines <= 0 { return }
@@ -265,16 +227,7 @@ class Edit : View {
     doc.ScrollToLine(target)
   }
 
-  /// Rebuilds the preview only once an edit burst has been idle this long.
   private func syncPreview() {
-    if !pendingRebuild { return }
-    let idleMs int64 = 250
-    if Environment.TickCount64 - lastEditTickMs < idleMs { return }
-    forcePreviewSync()
-  }
-
-  private func forcePreviewSync() {
-    pendingRebuild = false
     let text = area.Text
     if text == previewSource { return }
     previewSource = text
