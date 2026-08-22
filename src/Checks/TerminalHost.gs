@@ -16,6 +16,11 @@ internal class TerminalHostCheck {
           && Ansi.KittyKeyboardEnable == Ansi.Csi + ">31u"
           && Ansi.KittyKeyboardDisable == Ansi.Csi + "<u",
         "Kitty keyboard lifecycle bytes are exact")
+      failed = failed + Checks.Expect(Ansi.DefaultBackgroundQuery
+          == Ansi.Esc + "]11;?" + char(7).ToString()
+          && Ansi.SetDefaultBackground("rgb:1234/ab/0F")
+            == Ansi.Esc + "]11;rgb:1234/ab/0F" + Ansi.Esc + "\\",
+        "OSC 11 query and literal set bytes are exact")
 
       failed = failed + Checks.Expect(Ansi.MouseOn(MouseTracking.Disabled) == ""
           && Ansi.MouseOn(MouseTracking.Click) == Ansi.Csi + "?1000h" + Ansi.Csi + "?1006h"
@@ -28,7 +33,7 @@ internal class TerminalHostCheck {
 
       let probeInput = Input(AutoResetEvent(false))
       let negotiation = TerminalNegotiation()
-      negotiation.Begin()
+      negotiation.Begin(false)
       negotiation.Feed(probeInput, []uint8{ 97, 27, 91, 63, 51 }, 0, 5)
       var event = UiEvent{}
       failed = failed + Checks.Expect(!probeInput.TryDequeue(out event),
@@ -42,9 +47,124 @@ internal class TerminalHostCheck {
           && supported[1].Text == "b",
         "Kitty reply is quarantined and buffered input stays ordered")
 
+      let backgroundInput = Input(AutoResetEvent(false))
+      let background = TerminalNegotiation()
+      background.Begin()
+      background.Feed(backgroundInput, []uint8{ 97, 27, 93, 49, 49, 59, 114, 103 }, 0, 8)
+      background.Feed(backgroundInput,
+        []uint8{ 98, 58, 49, 50, 51, 52, 47, 97, 98, 47, 48, 70, 27 }, 0, 13)
+      background.Feed(backgroundInput, []uint8{ 92, 99 }, 0, 2)
+      var savedBackground string
+      let gotBackground = background.TakeBackground(out savedBackground)
+      failed = failed + Checks.Expect(!backgroundInput.TryDequeue(out event),
+        "ordinary input stays quarantined until Kitty negotiation also resolves")
+      background.Expire()
+      background.Drain(backgroundInput)
+      let backgroundEvents = terminalEvents(backgroundInput)
+      failed = failed + Checks.Expect(gotBackground && savedBackground == "rgb:1234/ab/0F"
+          && backgroundEvents.Count == 2 && backgroundEvents[0].Text == "a"
+          && backgroundEvents[1].Text == "c"
+          && !backgroundInput.TryDequeue(out event),
+        "split ST OSC 11 replies are captured without leaking")
+
+      let belInput = Input(AutoResetEvent(false))
+      let bel = TerminalNegotiation()
+      bel.Begin()
+      bel.Feed(belInput, Encoding.ASCII.GetBytes("x\u001b]11;#123456\u0007y"), 0, 15)
+      var belColor string
+      let gotBel = bel.TakeBackground(out belColor)
+      bel.Expire()
+      bel.Drain(belInput)
+      let belEvents = terminalEvents(belInput)
+      failed = failed + Checks.Expect(gotBel && belColor == "#123456"
+          && belEvents.Count == 2 && belEvents[0].Text == "x" && belEvents[1].Text == "y",
+        "BEL OSC 11 replies are captured without leaking")
+
+      let malformedInput = Input(AutoResetEvent(false))
+      let malformed = TerminalNegotiation()
+      malformed.Begin()
+      let malformedBytes = Encoding.ASCII.GetBytes("m\u001b]11;rgb:12/zz/34\u0007n")
+      malformed.Feed(malformedInput, malformedBytes, 0, malformedBytes.Length)
+      var malformedColor string
+      failed = failed + Checks.Expect(!malformed.TakeBackground(out malformedColor),
+        "malformed OSC 11 replies are rejected")
+      malformed.Expire()
+      malformed.ExpireBackground()
+      malformed.Drain(malformedInput)
+      malformed.FlushPending(malformedInput)
+      let malformedEvents = terminalEvents(malformedInput)
+      failed = failed + Checks.Expect(malformedEvents.Count == 2
+          && malformedEvents[0].Text == "m" && malformedEvents[1].Text == "n",
+        "malformed OSC 11 replies do not leak into input")
+
+      let truncatedInput = Input(AutoResetEvent(false))
+      let truncated = TerminalNegotiation()
+      truncated.Begin()
+      let truncatedBytes = Encoding.ASCII.GetBytes("a\u001b]11;rgb:12/")
+      truncated.Feed(truncatedInput, truncatedBytes, 0, truncatedBytes.Length)
+      truncated.ExpireBackground()
+      truncated.Expire()
+      truncated.Drain(truncatedInput)
+      truncated.FlushPending(truncatedInput)
+      let truncatedEvents = terminalEvents(truncatedInput)
+      failed = failed + Checks.Expect(truncatedEvents.Count == 1
+          && truncatedEvents[0].Text == "a",
+        "truncated OSC 11 replies do not leak after timeout")
+
+      let oversizedText = StringBuilder("o\u001b]11;rgb:")
+      for i in 0 ... 140 { oversizedText.Append(char(97)) }
+      oversizedText.Append(char(7))
+      oversizedText.Append(char(112))
+      let oversizedInput = Input(AutoResetEvent(false))
+      let oversized = TerminalNegotiation()
+      oversized.Begin()
+      let oversizedBytes = Encoding.ASCII.GetBytes(oversizedText.ToString())
+      oversized.Feed(oversizedInput, oversizedBytes, 0, oversizedBytes.Length)
+      oversized.ExpireBackground()
+      oversized.Expire()
+      oversized.Drain(oversizedInput)
+      let oversizedEvents = terminalEvents(oversizedInput)
+      failed = failed + Checks.Expect(oversizedEvents.Count == 2
+          && oversizedEvents[0].Text == "o" && oversizedEvents[1].Text == "p",
+        "oversized OSC 11 replies are discarded without leaking")
+
+      let timeoutInput = Input(AutoResetEvent(false))
+      let timeoutNegotiation = TerminalNegotiation()
+      timeoutNegotiation.Begin()
+      timeoutNegotiation.Feed(timeoutInput, []uint8{ 116 }, 0, 1)
+      timeoutNegotiation.Expire()
+      timeoutNegotiation.ExpireBackground()
+      timeoutNegotiation.Drain(timeoutInput)
+      let timeoutEvents = terminalEvents(timeoutInput)
+      var timeoutColor string
+      failed = failed + Checks.Expect(!timeoutNegotiation.TakeBackground(out timeoutColor)
+          && timeoutEvents.Count == 1 && timeoutEvents[0].Text == "t",
+        "OSC 11 timeout releases buffered input without setting a color")
+
+      let steadyOscInput = Input(AutoResetEvent(false))
+      let steadyOsc = TerminalNegotiation()
+      steadyOsc.Begin()
+      steadyOsc.Feed(steadyOscInput, []uint8{ 27, 91, 63, 48, 117 }, 0, 5)
+      steadyOsc.TakeSupportChange()
+      steadyOsc.Drain(steadyOscInput)
+      steadyOsc.Feed(steadyOscInput, []uint8{ 112 }, 0, 1)
+      steadyOsc.Drain(steadyOscInput)
+      failed = failed + Checks.Expect(!steadyOscInput.TryDequeue(out event),
+        "ordinary input stays quarantined until OSC 11 negotiation also resolves")
+      steadyOsc.Feed(steadyOscInput,
+        Encoding.ASCII.GetBytes("\u001b]11;#abcdef\u0007q"), 0, 14)
+      var steadyColor string
+      let steadyGot = steadyOsc.TakeBackground(out steadyColor)
+      steadyOsc.Drain(steadyOscInput)
+      let steadyOscEvents = terminalEvents(steadyOscInput)
+      failed = failed + Checks.Expect(steadyGot && steadyColor == "#abcdef"
+          && steadyOscEvents.Count == 2 && steadyOscEvents[0].Text == "p"
+          && steadyOscEvents[1].Text == "q",
+        "steady input consumes OSC 11 replies without allocation-era leakage")
+
       let fallbackInput = Input(AutoResetEvent(false))
       let fallback = TerminalNegotiation()
-      fallback.Begin()
+      fallback.Begin(false)
       fallback.Feed(fallbackInput, []uint8{ 27, 91, 65 }, 0, 3)
       fallback.Expire()
       fallbackInput.ConfigureTerminfo([]TerminfoKeySequence{
@@ -57,7 +177,7 @@ internal class TerminalHostCheck {
 
       let partialInput = Input(AutoResetEvent(false))
       let partial = TerminalNegotiation()
-      partial.Begin()
+      partial.Begin(false)
       partial.Feed(partialInput, []uint8{ 113, 27, 91, 63, 49 }, 0, 5)
       partial.Expire()
       partial.Drain(partialInput)
@@ -68,7 +188,7 @@ internal class TerminalHostCheck {
 
       let lateInput = Input(AutoResetEvent(false))
       let late = TerminalNegotiation()
-      late.Begin()
+      late.Begin(false)
       late.Expire()
       late.Feed(lateInput, []uint8{ 27, 91, 63, 48, 117, 120 }, 0, 6)
       let lateEvents = terminalEvents(lateInput)
@@ -77,7 +197,7 @@ internal class TerminalHostCheck {
 
       let steadyInput = Input(AutoResetEvent(false))
       let steady = TerminalNegotiation()
-      steady.Begin()
+      steady.Begin(false)
       steady.Feed(steadyInput, []uint8{ 27, 91, 63, 48, 117 }, 0, 5)
       steady.TakeSupportChange()
       steady.Drain(steadyInput)
@@ -158,10 +278,45 @@ internal class TerminalHostCheck {
       allMotionTerminal.Restore()
       let allMotionRestore = allMotionHost.OutputText()
       failed = failed + Checks.Expect(allMotionEnter == Ansi.AltScreenOn + Ansi.CursorHide
-          + Ansi.MouseOn(MouseTracking.AllMotion) + Ansi.BracketedPasteOn + Ansi.KittyKeyboardQuery
+          + Ansi.MouseOn(MouseTracking.AllMotion) + Ansi.BracketedPasteOn
+            + Ansi.KittyKeyboardQuery
           && allMotionRestore == allMotionEnter + Ansi.BracketedPasteOff + Ansi.MouseOff
             + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset,
         "terminal entry and restore use the configured all-motion policy")
+
+      let backgroundHost = TerminalHostFake()
+      backgroundHost.ReadBytes = Encoding.ASCII.GetBytes("\u001b]11;rgb:0000/1111/2222\u0007")
+      let backgroundTerminal = Terminal(AutoResetEvent(false), backgroundHost)
+      backgroundTerminal.DesiredBackground = 0x071838
+      backgroundTerminal.Enter(Input(AutoResetEvent(false)))
+      backgroundHost.ReadProcessed.WaitOne(1000)
+      backgroundTerminal.Restore()
+      let expectedBackgroundOutput = Ansi.AltScreenOn + Ansi.CursorHide
+        + Ansi.MouseOn(MouseTracking.Drag) + Ansi.BracketedPasteOn
+        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery
+        + Ansi.SetDefaultBackground("#071838") + Ansi.BracketedPasteOff + Ansi.MouseOff
+        + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset
+        + Ansi.SetDefaultBackground("rgb:0000/1111/2222")
+      failed = failed + Checks.Expect(backgroundHost.OutputText() == expectedBackgroundOutput,
+        "valid OSC 11 reply enables and exactly restores the saved background")
+
+      let faultBackgroundHost = TerminalHostFake()
+      faultBackgroundHost.ReadBytes = Encoding.ASCII.GetBytes("\u001b]11;#123456\u0007")
+      let faultBackgroundTerminal = Terminal(AutoResetEvent(false), faultBackgroundHost)
+      faultBackgroundTerminal.DesiredBackground = 0x071838
+      faultBackgroundTerminal.Enter(Input(AutoResetEvent(false)))
+      faultBackgroundHost.ReadProcessed.WaitOne(1000)
+      faultBackgroundTerminal.RestoreOnFault()
+      faultBackgroundTerminal.RestoreOnFault()
+      let expectedFaultBackgroundOutput = Ansi.AltScreenOn + Ansi.CursorHide
+        + Ansi.MouseOn(MouseTracking.Drag) + Ansi.BracketedPasteOn
+        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery
+        + Ansi.SetDefaultBackground("#071838") + Ansi.BracketedPasteOff + Ansi.MouseOff
+        + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset
+        + Ansi.SetDefaultBackground("#123456")
+      failed = failed + Checks.Expect(faultBackgroundHost.OutputText()
+          == expectedFaultBackgroundOutput,
+        "fault cleanup restores a captured OSC 11 background exactly once")
 
       let eofWake = AutoResetEvent(false)
       let eofHost = TerminalHostFake()
@@ -228,6 +383,9 @@ internal class TerminalHostFake : TerminalHost {
   internal var Restored int32
   internal var Woken int32
   internal var EndOfFile bool
+  internal var ReadBytes []uint8
+  internal var ReadOffset int32
+  internal var ReadProcessed AutoResetEvent
 
   internal init() {
     output = MemoryStream()
@@ -236,6 +394,9 @@ internal class TerminalHostFake : TerminalHost {
     Restored = 0
     Woken = 0
     EndOfFile = false
+    ReadBytes = []uint8{}
+    ReadOffset = 0
+    ReadProcessed = AutoResetEvent(false)
   }
 
   public func IsTty() bool { return true }
@@ -253,6 +414,18 @@ internal class TerminalHostFake : TerminalHost {
     readerWake.Set()
   }
   public func Read(buffer []uint8, timeoutMilliseconds int32) int32 {
+    if ReadOffset < ReadBytes.Length {
+      let remaining = ReadBytes.Length - ReadOffset
+      let count = remaining < buffer.Length ? remaining : buffer.Length
+      var i = 0
+      while i < count {
+        buffer[i] = ReadBytes[ReadOffset + i]
+        i = i + 1
+      }
+      ReadOffset = ReadOffset + count
+      return count
+    }
+    ReadProcessed.Set()
     if EndOfFile { return -1 }
     readerWake.WaitOne(timeoutMilliseconds)
     return 0

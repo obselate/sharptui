@@ -21,6 +21,11 @@ internal class Terminal {
   private var kittyEnabled bool
   private var readerFault int32
   private var hooked bool
+  private var backgroundPending bool
+  private var backgroundStarted int64
+  private var savedBackground string
+  private var backgroundSet bool
+  internal var DesiredBackground int32
 
   /// Creates a terminal bound to the platform's native host, setting wakeup so
   /// App.Run's poll loop wakes when a background read or fault needs handling.
@@ -52,6 +57,11 @@ internal class Terminal {
     kittyEnabled = false
     readerFault = 0
     hooked = false
+    backgroundPending = false
+    backgroundStarted = 0
+    savedBackground = ""
+    backgroundSet = false
+    DesiredBackground = -2
   }
 
   /// Enters raw mode with MouseTracking.Drag; equivalent to calling the
@@ -74,12 +84,16 @@ internal class Terminal {
         input = inputSource
         kittyEnabled = false
         writeText(Ansi.AltScreenOn + Ansi.CursorHide + Ansi.MouseOn(mouseTracking) + Ansi.BracketedPasteOn)
-        negotiation.Begin()
+        negotiation.Begin(DesiredBackground >= 0)
         queryStarted = Environment.TickCount64
+        backgroundStarted = queryStarted
+        backgroundPending = DesiredBackground >= 0
+        savedBackground = ""
+        backgroundSet = false
         flushStarted = 0
         fallbackConfigured = false
         Interlocked.Exchange(ref readerFault, 0)
-        writeText(Ansi.KittyKeyboardQuery)
+        writeText(Ansi.KittyKeyboardQuery + (backgroundPending ? Ansi.DefaultBackgroundQuery : ""))
         Interlocked.Exchange(ref reading, 1)
         let nextReader = Thread(readLoop)
         nextReader.IsBackground = true
@@ -93,6 +107,7 @@ internal class Terminal {
         try {
           writeText(Ansi.BracketedPasteOff + Ansi.MouseOff
             + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset)
+          restoreBackground()
         } catch (ignored Exception) {}
         host.Restore()
         input = nil
@@ -122,19 +137,21 @@ internal class Terminal {
         if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
         writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
           + Ansi.AltScreenOff + Ansi.Reset)
+        restoreBackground()
       } finally {
         host.Restore()
         input = nil
         kittyEnabled = false
+        backgroundPending = false
+        savedBackground = ""
+        backgroundSet = false
         unhookProcessExit()
       }
     }
   }
 
   /// Answers whether the process-death hooks are currently attached.
-  internal func HasFaultHook() bool {
-    return hooked
-  }
+  internal func HasFaultHook() bool -> hooked
 
   /// Puts the terminal back when the process is dying instead of returning.
   internal func RestoreOnFault() {
@@ -195,33 +212,24 @@ internal class Terminal {
 
   /// Reports whether both standard input and output are attached to a
   /// terminal.
-  public func IsTty() bool {
-    return host.IsTty()
-  }
+  public func IsTty() bool -> host.IsTty()
 
   /// Returns the current terminal width in columns, read live from the host
   /// rather than a cached value.
-  public func Columns() int32 {
-    return host.Columns()
-  }
+  public func Columns() int32 -> host.Columns()
 
   /// Returns the current terminal height in rows, read live from the host
   /// rather than a cached value.
-  public func Rows() int32 {
-    return host.Rows()
-  }
+  public func Rows() int32 -> host.Rows()
 
   /// Reports whether a resize was observed since the last call, clearing the
   /// flag as it does.
-  public func ConsumeResize() bool {
-    return host.ConsumeResize()
-  }
+  public func ConsumeResize() bool -> host.ConsumeResize()
 
   /// Reports whether the host requested exit or the background reader thread
   /// faulted, clearing both flags as it does.
-  public func ConsumeExit() bool {
-    return host.ConsumeExit() || Interlocked.Exchange(ref readerFault, 0) != 0
-  }
+  public func ConsumeExit() bool -> host.ConsumeExit()
+    || Interlocked.Exchange(ref readerFault, 0) != 0
 
   private func readLoop() {
     try {
@@ -249,6 +257,7 @@ internal class Terminal {
         expirePending(receiver)
         continue
       }
+      expireBackground()
       negotiation.Feed(receiver, buffer, 0, count)
       resolveNegotiation(receiver)
       flushStarted = receiver.HasPendingPrefix() || negotiation.HasPendingPrefix()
@@ -263,6 +272,10 @@ internal class Terminal {
       let left = 250 - (now - queryStarted)
       timeout = left > 0 ? left : 0
     }
+    if backgroundPending {
+      let left = 250 - (now - backgroundStarted)
+      if timeout < 0 || left < timeout { timeout = left > 0 ? left : 0 }
+    }
     if flushStarted != 0 {
       let left = 25 - (now - flushStarted)
       if timeout < 0 || left < timeout { timeout = left > 0 ? left : 0 }
@@ -272,6 +285,7 @@ internal class Terminal {
 
   private func expirePending(input Input) {
     let now = Environment.TickCount64
+    expireBackground()
     if negotiation.IsQuerying() && now - queryStarted >= 250 {
       negotiation.Expire()
       if !fallbackConfigured {
@@ -279,8 +293,10 @@ internal class Terminal {
         var sequences []TerminfoKeySequence
         if TerminfoCapabilities.TryLoad(out sequences) { input.ConfigureTerminfo(sequences) }
       }
-      negotiation.Drain(input)
-      flushStarted = input.HasPendingPrefix() || negotiation.HasPendingPrefix() ? now : 0
+    }
+    drainNegotiation(input)
+    if flushStarted == 0 && (input.HasPendingPrefix() || negotiation.HasPendingPrefix()) {
+      flushStarted = now
     }
     if flushStarted != 0 && now - flushStarted >= 25 {
       negotiation.FlushPending(input)
@@ -290,9 +306,46 @@ internal class Terminal {
   }
 
   private func resolveNegotiation(input Input) {
-    if !negotiation.TakeSupportChange() || !negotiation.IsSupported() { return }
-    enableKittyIfSupported()
+    resolveBackground()
+    if negotiation.TakeSupportChange() && negotiation.IsSupported() { enableKittyIfSupported() }
+    drainNegotiation(input)
+  }
+
+  private func drainNegotiation(input Input) {
+    if backgroundPending || negotiation.IsQuerying() { return }
     negotiation.Drain(input)
+  }
+
+  private func expireBackground() {
+    if backgroundPending && Environment.TickCount64 - backgroundStarted >= 250 {
+      backgroundPending = false
+      negotiation.ExpireBackground()
+      if Trace.Enabled() { Trace.Mark("OSC 11 background query timed out") }
+    }
+  }
+
+  private func resolveBackground() {
+    var color string
+    if !negotiation.TakeBackground(out color) { return }
+    if !backgroundPending { return }
+    backgroundPending = false
+    savedBackground = color
+    if DesiredBackground >= 0 {
+      writeBackground(Ansi.SetDefaultBackground("#" + DesiredBackground.ToString("x6")))
+      backgroundSet = true
+      if Trace.Enabled() { Trace.Mark("OSC 11 background set") }
+    }
+  }
+
+  private func writeBackground(text string) {
+    lock outputGate { writeText(text) }
+  }
+
+  private func restoreBackground() {
+    if backgroundSet && savedBackground != "" {
+      writeText(Ansi.SetDefaultBackground(savedBackground))
+      if Trace.Enabled() { Trace.Mark("OSC 11 background restored") }
+    }
   }
 
   private func enableKittyIfSupported() {

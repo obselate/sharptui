@@ -44,6 +44,8 @@ internal class Ansi {
     /// KittyKeyboardEnable.
     public let KittyKeyboardDisable string = Csi + "<u"
 
+    public let DefaultBackgroundQuery string = Esc + "]11;?" + char(7).ToString()
+
     /// Returns the escape sequence enabling the given mouse tracking mode with
     /// SGR encoding, or an empty string when tracking is disabled.
     public func MouseOn(tracking MouseTracking) string {
@@ -52,6 +54,8 @@ internal class Ansi {
       if tracking == MouseTracking.Drag { return Csi + "?1002h" + Csi + "?1006h" }
       return Csi + "?1003h" + Csi + "?1006h"
     }
+
+    public func SetDefaultBackground(color string) string -> Esc + "]11;" + color + Esc + "\\"
 
     /// Truecolor plus attributes. A negative channel means "terminal default".
     public func Style(fg int32, bg int32, attr int32) string {
