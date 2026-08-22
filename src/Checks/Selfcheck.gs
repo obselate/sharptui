@@ -185,12 +185,6 @@ public class Selfcheck {
       failed = failed + Checks.Expect(TextRunWidth(flowed[0]) <= 12, "no wrapped line overruns the width")
       failed = failed + Checks.Expect(TextRunWidth(flowed[2]) <= 12, "the last line fits too")
 
-      let st = Ansi.Esc + "\\"
-      failed = failed + Checks.Expect(Ansi.SetBackground(0x0E1117) == Ansi.Esc + "]11;#0e1117" + st,
-        "OSC 11 sets the background")
-      failed = failed + Checks.Expect(Ansi.ResetBackground == Ansi.Esc + "]111" + st,
-        "OSC 111 restores it")
-
       let directStyle = StringBuilder()
       let styleBits = int32(TextAttributes.Bold) | int32(TextAttributes.Dim) | int32(TextAttributes.Italic)
         | int32(TextAttributes.Underline) | int32(TextAttributes.Reverse) | int32(TextAttributes.Strikethrough)

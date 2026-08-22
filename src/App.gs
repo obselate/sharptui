@@ -106,7 +106,6 @@ public class App {
     Trace.Open()
     defer Trace.Close()
     screen.DefaultStyle = DefaultStyle
-    term.Background = DefaultStyle.Background.Packed
     try {
       term.Enter(input, mouseTracking)
     } catch (e IOException) {

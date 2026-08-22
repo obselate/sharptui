@@ -22,9 +22,6 @@ internal class Terminal {
   private var readerFault int32
   private var hooked bool
 
-  /// Painted by the terminal itself when it clears on resize.
-  public var Background int32
-
   /// Creates a terminal bound to the platform's native host, setting wakeup so
   /// App.Run's poll loop wakes when a background read or fault needs handling.
   public init(wakeup AutoResetEvent) {
@@ -55,7 +52,6 @@ internal class Terminal {
     kittyEnabled = false
     readerFault = 0
     hooked = false
-    Background = -1
   }
 
   /// Enters raw mode with MouseTracking.Drag; equivalent to calling the
@@ -78,7 +74,6 @@ internal class Terminal {
         input = inputSource
         kittyEnabled = false
         writeText(Ansi.AltScreenOn + Ansi.CursorHide + Ansi.MouseOn(mouseTracking) + Ansi.BracketedPasteOn)
-        if Background >= 0 { writeText(Ansi.SetBackground(Background)) }
         negotiation.Begin()
         queryStarted = Environment.TickCount64
         flushStarted = 0
@@ -98,7 +93,6 @@ internal class Terminal {
         try {
           writeText(Ansi.BracketedPasteOff + Ansi.MouseOff
             + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset)
-          if Background >= 0 { writeText(Ansi.ResetBackground) }
         } catch (ignored Exception) {}
         host.Restore()
         input = nil
@@ -128,7 +122,6 @@ internal class Terminal {
         if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
         writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
           + Ansi.AltScreenOff + Ansi.Reset)
-        if Background >= 0 { writeText(Ansi.ResetBackground) }
       } finally {
         host.Restore()
         input = nil

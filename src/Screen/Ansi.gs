@@ -53,17 +53,6 @@ internal class Ansi {
       return Csi + "?1003h" + Csi + "?1006h"
     }
 
-    /// OSC 11: sets the terminal's own default background. Worth doing when an
-    /// app paints a background of its own on resize the terminal clears the
-    /// newly exposed area to *its* default before the app can repaint, and if
-    /// the two differ that clear is a visible flash of the wrong color.
-    public func SetBackground(rgb int32) string {
-      return Esc + "]11;#" + rgb.ToString("x6") + Esc + "\\"
-    }
-
-    /// OSC 111: restores the terminal's configured background.
-    public let ResetBackground string = char(27).ToString() + "]111" + char(27).ToString() + "\\"
-
     /// Truecolor plus attributes. A negative channel means "terminal default".
     public func Style(fg int32, bg int32, attr int32) string {
       let sb = StringBuilder()

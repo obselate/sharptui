@@ -163,16 +163,6 @@ internal class TerminalHostCheck {
             + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset,
         "terminal entry and restore use the configured all-motion policy")
 
-      let backgroundHost = TerminalHostFake()
-      let backgroundTerminal = Terminal(AutoResetEvent(false), backgroundHost)
-      backgroundTerminal.Background = 0x071838
-      backgroundTerminal.Enter(Input(AutoResetEvent(false)))
-      backgroundTerminal.Restore()
-      failed = failed + Checks.Expect(backgroundHost.OutputText().EndsWith(
-          Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow + Ansi.AltScreenOff
-            + Ansi.Reset + Ansi.ResetBackground),
-        "terminal background resets after restoring the primary screen")
-
       let eofWake = AutoResetEvent(false)
       let eofHost = TerminalHostFake()
       eofHost.EndOfFile = true
