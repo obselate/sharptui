@@ -68,6 +68,15 @@ internal class InputDecoderCheck {
           && (int32(canonicalEvents[0].Modifiers) & int32(KeyModifiers.Ctrl)) != 0,
         "Kitty canonical navigation and F-key forms map")
 
+      let ss3 = InputDecoder()
+      ss3.Feed([]uint8{ 27, 79 })
+      ss3.Feed([]uint8{ 65, 27, 79, 66, 27, 79, 67, 27, 79, 68 })
+      let ss3Events = inputEvents(ss3)
+      failed = failed + Checks.Expect(ss3Events.Count == 4 && ss3Events[0].Key == Key.Up
+          && ss3Events[1].Key == Key.Down && ss3Events[2].Key == Key.Right
+          && ss3Events[3].Key == Key.Left,
+        "SS3 arrows map without platform terminfo")
+
       let paste = InputDecoder()
       paste.Feed(csi("200~a" + char(27).ToString() + "[201xb"))
       failed = failed + Checks.Expect(inputEvents(paste).Count == 0, "bracketed paste stays atomic")

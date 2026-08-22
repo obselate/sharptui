@@ -97,7 +97,8 @@ internal class Terminal {
         reader = nil
         try {
           writeText(Ansi.BracketedPasteOff + Ansi.MouseOff
-            + Ansi.CursorShow + Ansi.AltScreenOff)
+            + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset)
+          if Background >= 0 { writeText(Ansi.ResetBackground) }
         } catch (ignored Exception) {}
         host.Restore()
         input = nil
@@ -125,8 +126,9 @@ internal class Terminal {
     lock outputGate {
       try {
         if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
+        writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
+          + Ansi.AltScreenOff + Ansi.Reset)
         if Background >= 0 { writeText(Ansi.ResetBackground) }
-        writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow + Ansi.AltScreenOff)
       } finally {
         host.Restore()
         input = nil

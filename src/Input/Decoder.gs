@@ -4,7 +4,7 @@ import System
 import System.Collections.Generic
 import System.Text
 
-internal enum InputState { Ground; Escape; Csi; Paste }
+internal enum InputState { Ground; Escape; Csi; Ss3; Paste }
 
 internal class InputText {
   shared {
@@ -96,6 +96,7 @@ internal class InputDecoder {
 
   internal func HasPendingPrefix() bool {
     return terminfo.HasPendingPrefix || state == InputState.Escape || state == InputState.Csi
+      || state == InputState.Ss3
   }
 
   internal func TryDequeue(out ev UiEvent) bool {
@@ -145,6 +146,10 @@ internal class InputDecoder {
       csiByte(value)
       return
     }
+    if state == InputState.Ss3 {
+      ss3Byte(value)
+      return
+    }
     groundByte(value, KeyModifiers.None)
   }
 
@@ -182,7 +187,18 @@ internal class InputDecoder {
       state = InputState.Csi
       return
     }
+    if value == 79 {
+      csi.Clear()
+      state = InputState.Ss3
+      return
+    }
     groundByte(value, KeyModifiers.Alt)
+  }
+
+  private func ss3Byte(value uint8) {
+    state = InputState.Ground
+    var ev = UiEvent{}
+    if kitty.TryDecode(csi, value, out ev) { emit(ev) }
   }
 
   private func csiByte(value uint8) {
