@@ -10,7 +10,7 @@ public open class Spinner : Box {
   /// The sequence of glyphs cycled through as the spinner advances.
   public prop Frames List[string] { get; set; }
   /// The index into Frames currently shown, derived from the number of Advance calls.
-  public prop FrameIndex int32 { get { return currentFrameIndex() } }
+  public prop FrameIndex int32 -> currentFrameIndex()
   /// Text drawn after the frame glyph, separated by one space.
   public prop Text string { get; set; }
 
@@ -32,7 +32,7 @@ public open class Spinner : Box {
   }
 
   /// Always true, so this spinner sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the widest frame glyph plus Text, with a one-cell gap when both are present.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -91,7 +91,7 @@ public open class Badge : Box {
   }
 
   /// Always true, so this badge sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the badge as the text width plus one cell of padding on each side.
   /// @param availableWidth The available width in cells, or nil when unconstrained.

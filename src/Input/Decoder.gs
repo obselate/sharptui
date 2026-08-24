@@ -90,9 +90,7 @@ internal class InputDecoder {
     }
   }
 
-  internal func HasEvents() bool {
-    return eventHead < events.Count
-  }
+  internal func HasEvents() bool -> eventHead < events.Count
 
   internal func HasPendingPrefix() bool {
     return terminfo.HasPendingPrefix || state == InputState.Escape || state == InputState.Csi
@@ -253,9 +251,7 @@ internal class InputDecoder {
     utf8Modifiers = modifiers
   }
 
-  private func isContinuation(value uint8) bool {
-    return value >= 128 && value <= 191
-  }
+  private func isContinuation(value uint8) bool -> value >= 128 && value <= 191
 
   private func validUtf8Continuation(value uint8) bool {
     if utf8Count != 1 { return true }

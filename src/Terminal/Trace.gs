@@ -31,9 +31,7 @@ internal class Trace {
       w.Flush()
     }
 
-    internal func Enabled() bool {
-      return writer != nil && clock != nil
-    }
+    internal func Enabled() bool -> writer != nil && clock != nil
 
     /// Flushes and closes the trace log; a no-op when tracing was never
     /// opened.

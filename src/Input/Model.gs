@@ -76,27 +76,27 @@ public struct UiEvent {
   private var position CellPoint
 
   /// Which variant of input this event represents.
-  public prop Kind UiEventKind { get { return kind } init { kind = value } }
+  public prop Kind UiEventKind { get -> kind init -> kind = value }
   /// The logical key for a Key event; Character for text input, Unknown when not applicable.
-  public prop Key Key { get { return key } init { key = value } }
+  public prop Key Key { get -> key init -> key = value }
   /// The Kitty keyboard protocol codepoint for the key, including private-use codes for named keys without a Unicode codepoint.
-  public prop KeyCode int32 { get { return keyCode } init { keyCode = value } }
+  public prop KeyCode int32 { get -> keyCode init -> keyCode = value }
   /// The codepoint this key would produce with Shift applied, from Kitty's alternate-key reporting; zero when not reported.
-  public prop ShiftedKeyCode int32 { get { return shiftedKeyCode } init { shiftedKeyCode = value } }
+  public prop ShiftedKeyCode int32 { get -> shiftedKeyCode init -> shiftedKeyCode = value }
   /// The codepoint this key would produce under the standard PC-101 layout, from Kitty's alternate-key reporting; zero when not reported.
-  public prop BaseLayoutKeyCode int32 { get { return baseLayoutKeyCode } init { baseLayoutKeyCode = value } }
+  public prop BaseLayoutKeyCode int32 { get -> baseLayoutKeyCode init -> baseLayoutKeyCode = value }
   /// The grapheme or pasted text carried by this event; empty when none applies.
-  public prop Text string { get { return text } init { text = value } }
+  public prop Text string { get -> text init -> text = value }
   /// Modifier keys held when this event occurred.
-  public prop Modifiers KeyModifiers { get { return modifiers } init { modifiers = value } }
+  public prop Modifiers KeyModifiers { get -> modifiers init -> modifiers = value }
   /// Press, repeat, or release stage of a Key event; always Press for other kinds.
-  public prop Phase KeyPhase { get { return phase } init { phase = value } }
+  public prop Phase KeyPhase { get -> phase init -> phase = value }
   /// The mouse action for a Mouse event; None for other kinds.
-  public prop Mouse MouseKind { get { return mouse } init { mouse = value } }
+  public prop Mouse MouseKind { get -> mouse init -> mouse = value }
   /// The mouse button involved in a Mouse event; None when not applicable.
-  public prop Button MouseButton { get { return button } init { button = value } }
+  public prop Button MouseButton { get -> button init -> button = value }
   /// The terminal cell a Mouse event occurred at.
-  public prop Position CellPoint { get { return position } init { position = value } }
+  public prop Position CellPoint { get -> position init -> position = value }
 }
 
 /// A key combination to match against incoming events, such as a shortcut. Compares Key and shortcut-relevant modifiers, and for character gestures, Text case-insensitively.
@@ -106,26 +106,22 @@ public struct KeyGesture {
   private var modifiers KeyModifiers
 
   /// The key this gesture matches.
-  public prop Key Key { get { return key } init { key = value } }
+  public prop Key Key { get -> key init -> key = value }
   /// For a Character gesture, the single grapheme to match case-insensitively; unused otherwise.
-  public prop Text string { get { return text } init { text = value } }
+  public prop Text string { get -> text init -> text = value }
   /// The modifiers this gesture requires; lock flags are ignored during matching.
-  public prop Modifiers KeyModifiers { get { return modifiers } init { modifiers = value } }
+  public prop Modifiers KeyModifiers { get -> modifiers init -> modifiers = value }
 
   shared {
     /// Builds a gesture that matches a single printable grapheme with no modifiers.
     /// @param text The single grapheme to match.
     /// @returns The built gesture.
-    public func Character(text string) KeyGesture {
-      return characterGesture(text, KeyModifiers.None)
-    }
+    public func Character(text string) KeyGesture -> characterGesture(text, KeyModifiers.None)
 
     /// Builds a gesture that matches a single printable grapheme held with Ctrl.
     /// @param text The single grapheme to match.
     /// @returns The built gesture.
-    public func Ctrl(text string) KeyGesture {
-      return characterGesture(text, KeyModifiers.Ctrl)
-    }
+    public func Ctrl(text string) KeyGesture -> characterGesture(text, KeyModifiers.Ctrl)
   }
 
   /// Reports whether ev is a Key or TextInput Press with this gesture's key and matching shortcut modifiers (lock flags ignored), and for Character gestures, matching Text case-insensitively.
@@ -166,6 +162,11 @@ internal func inputKey(value Key, code int32, modifiers KeyModifiers) UiEvent {
 internal func inputShortcutModifiers(modifiers KeyModifiers) KeyModifiers {
   let locks = int32(KeyModifiers.CapsLock) | int32(KeyModifiers.NumLock)
   return KeyModifiers(int32(modifiers) & (int32(0x7fffffff) ^ locks))
+}
+
+internal func inputHasWindowModifier(modifiers KeyModifiers) bool {
+  let window = int32(KeyModifiers.Super) | int32(KeyModifiers.Hyper) | int32(KeyModifiers.Meta)
+  return (int32(modifiers) & window) != 0
 }
 
 internal func inputKeyCode(key Key) int32 {
@@ -215,11 +216,7 @@ internal func inputWithModifiers(ev UiEvent, modifiers KeyModifiers) UiEvent {
   }
 }
 
-internal func inputIsRelease(ev UiEvent) bool {
-  return ev.Kind == UiEventKind.Key && ev.Phase == KeyPhase.Release
-}
+internal func inputIsRelease(ev UiEvent) bool -> ev.Kind == UiEventKind.Key && ev.Phase == KeyPhase.Release
 
 /// Maps a handled flag to the matching EventResult, shared by widget Accept overrides.
-internal func result(handled bool) EventResult {
-  return handled ? EventResult.Handled : EventResult.Continue
-}
+internal func result(handled bool) EventResult -> handled ? EventResult.Handled : EventResult.Continue

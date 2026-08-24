@@ -55,13 +55,9 @@ internal class PosixSignalBridge {
     signals.Clear()
   }
 
-  internal func ConsumeResize() bool {
-    return Interlocked.Exchange(ref resized, 0) != 0
-  }
+  internal func ConsumeResize() bool -> Interlocked.Exchange(ref resized, 0) != 0
 
-  internal func ConsumeExit() bool {
-    return Interlocked.Exchange(ref exitRequested, 0) != 0
-  }
+  internal func ConsumeExit() bool -> Interlocked.Exchange(ref exitRequested, 0) != 0
 
   private func exitSignal(signal PosixSignal) PosixSignalRegistration {
     return PosixSignalRegistration.Create(signal, func(context PosixSignalContext) {
@@ -97,9 +93,7 @@ internal class PosixTerminalHost : TerminalHost {
     signals = PosixSignalBridge(wakeup)
   }
 
-  public func IsTty() bool {
-    return driver.IsTty()
-  }
+  public func IsTty() bool -> driver.IsTty()
 
   public func Enter() bool {
     if entered { return true }
@@ -120,21 +114,13 @@ internal class PosixTerminalHost : TerminalHost {
     driver.RestoreAttr()
   }
 
-  public func Columns() int32 {
-    return driver.Columns()
-  }
+  public func Columns() int32 -> driver.Columns()
 
-  public func Rows() int32 {
-    return driver.Rows()
-  }
+  public func Rows() int32 -> driver.Rows()
 
-  public func ConsumeResize() bool {
-    return signals.ConsumeResize()
-  }
+  public func ConsumeResize() bool -> signals.ConsumeResize()
 
-  public func ConsumeExit() bool {
-    return signals.ConsumeExit()
-  }
+  public func ConsumeExit() bool -> signals.ConsumeExit()
 
   public func WakeReader() {
     driver.WakeReader()
@@ -146,7 +132,5 @@ internal class PosixTerminalHost : TerminalHost {
     return count <= 0 ? -1 : count
   }
 
-  public func Output() Stream {
-    return output
-  }
+  public func Output() Stream -> output
 }

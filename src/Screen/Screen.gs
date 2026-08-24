@@ -2,6 +2,7 @@ package SharpTui
 
 import System
 import System.Collections.Generic
+import System.Text
 
 /// Text attribute bits that can be combined on a Style.
 @Flags
@@ -23,20 +24,20 @@ public struct Style {
 
   /// The text color.
   public prop Foreground Color {
-    get { return foreground }
-    init { foreground = value }
+    get -> foreground
+    init -> foreground = value
   }
 
   /// The fill color behind the text.
   public prop Background Color {
-    get { return background }
-    init { background = value }
+    get -> background
+    init -> background = value
   }
 
   /// The bold, dim, italic, underline, reverse, and strikethrough bits applied to the text.
   public prop Attributes TextAttributes {
-    get { return attributes }
-    init { attributes = value }
+    get -> attributes
+    init -> attributes = value
   }
 
   /// Creates a style that inherits its foreground, background, and attributes from its parent.
@@ -73,9 +74,7 @@ public struct Style {
 
   /// Returns this style with foreground and background swapped.
   /// @returns A new style with foreground and background exchanged.
-  public func Inverted() Style {
-    return Style{ Foreground: background, Background: foreground, Attributes: attributes }
-  }
+  public func Inverted() Style -> Style{ Foreground: background, Background: foreground, Attributes: attributes }
 
   /// Merges this style over inherited: this style's explicit Foreground/Background win, IsInherited falls back to inherited, and Attributes combine with OR.
   /// @param inherited The style to fall back to.
@@ -95,6 +94,7 @@ internal struct Cell {
   var Fg int32
   var Bg int32
   var Attr int32
+  var Link int32
 }
 
 /// A double-buffered terminal cell grid; draw calls stage into the back buffer and Flush emits only the cells that changed since the front buffer.
@@ -102,21 +102,45 @@ public class Screen {
   private var width int32
   private var height int32
   private var defaultStyle Style
+  private var colorMode TerminalColorMode
+  private var hyperlinksEnabled bool
 
   /// The screen dimensions measured in terminal cells and rows.
   public prop Size CellSize {
-    get { return CellSize{ WidthCells: width, HeightRows: height } }
+    get -> CellSize{ WidthCells: width, HeightRows: height }
   }
 
   /// The style used by draw calls that do not receive an explicit style.
   public prop DefaultStyle Style {
-    get { return defaultStyle }
-    set { defaultStyle = value }
+    get -> defaultStyle
+    set -> defaultStyle = value
+  }
+
+  /// The terminal color encoding used by Flush and terminal presentation.
+  public prop ColorMode TerminalColorMode {
+    get -> colorMode
+    set {
+      let resolved = TerminalColors.Resolve(value)
+      if colorMode == resolved { return }
+      colorMode = resolved
+      Invalidate()
+    }
+  }
+
+  /// Whether semantic TextRun hyperlinks are emitted with OSC 8.
+  public prop HyperlinksEnabled bool {
+    get -> hyperlinksEnabled
+    set {
+      if hyperlinksEnabled == value { return }
+      hyperlinksEnabled = value
+      Invalidate()
+    }
   }
 
   private var back List[Cell]
   private var front List[Cell]
   private var glyphs GlyphCache
+  private var links HyperlinkCache
   private var compatibility TerminalBuffer?
 
   /// Creates a screen of the given size in cells, with the terminal-configured default style.
@@ -130,9 +154,12 @@ public class Screen {
       Background: Color.TerminalDefault,
       Attributes: TextAttributes.None,
     }
+    colorMode = TerminalColorMode.TrueColor
+    hyperlinksEnabled = true
     back = List[Cell]()
     front = List[Cell]()
     glyphs = GlyphCache()
+    links = HyperlinkCache()
     compatibility = nil
     resize(width, height)
   }
@@ -198,18 +225,14 @@ public class Screen {
     stage(x, y, resolve(text), resolveStyle(s))
   }
 
-  private func control(c char) bool {
-    return c < char(32) || (c >= char(127) && c <= char(159))
-  }
+  private func control(c char) bool -> c < char(32) || (c >= char(127) && c <= char(159))
 
   /// Draws a string starting at x, advancing by display width.
   /// @param x The zero-based starting column.
   /// @param y The zero-based row.
   /// @param text The text to draw.
   /// @returns The column just past the last cell written.
-  public func Write(x int32, y int32, text string) int32 {
-    return Write(x, y, text, DefaultStyle)
-  }
+  public func Write(x int32, y int32, text string) int32 -> Write(x, y, text, DefaultStyle)
 
   /// Returns the column just past the last cell written.
   /// @param x The zero-based starting column.
@@ -223,6 +246,23 @@ public class Screen {
     for cluster in Glyph.Elements(text) {
       let glyph = resolve(cluster)
       stage(col, y, glyph, resolved)
+      col = col + glyphs.Width(glyph)
+    }
+    return col
+  }
+
+  /// Draws one styled text run, including its semantic hyperlink target.
+  /// @param x The zero-based starting column.
+  /// @param y The zero-based row.
+  /// @param run The styled text and optional hyperlink target to draw.
+  /// @returns The column just past the last cell written.
+  public func Write(x int32, y int32, run TextRun) int32 {
+    let resolved = resolveStyle(run.Style)
+    let link = links.Resolve(run.Hyperlink)
+    var col = x
+    for cluster in Glyph.Elements(run.Text) {
+      let glyph = resolve(cluster)
+      stage(col, y, glyph, resolved, link)
       col = col + glyphs.Width(glyph)
     }
     return col
@@ -283,7 +323,7 @@ public class Screen {
     }
   }
 
-  /// Draws text inside a cell rectangle and clips it at the right edge.
+  /// Draws text inside a cell rectangle and clips it at both horizontal edges.
   /// @param r The cell rectangle to draw within.
   /// @param dx The column offset from the rectangle's left edge.
   /// @param dy The row offset from the rectangle's top edge.
@@ -292,7 +332,7 @@ public class Screen {
     WriteClipped(r, dx, dy, text, DefaultStyle)
   }
 
-  /// Draws text inside a cell rectangle in the given style and clips it at the right edge.
+  /// Draws text inside a cell rectangle in the given style and clips it at both horizontal edges.
   /// @param r The cell rectangle to draw within.
   /// @param dx The column offset from the rectangle's left edge.
   /// @param dy The row offset from the rectangle's top edge.
@@ -302,18 +342,69 @@ public class Screen {
     if dy < 0 || dy >= r.HeightRows { return }
     let resolved = resolveStyle(s)
     var col = r.Column + dx
+    let start = r.Column
     let limit = r.Column + r.WidthCells
     for cluster in Glyph.Elements(text) {
       let glyph = resolve(cluster)
       let w = glyphs.Width(glyph)
+      if col + w <= start {
+        col = col + w
+        continue
+      }
+      if col < start {
+        stage(start, r.Row + dy, resolve(" "), resolved)
+        col = start + 1
+        continue
+      }
       if col + w > limit { return }
       stage(col, r.Row + dy, glyph, resolved)
       col = col + w
     }
   }
 
+  /// Draws one styled text run inside a cell rectangle and clips it at both horizontal edges.
+  /// @param r The cell rectangle to draw within.
+  /// @param dx The column offset from the rectangle's left edge.
+  /// @param dy The row offset from the rectangle's top edge.
+  /// @param run The styled text and optional hyperlink target to draw.
+  public func WriteClipped(r CellRect, dx int32, dy int32, run TextRun) {
+    if dy < 0 || dy >= r.HeightRows { return }
+    let resolved = resolveStyle(run.Style)
+    let link = links.Resolve(run.Hyperlink)
+    var col = r.Column + dx
+    let start = r.Column
+    let limit = r.Column + r.WidthCells
+    for cluster in Glyph.Elements(run.Text) {
+      let glyph = resolve(cluster)
+      let width = glyphs.Width(glyph)
+      if col + width <= start {
+        col = col + width
+        continue
+      }
+      if col < start {
+        stage(start, r.Row + dy, resolve(" "), resolved, link)
+        col = start + 1
+        continue
+      }
+      if col + width > limit { return }
+      stage(col, r.Row + dy, glyph, resolved, link)
+      col = col + width
+    }
+  }
+
   internal func WriteClippedRange(r CellRect, dx int32, dy int32, text string,
     fromGrapheme int32, toGrapheme int32, skipCells int32, s Style) {
+    writeClippedRange(r, dx, dy, text, fromGrapheme, toGrapheme, skipCells, s, 0)
+  }
+
+  internal func WriteClippedRange(r CellRect, dx int32, dy int32, run TextRun,
+      fromGrapheme int32, toGrapheme int32, skipCells int32) {
+    writeClippedRange(r, dx, dy, run.Text, fromGrapheme, toGrapheme, skipCells,
+      run.Style, links.Resolve(run.Hyperlink))
+  }
+
+  private func writeClippedRange(r CellRect, dx int32, dy int32, text string,
+      fromGrapheme int32, toGrapheme int32, skipCells int32, s Style, link int32) {
     if dy < 0 || dy >= r.HeightRows { return }
     let resolved = resolveStyle(s)
     var col = r.Column + dx
@@ -329,12 +420,12 @@ public class Screen {
           skipped = skipped + w
           if skipped > skipCells {
             if col >= limit { return }
-            stage(col, r.Row + dy, resolve(" "), resolved)
+            stage(col, r.Row + dy, resolve(" "), resolved, link)
             col = col + 1
           }
         } else {
           if col + w > limit { return }
-          stage(col, r.Row + dy, glyph, resolved)
+          stage(col, r.Row + dy, glyph, resolved, link)
           col = col + w
         }
       }
@@ -361,6 +452,7 @@ public class Screen {
     var lastFg = -2
     var lastBg = -2
     var lastAttr = -1
+    var lastLink = 0
     var cursorX = -1
     var cursorY = -1
     var wrote = false
@@ -382,10 +474,20 @@ public class Screen {
           wrote = true
         }
         if cursorX != x || cursorY != y {
+          if lastLink != 0 {
+            Ansi.AppendHyperlinkEnd(output)
+            lastLink = 0
+          }
           Ansi.AppendMoveTo(output, x, y)
         }
+        let wantLink = hyperlinksEnabled ? want.Link : 0
+        if wantLink != lastLink {
+          if lastLink != 0 { Ansi.AppendHyperlinkEnd(output) }
+          if wantLink != 0 { Ansi.AppendHyperlink(output, wantLink, links.Target(wantLink)) }
+          lastLink = wantLink
+        }
         if want.Fg != lastFg || want.Bg != lastBg || want.Attr != lastAttr {
-          Ansi.AppendStyle(output, want.Fg, want.Bg, want.Attr)
+          Ansi.AppendStyle(output, want.Fg, want.Bg, want.Attr, colorMode)
           lastFg = want.Fg
           lastBg = want.Bg
           lastAttr = want.Attr
@@ -406,30 +508,39 @@ public class Screen {
     }
 
     if !wrote { return 0 }
+    if lastLink != 0 { Ansi.AppendHyperlinkEnd(output) }
     Ansi.AppendReset(output)
     Ansi.AppendSyncOff(output)
     return output.Count()
   }
 
-  internal func Probe(x int32, y int32) string {
-    return glyphs.Text(back[y * width + x].Glyph)
+  internal func Probe(x int32, y int32) string -> glyphs.Text(back[y * width + x].Glyph)
+
+  internal func FrameText() string {
+    let output = StringBuilder()
+    var y = 0
+    while y < height {
+      if y > 0 { output.Append(char(10)) }
+      var x = 0
+      while x < width {
+        let cell = back[y * width + x]
+        output.Append(glyphs.Text(cell.Glyph))
+        if cell.Glyph == GlyphIds.Tail { output.Append(" ") }
+        x = x + 1
+      }
+      y = y + 1
+    }
+    return output.ToString()
   }
 
-  internal func GlyphIdAt(x int32, y int32) int32 {
-    return back[y * width + x].Glyph
-  }
+  internal func GlyphIdAt(x int32, y int32) int32 -> back[y * width + x].Glyph
 
-  internal func CachedGlyphs() int32 {
-    return glyphs.Count()
-  }
+  internal func CachedGlyphs() int32 -> glyphs.Count()
 
-  internal func GlyphLimit() int32 {
-    return glyphs.Limit(width, height)
-  }
+  internal func GlyphLimit() int32 -> glyphs.Limit(width, height)
 
-  private func same(a Cell, b Cell) bool {
-    return a.Glyph == b.Glyph && a.Fg == b.Fg && a.Bg == b.Bg && a.Attr == b.Attr
-  }
+  private func same(a Cell, b Cell) bool -> a.Glyph == b.Glyph && a.Fg == b.Fg
+    && a.Bg == b.Bg && a.Attr == b.Attr && a.Link == b.Link
 
   private func blank() Cell {
     var c = Cell{}
@@ -437,6 +548,7 @@ public class Screen {
     c.Fg = -1
     c.Bg = -1
     c.Attr = 0
+    c.Link = 0
     return c
   }
 
@@ -446,6 +558,7 @@ public class Screen {
     c.Fg = -2
     c.Bg = -2
     c.Attr = -1
+    c.Link = -1
     return c
   }
 
@@ -464,6 +577,10 @@ public class Screen {
   }
 
   private func stage(x int32, y int32, glyph int32, s Style) {
+    stage(x, y, glyph, s, 0)
+  }
+
+  private func stage(x int32, y int32, glyph int32, s Style, link int32) {
     if x < 0 || y < 0 || x >= width || y >= height { return }
 
     var c = Cell{}
@@ -471,6 +588,7 @@ public class Screen {
     c.Fg = s.Foreground.Packed
     c.Bg = s.Background.Packed
     c.Attr = int32(s.Attributes)
+    c.Link = link
     back[y * width + x] = c
 
     if glyphs.Width(glyph) == 2 && x + 1 < width {
@@ -479,6 +597,7 @@ public class Screen {
       tail.Fg = s.Foreground.Packed
       tail.Bg = s.Background.Packed
       tail.Attr = int32(s.Attributes)
+      tail.Link = link
       back[y * width + x + 1] = tail
     }
   }

@@ -105,13 +105,9 @@ internal class DarwinTerminalModePolicy {
       return value & (uint64(0xFFFFFFFFFFFFFFFF) ^ DarwinTerminalNative.LocalFlagsRaw)
     }
 
-    internal func HasReaderWake(descriptor int32) bool {
-      return descriptor >= 0
-    }
+    internal func HasReaderWake(descriptor int32) bool -> descriptor >= 0
 
-    internal func UsesStackedIoctl(architecture Architecture) bool {
-      return architecture == Architecture.Arm64
-    }
+    internal func UsesStackedIoctl(architecture Architecture) bool -> architecture == Architecture.Arm64
   }
 }
 
@@ -137,17 +133,11 @@ internal class DarwinPosixDriver : PosixTerminalDriver {
     }
   }
 
-  public func Dup(descriptor int32) int32 {
-    return DarwinTerminalNative.dup(descriptor)
-  }
+  public func Dup(descriptor int32) int32 -> DarwinTerminalNative.dup(descriptor)
 
-  public func IsTty() bool {
-    return DarwinTerminalNative.isatty(0) == 1 && DarwinTerminalNative.isatty(1) == 1
-  }
+  public func IsTty() bool -> DarwinTerminalNative.isatty(0) == 1 && DarwinTerminalNative.isatty(1) == 1
 
-  public func HasReaderWake() bool {
-    return DarwinTerminalModePolicy.HasReaderWake(readerWakeRead)
-  }
+  public func HasReaderWake() bool -> DarwinTerminalModePolicy.HasReaderWake(readerWakeRead)
 
   public func Snapshot() bool {
     if DarwinTerminalNative.tcgetattr(0, out saved) != 0 { return false }

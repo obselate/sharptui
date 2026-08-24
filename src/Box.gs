@@ -40,11 +40,11 @@ public open class Box {
   private var mouseCapture Box?
 
   /// The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
-  public prop Bounds CellRect { get { return bounds } }
+  public prop Bounds CellRect -> bounds
 
   /// Cells of gap inserted between children along the layout axis. Must be non-negative; defaults to 0.
   public prop GapCells int32 {
-    get { return gapCells }
+    get -> gapCells
     set {
       if value < 0 { throw ArgumentOutOfRangeException("GapCells") }
       gapCells = value
@@ -54,7 +54,7 @@ public open class Box {
 
   /// Inner spacing between the border or edge and content on each side. Defaults to CellInsets.None.
   public prop Padding CellInsets {
-    get { return padding }
+    get -> padding
     set {
       padding = value
       layoutStyleDirty = true
@@ -66,7 +66,7 @@ public open class Box {
   /// that should receive spare width or height needs its own GrowWeight (or an explicit size).
   /// Must be non-negative; defaults to 0.
   public prop GrowWeight int32 {
-    get { return growWeight }
+    get -> growWeight
     set {
       if value < 0 { throw ArgumentOutOfRangeException("GrowWeight") }
       growWeight = value
@@ -76,7 +76,7 @@ public open class Box {
 
   /// Lets an internal leaf relinquish intrinsic main-axis size when its parent is smaller.
   internal prop FlexShrink float32 {
-    get { return flexShrink }
+    get -> flexShrink
     set {
       if value < 0.0F { throw ArgumentOutOfRangeException("FlexShrink") }
       flexShrink = value
@@ -86,7 +86,7 @@ public open class Box {
 
   /// The box's width. CellLength.Auto sizes it from content; defaults to Auto.
   public prop Width CellLength {
-    get { return width }
+    get -> width
     set {
       width = value
       layoutStyleDirty = true
@@ -95,7 +95,7 @@ public open class Box {
 
   /// The box's height. CellLength.Auto sizes it from content; defaults to Auto.
   public prop Height CellLength {
-    get { return height }
+    get -> height
     set {
       height = value
       layoutStyleDirty = true
@@ -105,8 +105,8 @@ public open class Box {
   /// The style used for this box's own fill, border, and title when unfocused. Foreground and
   /// background marked IsInherited fall back to the parent's resolved style.
   public prop Style Style {
-    get { return style }
-    set { style = value }
+    get -> style
+    set -> style = value
   }
 
   /// The style merged over Style while this exact box is focused. Focus held by a descendant does
@@ -114,14 +114,14 @@ public open class Box {
   /// pane chrome must reflect which nested control is active. Foreground and background marked
   /// IsInherited fall back to the unfocused resolved style.
   public prop FocusedStyle Style {
-    get { return focusedStyle }
-    set { focusedStyle = value }
+    get -> focusedStyle
+    set -> focusedStyle = value
   }
 
   /// Whether a one-cell border is drawn around the box, consuming one cell of padding on each side.
   /// Defaults to false.
   public prop ShowBorder bool {
-    get { return showBorder }
+    get -> showBorder
     set {
       showBorder = value
       layoutStyleDirty = true
@@ -131,7 +131,7 @@ public open class Box {
   /// Text drawn along the top edge, inside the border if ShowBorder is set or on its own row
   /// otherwise. Empty string draws nothing.
   public prop Title string {
-    get { return title }
+    get -> title
     set {
       title = value
       layoutStyleDirty = true
@@ -141,7 +141,7 @@ public open class Box {
   /// Whether this box lays out in flow with siblings or is positioned absolutely. Defaults to
   /// Placement.InFlow.
   public prop Placement Placement {
-    get { return placement }
+    get -> placement
     set {
       placement = value
       layoutStyleDirty = true
@@ -151,7 +151,7 @@ public open class Box {
   /// Whether a vertical scrollbar is drawn against overflowing content. Reserves a column of
   /// padding on the right edge when ShowBorder is false. Defaults to false.
   public prop ShowScrollbar bool {
-    get { return showScrollbar }
+    get -> showScrollbar
     set {
       if showScrollbar == value { return }
       showScrollbar = value
@@ -160,15 +160,15 @@ public open class Box {
   }
 
   /// Whether this box can receive keyboard focus. Defaults to false.
-  protected prop CanFocus bool {
-    get { return canFocus }
-    set { canFocus = value }
+  public prop CanFocus bool {
+    get -> canFocus
+    set -> canFocus = value
   }
 
   /// Whether this box counts as a mouse hit target even when it cannot take focus. Defaults to false.
-  protected prop CanReceiveMouse bool {
-    get { return canReceiveMouse }
-    set { canReceiveMouse = value }
+  public prop CanReceiveMouse bool {
+    get -> canReceiveMouse
+    set -> canReceiveMouse = value
   }
 
   /// Attempts to capture all subsequent mouse events for this box until released. Fails and
@@ -209,11 +209,11 @@ public open class Box {
   }
 
   /// Whether this box currently holds keyboard focus.
-  public prop IsFocused bool { get { return isFocused } }
+  public prop IsFocused bool -> isFocused
 
   /// Whether this box and descendants participate in layout, drawing, input, and scrollbars.
   public prop IsVisible bool {
-    get { return isVisible }
+    get -> isVisible
     set {
       if isVisible == value { return }
       let root = TreeRoot()
@@ -236,7 +236,7 @@ public open class Box {
   /// The direct children, in paint and layout order. Replacing the list detaches boxes that are
   /// no longer present and resynchronizes mouse capture.
   public prop Children List[Box] {
-    get { return children }
+    get -> children
     set {
       children = value
       childVisibilityDirty = true
@@ -248,7 +248,7 @@ public open class Box {
 
   /// The box's bounds after border, padding, scrollbar gutter, and title row are subtracted, in
   /// that order. What Render and children draw into.
-  public prop ContentBounds CellRect { get { return contentBounds() } }
+  public prop ContentBounds CellRect -> contentBounds()
 
   /// Creates an empty, visible box with column layout, no border, and default style; auto-sized
   /// and detached from any parent.
@@ -285,7 +285,7 @@ public open class Box {
   }
 
   internal prop LayoutAxis Axis {
-    get { return axis }
+    get -> axis
     set {
       axis = value
       layoutStyleDirty = true
@@ -337,8 +337,12 @@ public open class Box {
       }
     }
     if inputScope != nil { return inputScope.routeScope(ev) }
-    if ev.Key == Key.Tab && !inputIsRelease(ev) { return FocusNext() ? EventResult.Handled : EventResult.Continue }
-    if ev.Key == Key.BackTab && !inputIsRelease(ev) { return FocusPrevious() ? EventResult.Handled : EventResult.Continue }
+    if ev.Key == Key.Tab && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
+      return FocusNext() ? EventResult.Handled : EventResult.Continue
+    }
+    if ev.Key == Key.BackTab && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
+      return FocusPrevious() ? EventResult.Handled : EventResult.Continue
+    }
 
     if ev.Kind == UiEventKind.Mouse {
       return routeMouse(ev)
@@ -357,16 +361,12 @@ public open class Box {
   /// Moves focus to the next focusable box in tree order, wrapping around. Returns false if no
   /// box can take focus.
   /// @returns True when a focusable box was found.
-  public func FocusNext() bool {
-    return moveFocus(1)
-  }
+  public func FocusNext() bool -> moveFocus(1)
 
   /// Moves focus to the previous focusable box in tree order, wrapping around. Returns false if
   /// no box can take focus.
   /// @returns True when a focusable box was found.
-  public func FocusPrevious() bool {
-    return moveFocus(-1)
-  }
+  public func FocusPrevious() bool -> moveFocus(-1)
 
   /// Moves focus directly to the given box, clearing focus everywhere else in the tree.
   /// @param target The box to give focus to.
@@ -380,7 +380,7 @@ public open class Box {
   }
 
   /// The visible focusable descendant that currently holds focus, or nil if none.
-  public prop FocusedElement Box? { get { return findFocused() } }
+  public prop FocusedElement Box? -> findFocused()
 
   internal func TreeRoot() Box {
     var root = this
@@ -391,7 +391,7 @@ public open class Box {
     return root
   }
 
-  internal prop IsAttached bool { get { return parent != nil } }
+  internal prop IsAttached bool -> parent != nil
 
   internal func ClearFocus() {
     clearFocus()
@@ -405,22 +405,16 @@ public open class Box {
     return true
   }
 
-  internal func Contains(target Box) bool {
-    return owns(target)
-  }
+  internal func Contains(target Box) bool -> owns(target)
 
   internal func DeliverTo(target Box, ev UiEvent) EventResult {
     if !owns(target) { return EventResult.Continue }
     return offerPath(target, ev)
   }
 
-  internal open func IsInputScope() bool {
-    return false
-  }
+  internal open func IsInputScope() bool -> false
 
-  internal open func ScopeFallback(ev UiEvent) EventResult {
-    return EventResult.Continue
-  }
+  internal open func ScopeFallback(ev UiEvent) EventResult -> EventResult.Continue
 
   internal open func PrepareInputScope() {
   }
@@ -430,29 +424,21 @@ public open class Box {
   }
 
   /// Takes an event, or does not. Containers take nothing.
-  protected open func Accept(ev UiEvent) EventResult {
-    return EventResult.Continue
-  }
+  protected open func Accept(ev UiEvent) EventResult -> EventResult.Continue
 
   /// Total content rows. Scrolling widgets override this.
-  protected open func ScrollExtentRows() int32 {
-    return 0
-  }
+  protected open func ScrollExtentRows() int32 -> 0
 
   /// First visible content row. Scrolling widgets override this.
-  protected open func ScrollOffsetRows() int32 {
-    return 0
-  }
+  protected open func ScrollOffsetRows() int32 -> 0
 
   /// Returns this childless box's natural content size given optional width and height
   /// constraints (nil means unconstrained). Only consulted when MeasuresIntrinsic is true.
-  protected open func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
-    return CellSize{}
-  }
+  protected open func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize -> CellSize{}
 
   /// Whether this box, when it has no children, sizes itself via MeasureIntrinsic instead of
   /// relying only on Width and Height. Defaults to false.
-  protected open prop MeasuresIntrinsic bool { get { return false } }
+  protected open prop MeasuresIntrinsic bool -> false
 
   /// Called once per layout pass, before children are prepared, so a box can update its own
   /// layout-affecting state. Does nothing by default.
@@ -519,11 +505,12 @@ public open class Box {
   }
 
   private func routeScope(ev UiEvent) EventResult {
-    if ev.Key == Key.Tab && !inputIsRelease(ev) {
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
+    if ev.Key == Key.Tab && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
       FocusNext()
       return EventResult.Handled
     }
-    if ev.Key == Key.BackTab && !inputIsRelease(ev) {
+    if ev.Key == Key.BackTab && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
       FocusPrevious()
       return EventResult.Handled
     }
@@ -817,6 +804,14 @@ public open class Box {
       let on = i >= at && i < at + size
       screen.WriteCell(column, view.Row + i,
         on ? "█" : "│", ink)
+    }
+  }
+
+  /// Marks the node's intrinsic measurement as stale after content changed.
+  /// Call from widgets whose MeasureIntrinsic output depends on mutable state (for example Label text).
+  internal func MarkMeasureDirty() {
+    if measureInstalled && yoga != nil {
+      YGNodeAPI.YGNodeMarkDirty(yoga!!)
     }
   }
 

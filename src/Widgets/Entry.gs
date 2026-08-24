@@ -18,7 +18,7 @@ public open class TextInput : Box {
 
   /// The current text content. Setting it rebuilds the grapheme index and clamps the caret.
   public prop Text string {
-    get { return text }
+    get -> text
     set {
       text = value
       rebuildClusters()
@@ -28,13 +28,13 @@ public open class TextInput : Box {
 
   /// Text shown in place of an empty, unfocused field.
   public prop Placeholder string {
-    get { return placeholder }
-    set { placeholder = value }
+    get -> placeholder
+    set -> placeholder = value
   }
 
   /// The caret position as a grapheme-cluster index. Setting it clamps to the text bounds.
   public prop CaretGraphemeIndex int32 {
-    get { return caretGraphemeIndex }
+    get -> caretGraphemeIndex
     set {
       caretGraphemeIndex = value
       clampCaret()
@@ -43,14 +43,14 @@ public open class TextInput : Box {
 
   /// When true, characters render as bullets instead of the underlying text.
   public prop IsPassword bool {
-    get { return isPassword }
-    set { isPassword = value }
+    get -> isPassword
+    set -> isPassword = value
   }
 
   /// The style applied to Placeholder text.
   public prop PlaceholderStyle Style {
-    get { return placeholderStyle }
-    set { placeholderStyle = value }
+    get -> placeholderStyle
+    set -> placeholderStyle = value
   }
 
   /// Creates an empty, focusable single-line text input.
@@ -66,7 +66,7 @@ public open class TextInput : Box {
   }
 
   /// Enables intrinsic sizing so MeasureIntrinsic determines the auto width.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures an auto width as the wider of Text and Placeholder, at least one cell.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -143,6 +143,7 @@ public open class TextInput : Box {
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     clampCaret(clusters.Count)
 
     if ev.Kind == UiEventKind.Paste {
@@ -204,15 +205,11 @@ public open class TextInput : Box {
 
   /// Moves the caret to the beginning of the text. Returns false when it was already there.
   /// @returns True when the caret moved.
-  public func MoveCaretToStart() bool {
-    return moveCaretTo(CaretPlacement.Start)
-  }
+  public func MoveCaretToStart() bool -> moveCaretTo(CaretPlacement.Start)
 
   /// Moves the caret to the end of the text. Returns false when it was already there.
   /// @returns True when the caret moved.
-  public func MoveCaretToEnd() bool {
-    return moveCaretTo(CaretPlacement.End)
-  }
+  public func MoveCaretToEnd() bool -> moveCaretTo(CaretPlacement.End)
 
   private func moveCaretTo(placement CaretPlacement) bool {
     return placement == CaretPlacement.Start ? moveCaret(0) : moveCaret(clusters.Count)

@@ -92,7 +92,7 @@
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--read-an-event">Read an event</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--match-a-gesture">Match a gesture</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--bind-a-command">Bind a command</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--keep-routing-ordered">Keep routing ordered</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--keep-focus-visible">Keep focus visible</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#dont">Don&#x27;t</a></td><td>7-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#principle">Principle</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#01--read-an-event">Read an event</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#02--match-a-gesture">Match a gesture</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#03--bind-a-command">Bind a command</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#04--keep-routing-ordered">Keep routing ordered</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#05--keep-focus-visible">Keep focus visible</a></td><td>6-1</td></tr><tr><td>7</td><td><a href="#06--use-a-clipboard-contract">Use a clipboard contract</a></td><td>7-1</td></tr><tr><td>8</td><td><a href="#dont">Don&#x27;t</a></td><td>8-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
@@ -442,7 +442,7 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
   <span>6-1</span>
 </footer>
 </section>
-<section class="sheet" aria-labelledby="dont">
+<section class="sheet" aria-labelledby="06--use-a-clipboard-contract">
   <header class="running-head">
   <span>Input and commands</span>
   <span>STUI-INP / Revision A</span>
@@ -452,6 +452,29 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
       <div class="chapter-number">7</div>
       <div>
         <p class="chapter-label">Chapter 7</p>
+        <h2 id="06--use-a-clipboard-contract">Use a clipboard contract</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiclipboard"><code>Clipboard</code></a> provides <code>GetText()</code> and <code>SetText(text)</code>. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiclipboard"><code>TextArea.Clipboard</code></a> controls copy, cut, and paste for that editor. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimemoryclipboard"><code>MemoryClipboard</code></a> provides an independent process-local implementation, and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimemoryclipboard"><code>MemoryClipboard.Shared</code></a> is the default for standalone editors.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiclipboard"><code>App.Clipboard</code></a> also stores text locally. While the app owns the terminal, writes publish through OSC 52. Reads return the last locally stored value because terminals do not provide a portable clipboard-read protocol.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Use a clipboard contract</span>
+  <span>7-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="dont">
+  <header class="running-head">
+  <span>Input and commands</span>
+  <span>STUI-INP / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">8</div>
+      <div>
+        <p class="chapter-label">Chapter 8</p>
         <h2 id="dont">Don't</h2>
       </div>
     </div>
@@ -462,12 +485,13 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
 <li>Don't bind ordinary editing keys in <code>BeforeWidgets</code>.</li>
 <li>Don't poll a flag for a binding match. Put the state transition in the binding handler.</li>
 <li>Don't remove or obscure focus when a keyboard user changes controls.</li>
+<li>Don't assume terminal clipboard reads are available. Inject the clipboard behavior the application needs.</li>
 </ul>
     </div>
   </div>
   <footer class="folio">
   <span>Don&#x27;t</span>
-  <span>7-1</span>
+  <span>8-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="appendix-title">

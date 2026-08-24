@@ -124,6 +124,12 @@ Mouse reporting is opt-in through `App.MouseTracking`: `Disabled`, `Click`, `Dra
 
 Focus is an accessibility state. Give every focusable control a distinct `FocusedStyle`. Do not use color as its only signal. Do not hide the state behind hover or a mouse-only interaction.
 
+## 06 / Use a clipboard contract
+
+`Clipboard` provides `GetText()` and `SetText(text)`. `TextArea.Clipboard` controls copy, cut, and paste for that editor. `MemoryClipboard` provides an independent process-local implementation, and `MemoryClipboard.Shared` is the default for standalone editors.
+
+`App.Clipboard` also stores text locally. While the app owns the terminal, writes publish through OSC 52. Reads return the last locally stored value because terminals do not provide a portable clipboard-read protocol.
+
 ## Don't
 
 - Don't read `Mouse`, `Button`, or `Position` from a non-mouse event.
@@ -131,3 +137,4 @@ Focus is an accessibility state. Give every focusable control a distinct `Focuse
 - Don't bind ordinary editing keys in `BeforeWidgets`.
 - Don't poll a flag for a binding match. Put the state transition in the binding handler.
 - Don't remove or obscure focus when a keyboard user changes controls.
+- Don't assume terminal clipboard reads are available. Inject the clipboard behavior the application needs.

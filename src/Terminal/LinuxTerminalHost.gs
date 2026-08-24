@@ -77,26 +77,18 @@ internal class LinuxTerminalNative {
 
 internal class LinuxTerminalModePolicy {
   shared {
-    internal func InputFlags(value uint32) uint32 {
-      return value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.InputFlagsRaw)
-    }
+    internal func InputFlags(value uint32) uint32 -> value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.InputFlagsRaw)
 
-    internal func OutputFlags(value uint32) uint32 {
-      return value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.OutputFlagsRaw)
-    }
+    internal func OutputFlags(value uint32) uint32 -> value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.OutputFlagsRaw)
 
     internal func ControlFlags(value uint32) uint32 {
       return (value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.ControlFlagsClear))
         | LinuxTerminalNative.ControlFlagsSet
     }
 
-    internal func LocalFlags(value uint32) uint32 {
-      return value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.LocalFlagsRaw)
-    }
+    internal func LocalFlags(value uint32) uint32 -> value & (uint32(0xFFFFFFFF) ^ LinuxTerminalNative.LocalFlagsRaw)
 
-    internal func HasReaderWake(descriptor int32) bool {
-      return descriptor >= 0
-    }
+    internal func HasReaderWake(descriptor int32) bool -> descriptor >= 0
   }
 }
 
@@ -112,17 +104,11 @@ internal class LinuxPosixDriver : PosixTerminalDriver {
       LinuxTerminalNative.EventFdNonBlock | LinuxTerminalNative.EventFdCloseOnExec)
   }
 
-  public func Dup(descriptor int32) int32 {
-    return LinuxTerminalNative.dup(descriptor)
-  }
+  public func Dup(descriptor int32) int32 -> LinuxTerminalNative.dup(descriptor)
 
-  public func IsTty() bool {
-    return LinuxTerminalNative.isatty(0) == 1 && LinuxTerminalNative.isatty(1) == 1
-  }
+  public func IsTty() bool -> LinuxTerminalNative.isatty(0) == 1 && LinuxTerminalNative.isatty(1) == 1
 
-  public func HasReaderWake() bool {
-    return LinuxTerminalModePolicy.HasReaderWake(readerWakeDescriptor)
-  }
+  public func HasReaderWake() bool -> LinuxTerminalModePolicy.HasReaderWake(readerWakeDescriptor)
 
   public func Snapshot() bool {
     if LinuxTerminalNative.tcgetattr(0, out saved) != 0 { return false }

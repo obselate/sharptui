@@ -33,7 +33,5 @@ internal class BracketedPaste {
     return false
   }
 
-  internal func Text() string {
-    return bytes.Text()
-  }
+  internal func Text() string -> bytes.Text()
 }

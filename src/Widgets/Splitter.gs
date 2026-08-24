@@ -18,7 +18,7 @@ public open class Splitter : Box {
 
   /// The smallest size, in cells, the target may be resized to. Throws if set negative or above MaximumCells.
   public prop MinimumCells int32 {
-    get { return minimumCells }
+    get -> minimumCells
     set {
       if value < 0 || value > maximumCells {
         throw ArgumentOutOfRangeException("MinimumCells")
@@ -29,7 +29,7 @@ public open class Splitter : Box {
 
   /// The largest size, in cells, the target may be resized to. Throws if set below MinimumCells.
   public prop MaximumCells int32 {
-    get { return maximumCells }
+    get -> maximumCells
     set {
       if value < minimumCells {
         throw ArgumentOutOfRangeException("MaximumCells")
@@ -97,6 +97,7 @@ public open class Splitter : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind != UiEventKind.Mouse { return EventResult.Continue }
 
     if ev.Mouse == MouseKind.Press {
@@ -160,9 +161,7 @@ public open class Splitter : Box {
     return axis == SplitterAxis.Columns ? target.Bounds.WidthCells : target.Bounds.HeightRows
   }
 
-  private func coordinate(point CellPoint) int32 {
-    return axis == SplitterAxis.Columns ? point.Column : point.Row
-  }
+  private func coordinate(point CellPoint) int32 -> axis == SplitterAxis.Columns ? point.Column : point.Row
 
   private func clamp(value int64) int32 {
     if value < int64(MinimumCells) { return MinimumCells }

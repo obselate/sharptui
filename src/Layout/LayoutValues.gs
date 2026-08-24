@@ -19,14 +19,14 @@ public struct CellLength {
   internal var Count int32
 
   /// Reports whether this length auto-sizes instead of using a fixed cell count.
-  public prop IsAuto bool { get { return Unit == CellLengthUnit.Auto } }
+  public prop IsAuto bool -> Unit == CellLengthUnit.Auto
   /// The requested cell count, meaningful only when IsAuto is false.
-  public prop CellCount int32 { get { return Count } }
+  public prop CellCount int32 -> Count
 
   shared {
     /// A length that auto-sizes rather than using a fixed cell count.
     public prop Auto CellLength {
-      get { return CellLength{ Unit: CellLengthUnit.Auto } }
+      get -> CellLength{ Unit: CellLengthUnit.Auto }
     }
 
     /// Creates a fixed length of the given non-negative cell count.
@@ -48,7 +48,7 @@ public struct CellInsets {
 
   /// The left padding in cells. Must be non-negative.
   public prop LeftCells int32 {
-    get { return leftCells }
+    get -> leftCells
     init {
       Guard.NonNegative(value, "LeftCells")
       leftCells = value
@@ -57,7 +57,7 @@ public struct CellInsets {
 
   /// The top padding in rows. Must be non-negative.
   public prop TopRows int32 {
-    get { return topRows }
+    get -> topRows
     init {
       Guard.NonNegative(value, "TopRows")
       topRows = value
@@ -66,7 +66,7 @@ public struct CellInsets {
 
   /// The right padding in cells. Must be non-negative.
   public prop RightCells int32 {
-    get { return rightCells }
+    get -> rightCells
     init {
       Guard.NonNegative(value, "RightCells")
       rightCells = value
@@ -75,7 +75,7 @@ public struct CellInsets {
 
   /// The bottom padding in rows. Must be non-negative.
   public prop BottomRows int32 {
-    get { return bottomRows }
+    get -> bottomRows
     init {
       Guard.NonNegative(value, "BottomRows")
       bottomRows = value
@@ -84,7 +84,7 @@ public struct CellInsets {
 
   shared {
     /// Insets with no padding on any side.
-    public prop None CellInsets { get { return CellInsets{} } }
+    public prop None CellInsets -> CellInsets{}
 
     /// Creates equal padding on all four sides.
     /// @param cells The padding to apply to each side. Must be non-negative.
@@ -108,7 +108,7 @@ public struct CellPoint {
 
   /// The column coordinate. Must be non-negative.
   public prop Column int32 {
-    get { return column }
+    get -> column
     init {
       Guard.NonNegative(value, "Column")
       column = value
@@ -117,7 +117,7 @@ public struct CellPoint {
 
   /// The row coordinate. Must be non-negative.
   public prop Row int32 {
-    get { return row }
+    get -> row
     init {
       Guard.NonNegative(value, "Row")
       row = value
@@ -132,7 +132,7 @@ public struct CellSize {
 
   /// The width in cells. Must be non-negative.
   public prop WidthCells int32 {
-    get { return widthCells }
+    get -> widthCells
     init {
       Guard.NonNegative(value, "WidthCells")
       widthCells = value
@@ -141,7 +141,7 @@ public struct CellSize {
 
   /// The height in rows. Must be non-negative.
   public prop HeightRows int32 {
-    get { return heightRows }
+    get -> heightRows
     init {
       Guard.NonNegative(value, "HeightRows")
       heightRows = value
@@ -158,19 +158,19 @@ public struct CellRect {
 
   /// The column of the rectangle's top-left corner.
   public prop Column int32 {
-    get { return column }
-    init { column = value }
+    get -> column
+    init -> column = value
   }
 
   /// The row of the rectangle's top-left corner.
   public prop Row int32 {
-    get { return row }
-    init { row = value }
+    get -> row
+    init -> row = value
   }
 
   /// The width in cells. Must be non-negative.
   public prop WidthCells int32 {
-    get { return widthCells }
+    get -> widthCells
     init {
       Guard.NonNegative(value, "WidthCells")
       widthCells = value
@@ -179,7 +179,7 @@ public struct CellRect {
 
   /// The height in rows. Must be non-negative.
   public prop HeightRows int32 {
-    get { return heightRows }
+    get -> heightRows
     init {
       Guard.NonNegative(value, "HeightRows")
       heightRows = value
@@ -228,25 +228,23 @@ public struct Placement {
   private var point CellPoint
 
   /// Reports whether this element participates in flex layout alongside its siblings.
-  public prop IsInFlow bool { get { return kind == PlacementKind.InFlow } }
+  public prop IsInFlow bool -> kind == PlacementKind.InFlow
   /// Reports whether this element is centered over the layout rather than flowed.
-  public prop IsCentered bool { get { return kind == PlacementKind.Centered } }
+  public prop IsCentered bool -> kind == PlacementKind.Centered
   /// The fixed position to place at, meaningful only when placed by At.
-  public prop Point CellPoint { get { return point } }
+  public prop Point CellPoint -> point
 
   shared {
     /// Participates in flex layout alongside its siblings.
-    public prop InFlow Placement { get { return Placement{} } }
+    public prop InFlow Placement -> Placement{}
     /// Positioned centered over the layout, outside the flex flow. Centering does not shrink a
     /// fixed-size element to its parent, so an element larger than the viewport can extend beyond
     /// the available rectangle.
-    public prop Centered Placement { get { return Placement{ kind: PlacementKind.Centered } } }
+    public prop Centered Placement -> Placement{ kind: PlacementKind.Centered }
 
     /// Positions an element at a fixed point, outside the flex flow.
     /// @param point The fixed position to place at.
     /// @returns A placement fixed at the given point.
-    public func At(point CellPoint) Placement {
-      return Placement{ kind: PlacementKind.Point, point: point }
-    }
+    public func At(point CellPoint) Placement -> Placement{ kind: PlacementKind.Point, point: point }
   }
 }

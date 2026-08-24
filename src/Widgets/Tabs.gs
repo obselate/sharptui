@@ -11,7 +11,7 @@ public open class Tabs : Box {
 
   /// Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.
   public prop Titles List[string] {
-    get { return titles }
+    get -> titles
     set {
       titles = value
       Refresh()
@@ -20,7 +20,7 @@ public open class Tabs : Box {
 
   /// Index of the active tab. Setting it selects programmatically and does not emit a SelectionChange; the value must not be negative.
   public prop SelectedIndex int32 {
-    get { return normalizedSelectedIndex() }
+    get -> normalizedSelectedIndex()
     set {
       if value < 0 { throw ArgumentOutOfRangeException("SelectedIndex") }
       selection.Set(value, false)
@@ -42,9 +42,7 @@ public open class Tabs : Box {
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending SelectionChange, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? {
-    return selection.Consume()
-  }
+  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Re-resolves selection after direct Titles mutation.
   public func Refresh() {
@@ -53,7 +51,7 @@ public open class Tabs : Box {
   }
 
   /// Always true, so this tab strip sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the strip as the sum of all title widths plus GapCells between them.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -89,6 +87,7 @@ public open class Tabs : Box {
   /// @returns Handled when the event changed the selection, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left { return result(moveTo(SelectedIndex - 1)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Right { return result(moveTo(SelectedIndex + 1)) }
 
@@ -167,25 +166,34 @@ public open class StatusBar : Box {
   public prop CenterText string { get; set; }
   /// Text drawn at the right edge of the bar when there is room.
   public prop RightText string { get; set; }
+  /// Styled content drawn at the left edge. When non-empty, this takes precedence over LeftText.
+  public prop LeftRuns List[TextRun] { get; set; }
+  /// Styled content drawn in the center. When non-empty, this takes precedence over CenterText.
+  public prop CenterRuns List[TextRun] { get; set; }
+  /// Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.
+  public prop RightRuns List[TextRun] { get; set; }
 
   /// Creates a bar with empty left, center, and right text.
   public init() {
     LeftText = ""
     CenterText = ""
     RightText = ""
+    LeftRuns = List[TextRun]()
+    CenterRuns = List[TextRun]()
+    RightRuns = List[TextRun]()
   }
 
   /// Always true, so this bar sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the bar as the wider of the flanking text width and the width needed to center CenterText between them.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
   /// @param availableHeight The available height in rows, or nil when unconstrained.
   /// @returns The measured size in cells.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
-    let leftWidth = Glyph.WidthOf(LeftText)
-    let middleWidth = Glyph.WidthOf(CenterText)
-    let rightWidth = Glyph.WidthOf(RightText)
+    let leftWidth = segmentWidth(LeftText, LeftRuns)
+    let middleWidth = segmentWidth(CenterText, CenterRuns)
+    let rightWidth = segmentWidth(RightText, RightRuns)
     var width = leftWidth + rightWidth
     let centeredLeft = leftWidth + leftWidth + middleWidth
     let centeredRight = rightWidth + rightWidth + middleWidth
@@ -200,15 +208,15 @@ public open class StatusBar : Box {
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
     if r.HeightRows <= 0 { return }
-    let leftW = Glyph.WidthOf(LeftText)
-    let rightW = Glyph.WidthOf(RightText)
+    let leftW = segmentWidth(LeftText, LeftRuns)
+    let rightW = segmentWidth(RightText, RightRuns)
     let rightX = r.WidthCells - rightW
     let showRight = rightX >= leftW
 
-    screen.WriteClipped(r, 0, 0, LeftText, ink)
-    if showRight { screen.WriteClipped(r, rightX, 0, RightText, ink) }
+    drawSegment(screen, r, 0, LeftText, LeftRuns, ink)
+    if showRight { drawSegment(screen, r, rightX, RightText, RightRuns, ink) }
 
-    let midW = Glyph.WidthOf(CenterText)
+    let midW = segmentWidth(CenterText, CenterRuns)
     let midX = (r.WidthCells - midW) / 2
     let bound = showRight ? rightX : r.WidthCells
     // Clip the centered notice into the free region instead of dropping it when
@@ -217,7 +225,27 @@ public open class StatusBar : Box {
     if availL < bound {
       let clip = CellRect{ Column: r.Column + availL, Row: r.Row,
         WidthCells: bound - availL, HeightRows: r.HeightRows }
-      screen.WriteClipped(clip, 0, 0, CenterText, ink)
+      drawSegment(screen, clip, midX - availL, CenterText, CenterRuns, ink)
+    }
+  }
+
+  private func segmentWidth(text string, runs List[TextRun]) int32 {
+    if runs.Count == 0 { return Glyph.WidthOf(text) }
+    var width = 0
+    for run in runs { width = width + Glyph.WidthOf(run.Text) }
+    return width
+  }
+
+  private func drawSegment(screen Screen, bounds CellRect, x int32, text string, runs List[TextRun], ink Style) {
+    if runs.Count == 0 {
+      screen.WriteClipped(bounds, x, 0, text, ink)
+      return
+    }
+    var offset = x
+    for run in runs {
+      screen.WriteClipped(bounds, offset, 0,
+        TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink))
+      offset = offset + Glyph.WidthOf(run.Text)
     }
   }
 }

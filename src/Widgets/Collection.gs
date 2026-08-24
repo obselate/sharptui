@@ -10,14 +10,14 @@ public struct SelectionChange {
 
   /// Index that was selected before this change.
   public prop PreviousIndex int32 {
-    get { return previousIndex }
-    init { previousIndex = value }
+    get -> previousIndex
+    init -> previousIndex = value
   }
 
   /// Index selected after this change.
   public prop SelectedIndex int32 {
-    get { return selectedIndex }
-    init { selectedIndex = value }
+    get -> selectedIndex
+    init -> selectedIndex = value
   }
 
   /// Creates a change record from the previous index to the newly selected index.

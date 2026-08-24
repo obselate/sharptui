@@ -35,14 +35,14 @@ internal class TerminalStreamHost : TerminalHost {
     stream = output
   }
 
-  public func IsTty() bool { return false }
-  public func Enter() bool { return false }
+  public func IsTty() bool -> false
+  public func Enter() bool -> false
   public func Restore() {}
-  public func Columns() int32 { return 80 }
-  public func Rows() int32 { return 24 }
-  public func ConsumeResize() bool { return false }
-  public func ConsumeExit() bool { return false }
+  public func Columns() int32 -> 80
+  public func Rows() int32 -> 24
+  public func ConsumeResize() bool -> false
+  public func ConsumeExit() bool -> false
   public func WakeReader() {}
-  public func Read(buffer []uint8, timeoutMilliseconds int32) int32 { return -1 }
-  public func Output() Stream { return stream }
+  public func Read(buffer []uint8, timeoutMilliseconds int32) int32 -> -1
+  public func Output() Stream -> stream
 }

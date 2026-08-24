@@ -117,6 +117,21 @@ public class AllocBench {
       after = GC.GetAllocatedBytesForCurrentThread()
       benchMicro("G Ansi.Style x100k (len " + styleTotal.ToString() + ")", sw, before, after, 100000)
 
+      let linked = uiBenchScreen(w, h)
+      linked.Write(0, 0, TextRun("linked", Style(), "https://example.com"))
+      linked.Emit(output)
+      before = GC.GetAllocatedBytesForCurrentThread()
+      sw.Restart()
+      i = 0
+      while i < frames {
+        linked.Invalidate()
+        if linked.Emit(output) == 0 { Console.WriteLine("hyperlink invalidate: empty") }
+        i = i + 1
+      }
+      sw.Stop()
+      after = GC.GetAllocatedBytesForCurrentThread()
+      benchReport("H hyperlink invalidate+emit", sw, before, after, frames)
+
       return 0
     }
 
@@ -130,6 +145,7 @@ public class AllocBench {
       uiBenchDefaultMarkerListSelection()
       uiBenchSourceListSelection()
       uiBenchCleanRedraw("list source unchanged redraw", uiBenchSourceList(w, h), w, h)
+      uiBenchCleanRedraw("virtual list unchanged redraw", uiBenchVirtualList(1000, w, h), w, h)
       uiBenchDefaultMarkerListCleanRedraw()
       uiBenchPresentedListSelection10k()
       uiBenchPresentedListCleanRedraw10k()
@@ -1778,9 +1794,7 @@ func uiBenchProgressBar(width int32) ProgressBar {
   }
 }
 
-func uiBenchSparkline(width int32) Sparkline {
-  return uiBenchLargeSparkline(width, width)
-}
+func uiBenchSparkline(width int32) Sparkline -> uiBenchLargeSparkline(width, width)
 
 func uiBenchLargeSparkline(count int32, width int32) Sparkline {
   let spark = Sparkline()
@@ -1797,9 +1811,7 @@ func uiBenchSpinner(width int32) Spinner {
   return Spinner{ Width: CellLength.Cells(width), Text: "building allocation benchmark" }
 }
 
-func uiBenchBadge(width int32) Badge {
-  return Badge{ Width: CellLength.Cells(width), Text: "build passed" }
-}
+func uiBenchBadge(width int32) Badge -> Badge{ Width: CellLength.Cells(width), Text: "build passed" }
 
 func uiBenchSeparator(width int32, height int32) Separator {
   return Separator{ Width: CellLength.Cells(width), Height: CellLength.Cells(height), Orientation: SeparatorOrientation.Horizontal }
@@ -1993,8 +2005,8 @@ class UiBenchListSource : KeyedSource[ListItem, string] {
   private var items List[ListItem]
 
   public init(items List[ListItem]) { this.items = items }
-  public func Count() int32 { return items.Count }
-  public func ItemAt(index int32) ListItem { return items[index] }
+  public func Count() int32 -> items.Count
+  public func ItemAt(index int32) ListItem -> items[index]
   public func IndexOfKey(key string) int32 {
     var i = 0
     while i < items.Count {
@@ -2005,12 +2017,45 @@ class UiBenchListSource : KeyedSource[ListItem, string] {
   }
 }
 
+class UiBenchVirtualListSource : VirtualListSource {
+  private var keys List[string]
+
+  public init(count int32) {
+    keys = List[string]()
+    var index = 0
+    while index < count {
+      keys.Add("item-" + index.ToString())
+      index = index + 1
+    }
+  }
+
+  public func Count() int32 -> keys.Count
+  public func KeyAt(index int32) string -> keys[index]
+  public func IndexOfKey(key string) int32 -> keys.IndexOf(key)
+  public func IsSelectable(index int32) bool -> true
+  public func HeightAt(index int32, width int32) int32 -> 1 + index % 4
+
+  public func Render(index int32, screen Screen, bounds CellRect, clipBounds CellRect,
+      style Style, state VirtualListItemState) {
+    screen.Fill(clipBounds, style)
+    if bounds.Row >= clipBounds.Row { screen.WriteClipped(clipBounds, 0, 0, "item", style) }
+  }
+}
+
+func uiBenchVirtualList(count int32, width int32, height int32) VirtualListView {
+  return VirtualListView{
+    Source: UiBenchVirtualListSource(count),
+    Width: CellLength.Cells(width),
+    Height: CellLength.Cells(height),
+  }
+}
+
 class UiBenchTableSource : KeyedSource[TableRow, string] {
   private var rows List[TableRow]
 
   public init(rows List[TableRow]) { this.rows = rows }
-  public func Count() int32 { return rows.Count }
-  public func ItemAt(index int32) TableRow { return rows[index] }
+  public func Count() int32 -> rows.Count
+  public func ItemAt(index int32) TableRow -> rows[index]
   public func IndexOfKey(key string) int32 {
     var i = 0
     while i < rows.Count {
@@ -2033,10 +2078,8 @@ class UiBenchTreeSource : TreeSource {
     }
   }
 
-  public func Count() int32 { return nodes.Count }
-  public func ItemAt(index int32) TreeRow {
-    return TreeRow{ Node: nodes[index], Depth: 0, ParentIndex: -1, ChildCount: 0 }
-  }
+  public func Count() int32 -> nodes.Count
+  public func ItemAt(index int32) TreeRow -> TreeRow{ Node: nodes[index], Depth: 0, ParentIndex: -1, ChildCount: 0 }
   public func IndexOfKey(key string) int32 {
     var i = 0
     while i < nodes.Count {
@@ -2066,9 +2109,9 @@ class UiBenchRichSource : RichLineSource {
     }
   }
 
-  public func Count() int32 { return lines.Count }
-  public func ItemAt(index int32) RichTextLine { return lines[index] }
-  public func MaximumLineWidth() int32 { return maximumWidth }
+  public func Count() int32 -> lines.Count
+  public func ItemAt(index int32) RichTextLine -> lines[index]
+  public func MaximumLineWidth() int32 -> maximumWidth
 }
 
 func uiBenchSourceList(width int32, height int32) ListView {
@@ -2100,13 +2143,9 @@ func uiBenchSourceRich(width int32, height int32) RichTextBlock {
   }
 }
 
-func uiBenchSink() Terminal {
-  return Terminal(AutoResetEvent(false), Stream.Null)
-}
+func uiBenchSink() Terminal -> Terminal(AutoResetEvent(false), Stream.Null)
 
-func uiBenchSelectedStyle() Style {
-  return Style{ Foreground: Color.Rgb("0E1117"), Background: Color.Rgb("C8CEDA") }
-}
+func uiBenchSelectedStyle() Style -> Style{ Foreground: Color.Rgb("0E1117"), Background: Color.Rgb("C8CEDA") }
 
 func uiBenchScreen(width int32, height int32) Screen {
   let screen = Screen(width, height)

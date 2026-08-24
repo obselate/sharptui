@@ -58,7 +58,7 @@ public class Animation {
     node = value
   }
 
-  internal prop Node AnimationNode { get { return node } }
+  internal prop Node AnimationNode -> node
 
   shared {
     /// Creates a tween that invokes update with eased progress over its duration.
@@ -84,16 +84,12 @@ public class Animation {
     /// Runs animations one after another.
     /// @param animations The child animations in execution order.
     /// @returns A sequence animation.
-    public func Sequence(animations ...Animation) Animation {
-      return Animation(SequenceNode(animationNodes(animations)))
-    }
+    public func Sequence(animations ...Animation) Animation -> Animation(SequenceNode(animationNodes(animations)))
 
     /// Runs animations at the same time.
     /// @param animations The child animations to run in parallel.
     /// @returns A parallel animation.
-    public func Parallel(animations ...Animation) Animation {
-      return Animation(ParallelNode(animationNodes(animations)))
-    }
+    public func Parallel(animations ...Animation) Animation -> Animation(ParallelNode(animationNodes(animations)))
 
     /// Runs an animation a fixed number of times.
     /// @param animation The child animation to repeat.
@@ -330,9 +326,7 @@ public class AnimationController {
     }
   }
 
-  private func intervalMilliseconds() int64 {
-    return cadenceMilliseconds
-  }
+  private func intervalMilliseconds() int64 -> cadenceMilliseconds
 }
 
 /// Controls one running animation.
@@ -372,9 +366,7 @@ public class AnimationHandle {
     return Interlocked.CompareExchange(ref requested, value, 0) == 0
   }
 
-  internal func Requested() int32 {
-    return Interlocked.CompareExchange(ref requested, 0, 0)
-  }
+  internal func Requested() int32 -> Interlocked.CompareExchange(ref requested, 0, 0)
 
   internal func MarkCompleted() {
     Interlocked.CompareExchange(ref state, 1, 0)
@@ -401,9 +393,7 @@ internal open class AnimationRuntime {
     completed = false
   }
 
-  internal func IsCompleted() bool {
-    return completed
-  }
+  internal func IsCompleted() bool -> completed
 
   internal func MarkCompleted() {
     completed = true
@@ -445,17 +435,13 @@ internal class TweenNode : AnimationNode {
     easing = curve
   }
 
-  override func CreateRuntime() AnimationRuntime {
-    return TweenRuntime(Duration, update, easing)
-  }
+  override func CreateRuntime() AnimationRuntime -> TweenRuntime(Duration, update, easing)
 }
 
 internal class WaitNode : AnimationNode {
   internal init(duration float64) : base(duration) {}
 
-  override func CreateRuntime() AnimationRuntime {
-    return WaitRuntime(Duration)
-  }
+  override func CreateRuntime() AnimationRuntime -> WaitRuntime(Duration)
 }
 
 internal class SequenceNode : AnimationNode {
@@ -493,9 +479,7 @@ internal class RepeatNode : AnimationNode {
     child = value
   }
 
-  override func CreateRuntime() AnimationRuntime {
-    return RepeatRuntime(Duration, child.CreateRuntime())
-  }
+  override func CreateRuntime() AnimationRuntime -> RepeatRuntime(Duration, child.CreateRuntime())
 }
 
 internal class TweenRuntime : AnimationRuntime {

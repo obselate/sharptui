@@ -10,14 +10,14 @@ public open class Button : Box {
 
   /// The label centred within the button.
   public prop Text string {
-    get { return text }
-    set { text = value }
+    get -> text
+    set -> text = value
   }
 
   /// Work invoked when the button is activated.
   public prop OnPress Action? {
-    get { return onPress }
-    set { onPress = value }
+    get -> onPress
+    set -> onPress = value
   }
 
   /// Creates an empty, focusable button.
@@ -28,7 +28,7 @@ public open class Button : Box {
   }
 
   /// Always true, so this button sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the button as the text width plus one cell of padding on each side.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -58,6 +58,7 @@ public open class Button : Box {
   /// @returns Handled when the button was pressed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
       press()
       return EventResult.Handled
@@ -101,7 +102,7 @@ public open class Dialog : Overlay {
 
   /// The wrapped body text. Setting it rebuilds the dialog's children.
   public prop Message string {
-    get { return message }
+    get -> message
     set {
       message = value
       compose()
@@ -110,7 +111,7 @@ public open class Dialog : Overlay {
 
   /// The actions offered as buttons, in display order. Setting it rebuilds the dialog's children.
   public prop Actions List[DialogAction] {
-    get { return actions }
+    get -> actions
     set {
       actions = value
       compose()
@@ -119,8 +120,8 @@ public open class Dialog : Overlay {
 
   /// Work invoked with the selected action.
   public prop OnResult Action[DialogAction]? {
-    get { return onResult }
-    set { onResult = value }
+    get -> onResult
+    set -> onResult = value
   }
 
   /// Creates a centered, dimmed, bordered dialog with no message or actions.

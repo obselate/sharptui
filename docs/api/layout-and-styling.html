@@ -292,7 +292,7 @@
 <tbody>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color</code></a></td>
-<td>RGB or inherited color</td>
+<td>RGB, indexed, or inherited color</td>
 <td><code>Rgb(hex)</code> accepts exactly 6 hexadecimal digits, without <code>#</code>.</td>
 </tr>
 <tr>
@@ -312,7 +312,8 @@
 </tr>
 </tbody>
 </table></div>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Rgb(red, green, blue)</code></a> accepts each channel from 0 through 255. No other channel values are valid.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Rgb(red, green, blue)</code></a> accepts each channel from 0 through 255. No other channel values are valid.
+<a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Indexed(index)</code></a> selects terminal palette entries 0 through 255. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolor"><code>Color.Ansi(color)</code></a> names one of the base 16 entries.</p>
 <figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Set a style</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>ink<span class="w"> </span>=<span class="w"> </span><span class="nc">Style</span>{
 <span class="w">  </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"E6EDF3"</span>),
 <span class="w">  </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="m">14</span>,<span class="w"> </span><span class="m">17</span>,<span class="w"> </span><span class="m">23</span>),
@@ -326,6 +327,7 @@
 }
 </code></pre></figure>
 <p>Focus must remain visible. Give a focusable control a <code>FocusedStyle</code> that differs from its normal <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistyle"><code>Style</code></a>. Do not use color as the only selection cue. A prefix, marker, border, or text change gives the same state to terminals with limited color support.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.ColorMode</code></a> selects <code>TrueColor</code>, <code>Palette256</code>, <code>Palette16</code>, or <code>Auto</code>. Auto reads terminal capability environment variables when the app starts. RGB values are quantized when the selected mode has a smaller palette.</p>
     </div>
   </div>
   <footer class="folio">

@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `4e690081e22865de3d664ab085f45cefbf0377426e3b757bd8adeb679f63cafd`.
+Public-symbol SHA-256: `230c0ce2b65383a7417da61feae04a03953a5993cbae474d1b717bb236843772`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -11,6 +11,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.AnimationController](#sharptuianimationcontroller)
 - [SharpTui.AnimationHandle](#sharptuianimationhandle)
 - [SharpTui.AnimationState](#sharptuianimationstate)
+- [SharpTui.AnsiColor](#sharptuiansicolor)
 - [SharpTui.App](#sharptuiapp)
 - [SharpTui.Badge](#sharptuibadge)
 - [SharpTui.Bind](#sharptuibind)
@@ -26,6 +27,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.CellRect](#sharptuicellrect)
 - [SharpTui.CellSize](#sharptuicellsize)
 - [SharpTui.CellText](#sharptuicelltext)
+- [SharpTui.Clipboard](#sharptuiclipboard)
 - [SharpTui.Color](#sharptuicolor)
 - [SharpTui.Column](#sharptuicolumn)
 - [SharpTui.ColumnWidth](#sharptuicolumnwidth)
@@ -45,6 +47,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.ListView](#sharptuilistview)
 - [SharpTui.MarkdownTheme](#sharptuimarkdowntheme)
 - [SharpTui.MarkdownView](#sharptuimarkdownview)
+- [SharpTui.MemoryClipboard](#sharptuimemoryclipboard)
 - [SharpTui.MouseButton](#sharptuimousebutton)
 - [SharpTui.MouseKind](#sharptuimousekind)
 - [SharpTui.MouseTracking](#sharptuimousetracking)
@@ -75,8 +78,10 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.TableRow](#sharptuitablerow)
 - [SharpTui.TableView](#sharptuitableview)
 - [SharpTui.Tabs](#sharptuitabs)
+- [SharpTui.TerminalColorMode](#sharptuiterminalcolormode)
 - [SharpTui.TestDriver](#sharptuitestdriver)
 - [SharpTui.TextArea](#sharptuitextarea)
+- [SharpTui.TextAreaEnterBehavior](#sharptuitextareaenterbehavior)
 - [SharpTui.TextAttributes](#sharptuitextattributes)
 - [SharpTui.TextBlock](#sharptuitextblock)
 - [SharpTui.TextInput](#sharptuitextinput)
@@ -91,6 +96,10 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.TreeView](#sharptuitreeview)
 - [SharpTui.UiEvent](#sharptuiuievent)
 - [SharpTui.UiEventKind](#sharptuiuieventkind)
+- [SharpTui.Viewport](#sharptuiviewport)
+- [SharpTui.VirtualListItemState](#sharptuivirtuallistitemstate)
+- [SharpTui.VirtualListSource](#sharptuivirtuallistsource)
+- [SharpTui.VirtualListView](#sharptuivirtuallistview)
 - [SharpTui.Worker](#sharptuiworker)
 
 ## SharpTui.Animation
@@ -186,6 +195,31 @@ G# kind: `enum`.
 - `Completed` — The terminal animation state has been applied.
 - `Cancelled` — The animation stopped without another sample.
 
+## SharpTui.AnsiColor
+
+The sixteen colors provided by the base ANSI terminal palette.
+
+G# kind: `enum`.
+
+### Values
+
+- `Black` — Selects ANSI black.
+- `Red` — Selects ANSI red.
+- `Green` — Selects ANSI green.
+- `Yellow` — Selects ANSI yellow.
+- `Blue` — Selects ANSI blue.
+- `Magenta` — Selects ANSI magenta.
+- `Cyan` — Selects ANSI cyan.
+- `White` — Selects ANSI white.
+- `BrightBlack` — Selects bright ANSI black.
+- `BrightRed` — Selects bright ANSI red.
+- `BrightGreen` — Selects bright ANSI green.
+- `BrightYellow` — Selects bright ANSI yellow.
+- `BrightBlue` — Selects bright ANSI blue.
+- `BrightMagenta` — Selects bright ANSI magenta.
+- `BrightCyan` — Selects bright ANSI cyan.
+- `BrightWhite` — Selects bright ANSI white.
+
 ## SharpTui.App
 
 Owns the terminal session and drives the paint and input loop for a Box tree.
@@ -199,7 +233,10 @@ G# kind: `class`.
 ### Properties
 
 - `prop Animations AnimationController { get; }` — Owns animations and their shared frame deadline.
+- `prop Clipboard Clipboard { get; }` — A clipboard that stores text locally and publishes writes through OSC 52 while the app runs.
+- `prop ColorMode TerminalColorMode { get; set; }` — The terminal color encoding. Auto detects a mode from the terminal environment when Run starts.
 - `prop DefaultStyle Style { get; set; }` — The style used for unstyled drawing in the application.
+- `prop HyperlinksEnabled bool { get; set; }` — Whether semantic TextRun hyperlinks are emitted with OSC 8.
 - `prop Keys Keymap { get; set; }` — Application bindings offered before and after tree event handling.
 - `prop MouseTracking MouseTracking { get; set; }` — Terminal mouse reporting selected when Run enters the terminal.
 - `prop QuitGestures List[KeyGesture] { get; }` — Fallback quit gestures. The tree receives each event before these are tested.
@@ -273,6 +310,8 @@ G# kind: `class`.
 ### Properties
 
 - `prop Bounds CellRect { get; }` — The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
+- `prop CanFocus bool { get; set; }` — Whether this box can receive keyboard focus. Defaults to false.
+- `prop CanReceiveMouse bool { get; set; }` — Whether this box counts as a mouse hit target even when it cannot take focus. Defaults to false.
 - `prop Children List[Box] { get; set; }` — The direct children, in paint and layout order. Replacing the list detaches boxes that are no longer present and resynchronizes mouse capture.
 - `prop ContentBounds CellRect { get; }` — The box's bounds after border, padding, scrollbar gutter, and title row are subtracted, in that order. What Render and children draw into.
 - `prop FocusedElement Box { get; }` — The visible focusable descendant that currently holds focus, or nil if none.
@@ -558,6 +597,19 @@ G# kind: `class`.
   - `widthCells`: The maximum line width in terminal cells.
   - Returns: The wrapped lines in order.
 
+## SharpTui.Clipboard
+
+Reads and writes plain text for editable controls.
+
+G# kind: `interface`.
+
+### Methods
+
+- `func GetText() string` — Returns the current plain-text clipboard content.
+  - Returns: The current content.
+- `func SetText(text string)` — Replaces the current plain-text clipboard content.
+  - `text`: The content to store.
+
 ## SharpTui.Color
 
 Specifies an RGB color or a named style-resolution state.
@@ -566,16 +618,24 @@ G# kind: `struct`.
 
 ### Properties
 
+- `prop IndexedValue int32 { get; }` — Returns the terminal palette index, or negative one when this is not an indexed color.
 - `shared prop Inherit Color { get; }` — Uses the parent style's corresponding color.
+- `prop IsIndexed bool { get; }` — Reports whether this color refers to the terminal's indexed palette.
 - `prop IsInherited bool { get; }` — Reports whether this color inherits from its parent style.
 - `prop IsTerminalDefault bool { get; }` — Reports whether this color uses the terminal-configured default.
 - `shared prop TerminalDefault Color { get; }` — Uses the terminal-configured default foreground or background.
 
 ### Methods
 
+- `shared func Ansi(color AnsiColor) Color` — Creates a color from the base sixteen-color ANSI palette.
+  - `color`: The named ANSI palette color.
+  - Returns: The indexed terminal color.
 - `func Equals(other Color) bool` — Tests whether another color has the same RGB or style-resolution value.
   - `other`: The color to compare against.
   - Returns: True when both colors have the same packed value.
+- `shared func Indexed(index int32) Color` — Creates a color from the terminal's 256-entry indexed palette.
+  - `index`: The palette index from 0 through 255.
+  - Returns: The indexed terminal color.
 - `shared func Rgb(hex string) Color` — Creates an RGB color from exactly six hexadecimal digits.
   - `hex`: Six hexadecimal digits, no leading # or prefix.
   - Returns: The RGB color packed from the parsed digits.
@@ -963,6 +1023,28 @@ Inherits `Box`; see that type for inherited members.
 - `func ScrollToLine(line int32)` — Scrolls so that the given wrapped line index becomes the topmost visible line.
   - `line`: The wrapped line index to scroll to.
 
+## SharpTui.MemoryClipboard
+
+A process-local clipboard suitable for tests and applications without terminal clipboard access.
+
+G# kind: `class`.
+Implements `Clipboard`.
+
+### Constructors
+
+- `init()` — Creates an empty independent memory clipboard.
+
+### Properties
+
+- `shared prop Shared MemoryClipboard { get; }` — The process-wide default memory clipboard.
+
+### Methods
+
+- `func GetText() string` — Returns the stored text.
+  - Returns: The stored content.
+- `func SetText(value string)` — Replaces the stored text.
+  - `value`: The content to store.
+
 ## SharpTui.MouseButton
 
 Which physical mouse button a Mouse event reports, when known.
@@ -1200,7 +1282,9 @@ G# kind: `class`.
 
 ### Properties
 
+- `prop ColorMode TerminalColorMode { get; set; }` — The terminal color encoding used by Flush and terminal presentation.
 - `prop DefaultStyle Style { get; set; }` — The style used by draw calls that do not receive an explicit style.
+- `prop HyperlinksEnabled bool { get; set; }` — Whether semantic TextRun hyperlinks are emitted with OSC 8.
 - `prop Size CellSize { get; }` — The screen dimensions measured in terminal cells and rows.
 
 ### Methods
@@ -1223,17 +1307,27 @@ G# kind: `class`.
   - `y`: The zero-based row of the cell.
   - `text`: The grapheme cluster to write.
   - `s`: The style to apply to the cell.
-- `func WriteClipped(r CellRect, dx int32, dy int32, text string)` — Draws text inside a cell rectangle and clips it at the right edge.
+- `func WriteClipped(r CellRect, dx int32, dy int32, run TextRun)` — Draws one styled text run inside a cell rectangle and clips it at both horizontal edges.
+  - `r`: The cell rectangle to draw within.
+  - `dx`: The column offset from the rectangle's left edge.
+  - `dy`: The row offset from the rectangle's top edge.
+  - `run`: The styled text and optional hyperlink target to draw.
+- `func WriteClipped(r CellRect, dx int32, dy int32, text string)` — Draws text inside a cell rectangle and clips it at both horizontal edges.
   - `r`: The cell rectangle to draw within.
   - `dx`: The column offset from the rectangle's left edge.
   - `dy`: The row offset from the rectangle's top edge.
   - `text`: The text to draw.
-- `func WriteClipped(r CellRect, dx int32, dy int32, text string, s Style)` — Draws text inside a cell rectangle in the given style and clips it at the right edge.
+- `func WriteClipped(r CellRect, dx int32, dy int32, text string, s Style)` — Draws text inside a cell rectangle in the given style and clips it at both horizontal edges.
   - `r`: The cell rectangle to draw within.
   - `dx`: The column offset from the rectangle's left edge.
   - `dy`: The row offset from the rectangle's top edge.
   - `text`: The text to draw.
   - `s`: The style to apply to the text.
+- `func Write(x int32, y int32, run TextRun) int32` — Draws one styled text run, including its semantic hyperlink target.
+  - `x`: The zero-based starting column.
+  - `y`: The zero-based row.
+  - `run`: The styled text and optional hyperlink target to draw.
+  - Returns: The column just past the last cell written.
 - `func Write(x int32, y int32, text string) int32` — Draws a string starting at x, advancing by display width.
   - `x`: The zero-based starting column.
   - `y`: The zero-based row.
@@ -1411,8 +1505,11 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop CenterRuns List[TextRun] { get; set; }` — Styled content drawn in the center. When non-empty, this takes precedence over CenterText.
 - `prop CenterText string { get; set; }` — Text drawn centered in the bar when there is room for it and the flanking text.
+- `prop LeftRuns List[TextRun] { get; set; }` — Styled content drawn at the left edge. When non-empty, this takes precedence over LeftText.
 - `prop LeftText string { get; set; }` — Text drawn at the left edge of the bar.
+- `prop RightRuns List[TextRun] { get; set; }` — Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.
 - `prop RightText string { get; set; }` — Text drawn at the right edge of the bar when there is room.
 
 ## SharpTui.Style
@@ -1578,6 +1675,19 @@ Inherits `Box`; see that type for inherited members.
   - Returns: The pending SelectionChange, or nil when none is pending.
 - `func Refresh()` — Re-resolves selection after direct Titles mutation.
 
+## SharpTui.TerminalColorMode
+
+Selects how RGB and indexed colors are serialized to the terminal.
+
+G# kind: `enum`.
+
+### Values
+
+- `Auto` — Selects a color mode from terminal capabilities.
+- `TrueColor` — Emits 24-bit RGB terminal colors.
+- `Palette256` — Quantizes colors to the 256-entry terminal palette.
+- `Palette16` — Quantizes colors to the base ANSI palette.
+
 ## SharpTui.TestDriver
 
 Drives a SharpTUI tree without entering a terminal or reading a clock.
@@ -1604,6 +1714,8 @@ G# kind: `class`.
   - `elapsed`: The non-negative amount of time to advance.
 - `func Draw() string` — Draws the tree and returns the ANSI diff emitted by the screen.
   - Returns: The captured ANSI diff for this frame.
+- `func FrameText() string` — Returns the complete staged screen as rows separated by line feeds.
+  - Returns: The full cell-grid text from the most recent draw.
 - `func Pump()` — Runs all currently posted work and samples animations at NowMilliseconds.
 - `func Resize(width int32, height int32)` — Resizes the deterministic screen in terminal cells.
   - `width`: The new screen width in cells.
@@ -1626,14 +1738,20 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop Caret TextPosition { get; set; }` — The caret position as a line and grapheme index. Setting it moves the caret and scrolls it into view.
+- `prop Clipboard Clipboard { get; set; }` — The clipboard used by copy, cut, and paste commands.
+- `prop EnterBehavior TextAreaEnterBehavior { get; set; }` — How Enter inserts a line or invokes OnSubmit. Defaults to NewLine.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — The index of the topmost visible visual row. Negative values clamp to zero.
 - `prop GutterStyle Style { get; set; }` — The style applied to the line-number gutter.
 - `prop HasSelection bool { get; }` — True when a selection is currently marked.
 - `prop HorizontalCellOffset int32 { get; set; }` — The horizontal scroll offset in cells, used when Wrapping is None. Negative values clamp to zero.
 - `prop IsModified bool { get; }` — True once the text has changed since it was last loaded via the Text setter.
+- `prop LineCount int32 { get; }` — The current physical line count.
+- `prop MaxLines int32 { get; set; }` — The maximum editable physical line count. Zero means unlimited. Existing loaded text is not truncated.
+- `prop OnSubmit Action[string] { get; set; }` — Invoked with the current text when EnterBehavior submits the editor.
 - `prop SelectedText string { get; }` — The text within the current selection, or an empty string when nothing is marked.
 - `prop SelectedTextStyle Style { get; set; }` — The style applied to the highlighted selection background.
 - `prop Selection TextSelection? { get; }` — The current selection range, or nil when nothing is marked.
+- `prop ShowLineNumbers bool { get; set; }` — Whether physical line numbers are shown in the gutter. Defaults to true.
 - `prop Text string { get; set; }` — The full text content, joined with '\n'. Setting it replaces all lines, resets the caret, and clears undo history.
 - `prop Wrapping TextWrapping { get; set; }` — The line wrapping mode; None preserves lines and pans horizontally, Word wraps at the content width.
 
@@ -1650,6 +1768,18 @@ Inherits `Box`; see that type for inherited members.
   - Returns: True when the selection was replaced.
 - `func Undo() bool` — Undoes one edit. False when there is nothing left to undo.
   - Returns: True when an edit was undone.
+
+## SharpTui.TextAreaEnterBehavior
+
+Controls how TextArea handles Enter key presses.
+
+G# kind: `enum`.
+
+### Values
+
+- `NewLine` — Inserts a line break for Enter.
+- `Submit` — Submits for Enter with any non-window modifier combination.
+- `SubmitOnPlainEnter` — Submits for plain Enter and inserts a line break for modified Enter.
 
 ## SharpTui.TextAttributes
 
@@ -1737,9 +1867,14 @@ G# kind: `struct`.
 - `init(text string, style Style)` — Creates a text run with the given text and style.
   - `text`: The run's text content.
   - `style`: The style applied to the run's text.
+- `init(text string, style Style, hyperlink string)` — Creates a styled text run with a semantic hyperlink target.
+  - `text`: The run's text content.
+  - `style`: The style applied to this run's text.
+  - `hyperlink`: The OSC 8 target URI, or an empty string for plain text.
 
 ### Properties
 
+- `prop Hyperlink string { get; init; }` — The OSC 8 hyperlink target carried by this run, or an empty string for plain text.
 - `prop Style Style { get; init; }` — The style applied to this run's text.
 - `prop Text string { get; init; }` — The run's text content.
 
@@ -1895,6 +2030,110 @@ G# kind: `enum`.
 - `Mouse` — Carries a mouse action, button, and terminal-cell position.
 - `Tick` — Signals an application timer tick.
 - `Unknown` — Indicates that no recognized event variant is present.
+
+## SharpTui.Viewport
+
+Stateless viewport math for indexed rows and other uniformly sized logical units.
+
+G# kind: `class`.
+
+### Constructors
+
+- `init()` — Creates a viewport utility instance. All operations are shared, so callers normally use the type directly.
+
+### Methods
+
+- `shared func BringIntoView(extent int32, index int32, offset int32, size int32) int32` — Moves an offset by the minimum amount needed to show an indexed unit.
+  - `extent`: The number of logical units in the content.
+  - `index`: The unit that must become visible.
+  - `offset`: The current first visible unit.
+  - `size`: The number of visible units.
+  - Returns: The new first visible unit.
+- `shared func BringRangeIntoView(extent int32, start int32, length int32, offset int32, size int32) int32` — Moves an offset by the minimum amount needed to show a logical range.
+  - `extent`: The number of logical units in the content.
+  - `start`: The first unit in the range.
+  - `length`: The number of units in the range.
+  - `offset`: The current first visible unit.
+  - `size`: The number of visible units.
+  - Returns: The new first visible unit.
+- `shared func ClampIndex(count int32, index int32) int32` — Clamps index into [0, count - 1], or 0 when count is zero.
+  - `count`: The number of indexed units.
+  - `index`: The requested index.
+  - Returns: A valid index, or zero when count is zero.
+- `shared func ClampOffset(extent int32, offset int32, size int32) int32` — Clamps an offset so a viewport never starts past the end of its extent.
+  - `extent`: The number of logical units in the content.
+  - `offset`: The requested first visible unit.
+  - `size`: The number of visible units.
+  - Returns: The clamped first visible unit.
+
+## SharpTui.VirtualListItemState
+
+State passed to a VirtualListSource while it renders one item.
+
+G# kind: `enum`.
+
+### Values
+
+- `None` — Indicates a visible item with no active state.
+- `Selected` — Indicates the selected item.
+- `Focused` — Indicates the selected item while its list has focus.
+
+## SharpTui.VirtualListSource
+
+Supplies stable, variable-height items to a VirtualListView.
+
+G# kind: `interface`.
+
+### Methods
+
+- `func Count() int32` — Returns the number of items.
+  - Returns: The item count.
+- `func HeightAt(index int32, width int32) int32` — Measures an item's positive height for the current viewport width.
+  - `index`: The zero-based item index.
+  - `width`: The available width in cells.
+  - Returns: The item height in rows. Must be positive.
+- `func IndexOfKey(key string) int32` — Returns the current index for a stable key, or negative one when absent.
+  - `key`: The stable key to find.
+  - Returns: The item index, or negative one.
+- `func IsSelectable(index int32) bool` — Reports whether an item can be selected.
+  - `index`: The zero-based item index.
+  - Returns: True when keyboard and mouse selection may stop on the item.
+- `func KeyAt(index int32) string` — Returns the stable key for an item.
+  - `index`: The zero-based item index.
+  - Returns: The stable item key.
+- `func Render(index int32, screen Screen, bounds CellRect, clipBounds CellRect, style Style, state VirtualListItemState)` — Renders one visible item.
+  - `index`: The zero-based item index.
+  - `screen`: The target screen.
+  - `bounds`: The full item bounds, which can extend beyond clipBounds.
+  - `clipBounds`: The visible intersection of the item and viewport.
+  - `style`: The resolved inherited and selected style.
+  - `state`: The item's selection and focus state.
+
+## SharpTui.VirtualListView
+
+A virtualized, variable-height list with stable selection, row scrolling, and mouse hit testing.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty focusable list that grows to available space.
+
+### Properties
+
+- `prop FirstVisibleRowOffset int32 { get; set; }` — First visible content row measured from the start of the source.
+- `prop FollowTail bool { get; set; }` — When true, rendering selects the last selectable item and pins the viewport to the end.
+- `prop SelectedIndex int32 { get; set; }` — Index of the selected item. Programmatic changes do not emit SelectionChange.
+- `prop SelectedKey string { get; }` — Stable key of the selected item, or empty when the source is empty.
+- `prop SelectedStyle Style { get; set; }` — Style merged over the item style when the item is selected.
+- `prop Source VirtualListSource { get; set; }` — The source that measures and renders items.
+
+### Methods
+
+- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending user selection change.
+  - Returns: The pending change, or nil.
+- `func Refresh()` — Invalidates cached heights and reconciles source selection state.
 
 ## SharpTui.Worker
 

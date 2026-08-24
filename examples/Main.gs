@@ -29,9 +29,7 @@ func sharpLogo() List[string] {
 }
 
 /// The dimmed status bar style shared by every app's footer.
-func dimStatusBar() StatusBar {
-  return StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
-}
+func dimStatusBar() StatusBar -> StatusBar{ Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
 
 /// The markdown look shared by every preview in the set.
 func previewTheme() MarkdownTheme {
@@ -46,9 +44,7 @@ func previewTheme() MarkdownTheme {
 }
 
 /// Tabs slide a paint past a border, so foreign text is flattened first.
-func flatText(text string) string {
-  return text.Replace(char(9).ToString(), "    ").TrimEnd()
-}
+func flatText(text string) string -> text.Replace(char(9).ToString(), "    ").TrimEnd()
 
 /// One subprocess run to completion: whether the process started, its exit
 /// code, and both output streams drained in full. Crashed is set only when

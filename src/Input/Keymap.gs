@@ -21,20 +21,20 @@ public class Bind {
   private var handler Action
 
   /// Stable binding identity.
-  public prop Id string { get { return id } }
+  public prop Id string -> id
   /// Text shown for this binding in command surfaces.
-  public prop Label string { get { return label } }
+  public prop Label string -> label
   /// The gesture that triggers this binding.
-  public prop Gesture KeyGesture { get { return gesture } }
+  public prop Gesture KeyGesture -> gesture
   /// Which routing phase this binding is offered during.
-  public prop Phase BindingPhase { get { return phase } }
+  public prop Phase BindingPhase -> phase
   /// Whether this binding accepts activation.
   public prop IsEnabled bool {
-    get { return enabled }
-    set { enabled = value }
+    get -> enabled
+    set -> enabled = value
   }
   /// Work invoked when the binding matches.
-  public prop Handler Action { get { return handler } }
+  public prop Handler Action -> handler
 
   internal init(id string, label string, gesture KeyGesture, phase BindingPhase, handler Action) {
     this.id = id
@@ -57,7 +57,7 @@ public class Keymap {
   private var bindings List[Bind]
 
   /// All bindings registered on this keymap, in registration order.
-  public prop Bindings List[Bind] { get { return bindings } }
+  public prop Bindings List[Bind] -> bindings
 
   /// Creates an empty keymap.
   public init() {
@@ -69,9 +69,7 @@ public class Keymap {
   /// @param phase The routing phase the binding is offered during.
   /// @param handler Work invoked when the binding matches.
   /// @returns The registered binding.
-  public func Add(gesture KeyGesture, phase BindingPhase, handler Action) Bind {
-    return Add("", "", gesture, phase, handler)
-  }
+  public func Add(gesture KeyGesture, phase BindingPhase, handler Action) Bind -> Add("", "", gesture, phase, handler)
 
   /// Adds a named binding for use by command surfaces.
   /// @param id The stable binding identity.

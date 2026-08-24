@@ -57,11 +57,17 @@ filter.MoveCaretToEnd()
 `TextArea` owns a multi-line document, a grapheme-indexed `Caret`, selection, undo, redo, and search. Set `Text` to load a document. That resets the caret and clears undo history.
 
 ```gsharp
+var submitted = ""
 let editor = TextArea{
   Text: "one\ntwo\nthree",
+  ShowLineNumbers: false,
   Wrapping: TextWrapping.Word,
+  EnterBehavior: TextAreaEnterBehavior.SubmitOnPlainEnter,
+  MaxLines: 5,
   SelectedTextStyle: Style{ Foreground: Color.Rgb("FFFFFF"), Background: Color.Rgb("2563EB") },
 }
+
+editor.OnSubmit = text -> submitted = text
 
 if editor.Find("two", SearchDirection.Forward) {
   editor.ReplaceSelection("second")
@@ -77,6 +83,11 @@ if editor.Find("two", SearchDirection.Forward) {
 | `IsModified` | True after an edit since the last `Text` assignment. |
 | `FirstVisibleRowIndex` | The top visible visual row. Negative assignments clamp to zero. |
 | `HorizontalCellOffset` | The horizontal scroll offset when wrapping is `None`. |
+| `LineCount` | The current physical line count. |
+| `ShowLineNumbers` | Shows or hides the physical line-number gutter. |
+| `EnterBehavior` | Inserts lines, always submits, or submits only for plain Enter. |
+| `MaxLines` | Limits physical lines when positive. Zero is unlimited. |
+| `Clipboard` | Supplies copy, cut, and paste text. |
 
 `Find` searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. `SearchDirection.Forward` and `SearchDirection.Backward` select the direction. `ReplaceSelection`, `Undo`, and `Redo` report whether they changed editor state.
 
@@ -88,7 +99,7 @@ if editor.Find("two", SearchDirection.Forward) {
 
 ## Rich lines
 
-`TextRun` is one immutable text-and-style pair. `RichTextLine` groups runs for one logical line. `RichLineSource` supplies indexed rich lines without retaining all output in the block.
+`TextRun` is immutable text, style, and an optional semantic hyperlink target. A non-empty `Hyperlink` emits OSC 8 when `App.HyperlinksEnabled` is true. `RichTextLine` groups runs for one logical line. `RichLineSource` supplies indexed rich lines without retaining all output in the block.
 
 ```gsharp
 let output = RichTextBlock{
@@ -125,6 +136,6 @@ let preview = MarkdownView{
 }
 ```
 
-`MarkdownTheme` separates `Body`, `Heading`, `Code`, `Link`, `Marker`, and `Quote` styles. Parsing adds bold to headings and underline to links. `SyntaxHighlighter.CreateLineSource(lines, language, baseStyle)` creates a `RichLineSource`. `HighlightLines` returns `TextRun` values. `Supports(language)` is the capability check.
+`MarkdownTheme` separates `Body`, `Heading`, `Code`, `Link`, `Marker`, and `Quote` styles. Parsing adds bold to headings, underline to links, and the resolved target to `TextRun.Hyperlink`. `SyntaxHighlighter.CreateLineSource(lines, language, baseStyle)` creates a `RichLineSource`. `HighlightLines` returns `TextRun` values. `Supports(language)` is the capability check.
 
 For exhaustive signatures, see [reference.md](reference.md#sharptuitextblock), [the text-area entry](reference.md#sharptuitextarea), and [the rich-content entries](reference.md#sharptuirichtextblock).

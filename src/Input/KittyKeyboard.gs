@@ -166,13 +166,9 @@ internal class KittyKeyboard {
     return char.ConvertFromUtf32(code)
   }
 
-  private func validKeyCode(value int32) bool {
-    return value >= 0 && value <= 0x10ffff && (value < 0xd800 || value > 0xdfff)
-  }
+  private func validKeyCode(value int32) bool -> value >= 0 && value <= 0x10ffff && (value < 0xd800 || value > 0xdfff)
 
-  private func validTextCode(value int32) bool {
-    return validKeyCode(value) && value >= 32 && (value < 127 || value > 159)
-  }
+  private func validTextCode(value int32) bool -> validKeyCode(value) && value >= 32 && (value < 127 || value > 159)
 
   private func fieldValue(parameters List[uint8], field int32, subfield int32, out value int32) bool {
     value = 0

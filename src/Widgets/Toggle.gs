@@ -15,13 +15,13 @@ public open class Toggle : Box {
 
   /// The label drawn after the checkbox glyph.
   public prop Text string {
-    get { return text }
-    set { text = value }
+    get -> text
+    set -> text = value
   }
 
   /// The checked state, flipped by activation.
   public prop IsChecked bool {
-    get { return isChecked }
+    get -> isChecked
     set {
       if let group = owner {
         group.SetSelection(this, value)
@@ -33,14 +33,14 @@ public open class Toggle : Box {
 
   /// The glyph drawn when IsChecked is true.
   public prop CheckedGlyph string {
-    get { return checkedGlyph }
-    set { checkedGlyph = value }
+    get -> checkedGlyph
+    set -> checkedGlyph = value
   }
 
   /// The glyph drawn when IsChecked is false.
   public prop UncheckedGlyph string {
-    get { return uncheckedGlyph }
-    set { uncheckedGlyph = value }
+    get -> uncheckedGlyph
+    set -> uncheckedGlyph = value
   }
 
   /// Creates an unchecked, focusable toggle with default bracket glyphs.
@@ -54,7 +54,7 @@ public open class Toggle : Box {
   }
 
   /// Always true, so this toggle sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the toggle as the current glyph width plus the text width.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -84,6 +84,7 @@ public open class Toggle : Box {
   /// @returns Handled when the event was consumed, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
       activate()
       return EventResult.Handled
@@ -99,7 +100,7 @@ public open class Toggle : Box {
     return EventResult.Continue
   }
 
-  internal prop Owner RadioGroup? { get { return owner } }
+  internal prop Owner RadioGroup? -> owner
 
   internal func Attach(group RadioGroup) {
     owner = group

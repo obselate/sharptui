@@ -7,17 +7,24 @@ import System.Collections.Generic
 public struct TextRun {
   private var text string
   private var style Style
+  private var hyperlink string
 
   /// The run's text content.
   public prop Text string {
-    get { return text }
-    init { text = value }
+    get -> text
+    init -> text = value
   }
 
   /// The style applied to this run's text.
   public prop Style Style {
-    get { return style }
-    init { style = value }
+    get -> style
+    init -> style = value
+  }
+
+  /// The OSC 8 hyperlink target carried by this run, or an empty string for plain text.
+  public prop Hyperlink string {
+    get -> hyperlink ?? ""
+    init -> hyperlink = value ?? ""
   }
 
   /// Creates a text run with the given text and style.
@@ -26,6 +33,17 @@ public struct TextRun {
   public init(text string, style Style) {
     this.text = text
     this.style = style
+    hyperlink = ""
+  }
+
+  /// Creates a styled text run with a semantic hyperlink target.
+  /// @param text The run's text content.
+  /// @param style The style applied to this run's text.
+  /// @param hyperlink The OSC 8 target URI, or an empty string for plain text.
+  public init(text string, style Style, hyperlink string) {
+    this.text = text
+    this.style = style
+    this.hyperlink = hyperlink ?? ""
   }
 }
 
@@ -36,10 +54,10 @@ public class RichTextLine {
   private var widthCells int32
 
   /// The styled runs in this line.
-  public prop Runs IReadOnlyList[TextRun] { get { return runs } }
+  public prop Runs IReadOnlyList[TextRun] -> runs
 
   /// The total display width of the line.
-  public prop WidthCells int32 { get { return widthCells } }
+  public prop WidthCells int32 -> widthCells
 
   /// Creates a physical line and caches its run widths.
   /// @param runs The styled runs, without newline characters.
@@ -55,9 +73,7 @@ public class RichTextLine {
     }
   }
 
-  internal func RunWidth(index int32) int32 {
-    return runWidths[index]
-  }
+  internal func RunWidth(index int32) int32 -> runWidths[index]
 }
 
 /// Supplies immutable physical lines to a RichTextBlock on demand.
@@ -88,19 +104,31 @@ internal func fastTextWidth(text string) int32 {
 internal struct Span {
   private var text string
   private var ink Style
+  private var hyperlink string
 
   public prop Text string {
-    get { return text }
-    init { text = value }
+    get -> text
+    init -> text = value
   }
   public prop Ink Style {
-    get { return ink }
-    init { ink = value }
+    get -> ink
+    init -> ink = value
+  }
+  public prop Hyperlink string {
+    get -> hyperlink ?? ""
+    init -> hyperlink = value ?? ""
   }
 
   public init(text string, ink Style) {
     this.text = text
     this.ink = ink
+    hyperlink = ""
+  }
+
+  public init(text string, ink Style, hyperlink string) {
+    this.text = text
+    this.ink = ink
+    this.hyperlink = hyperlink ?? ""
   }
 }
 
@@ -111,10 +139,12 @@ internal func WrapTextRuns(runs List[TextRun], width int32) List[List[TextRun]] 
 
   let text = List[string]()
   let styles = List[Style]()
+  let links = List[string]()
   for run in runs {
     for cluster in Glyph.Elements(run.Text) {
       text.Add(cluster)
       styles.Add(run.Style)
+      links.Add(run.Hyperlink)
     }
   }
 
@@ -129,7 +159,7 @@ internal func WrapTextRuns(runs List[TextRun], width int32) List[List[TextRun]] 
     let w = Glyph.Of(cluster)
 
     if cluster == "\n" {
-      lines.Add(packRuns(text, styles, start, i))
+      lines.Add(packRuns(text, styles, links, start, i))
       i = i + 1
       start = i
       used = 0
@@ -145,14 +175,14 @@ internal func WrapTextRuns(runs List[TextRun], width int32) List[List[TextRun]] 
       continue
     }
     if wordWidth + w > width {
-      lines.Add(packRuns(text, styles, start, i))
+      lines.Add(packRuns(text, styles, links, start, i))
       start = i
       used = 0
       wordAt = i
       wordWidth = 0
     }
     if used + wordWidth + w > width {
-      lines.Add(packRuns(text, styles, start, wordAt))
+      lines.Add(packRuns(text, styles, links, start, wordAt))
       start = wordAt
       used = 0
     }
@@ -160,7 +190,7 @@ internal func WrapTextRuns(runs List[TextRun], width int32) List[List[TextRun]] 
     i = i + 1
   }
 
-  lines.Add(packRuns(text, styles, start, text.Count))
+  lines.Add(packRuns(text, styles, links, start, text.Count))
   return lines
 }
 
@@ -173,7 +203,8 @@ internal func TextRunWidth(line List[TextRun]) int32 {
   return total
 }
 
-internal func packRuns(text List[string], styles List[Style], from int32, to int32) List[TextRun] {
+internal func packRuns(text List[string], styles List[Style], links List[string],
+    from int32, to int32) List[TextRun] {
   let out = List[TextRun]()
   var end = to
   while end > from && text[end - 1] == " " {
@@ -183,17 +214,19 @@ internal func packRuns(text List[string], styles List[Style], from int32, to int
 
   var run = ""
   var runStyle = styles[from]
+  var runLink = links[from]
   var i = from
   while i < end {
-    if !stylesEqual(styles[i], runStyle) {
-      out.Add(TextRun(run, runStyle))
+    if !stylesEqual(styles[i], runStyle) || links[i] != runLink {
+      out.Add(TextRun(run, runStyle, runLink))
       run = ""
       runStyle = styles[i]
+      runLink = links[i]
     }
     run = run + text[i]
     i = i + 1
   }
-  if run != "" { out.Add(TextRun(run, runStyle)) }
+  if run != "" { out.Add(TextRun(run, runStyle, runLink)) }
   return out
 }
 
@@ -214,7 +247,7 @@ internal func paintRunLines(screen Screen, r CellRect, lines List[List[TextRun]]
     while part < line.Count {
       let run = line[part]
       let style = run.Style.MergedOver(ink)
-      screen.WriteClipped(r, x, row, run.Text, style)
+      screen.WriteClipped(r, x, row, TextRun(run.Text, style, run.Hyperlink))
       x = x + Glyph.WidthOf(run.Text)
       part = part + 1
     }

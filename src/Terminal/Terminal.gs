@@ -188,6 +188,14 @@ internal class Terminal {
     lock outputGate { writeText(text) }
   }
 
+  internal func CopyToClipboard(text string) {
+    lock outputGate {
+      if !entered { return }
+      let encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(text))
+      writeText(Ansi.Clipboard(encoded))
+    }
+  }
+
   /// Emits the screen's changed cells and returns how many cells were sent.
   /// Invalidates the screen so the next Present repaints fully if the write
   /// does not complete.

@@ -132,6 +132,10 @@ public class DataCheck {
       let links = ParseMarkdown("see [one][r] then ![pic](p.png) and [two](u)\n\n[r]: one", MarkdownTheme())
       failed = failed + Checks.Expect(flat(links[0].Runs) == "see one then pic and two (u)",
         "reference links, images and inline links each stop at their own end")
+      failed = failed + Checks.Expect(links[0].Runs[1].Hyperlink == "one"
+          && links[0].Runs[3].Hyperlink == "p.png"
+          && links[0].Runs[5].Hyperlink == "u",
+        "markdown links carry semantic hyperlink targets")
       failed = failed + Checks.Expect(flat(ParseMarkdown("[http://x](http://x) and [top](#top)", MarkdownTheme())[0].Runs)
         == "http://x and top", "a redundant target and an anchor stay hidden")
       failed = failed + Checks.Expect(flat(ParseMarkdown("[![build](i.svg)](ci)", MarkdownTheme())[0].Runs)
@@ -299,6 +303,15 @@ public class DataCheck {
       failed = failed + Checks.Expect(words.Caret.GraphemeIndex == 6, "and skips the run of spaces after it")
       wordsRoot.Handle(ctrlArrow(Key.Left))
       failed = failed + Checks.Expect(words.Caret.GraphemeIndex == 3, "ctrl left walks back to the word start")
+      let beforeWindowMove = words.Caret
+      let windowMove = wordsRoot.Handle(UiEvent{
+        Kind: UiEventKind.Key,
+        Key: Key.Right,
+        Modifiers: KeyModifiers.Super,
+      })
+      failed = failed + Checks.Expect(windowMove == EventResult.Continue && words.Caret.LineIndex == beforeWindowMove.LineIndex
+        && words.Caret.GraphemeIndex == beforeWindowMove.GraphemeIndex,
+        "TextArea leaves window-modified navigation unconsumed")
 
       let source = "one two three four five six seven eight nine ten"
       let soft = TextArea{ Wrapping: TextWrapping.Word }
@@ -353,6 +366,46 @@ public class DataCheck {
       multiRoot.Handle(keyEv(Key.Backspace))
       failed = failed + Checks.Expect(multi.Text == "one\nhree", "deleting a spanning selection joins lines")
 
+      let submitted = List[string]()
+      let compose = TextArea{
+        Text: "hello",
+        ShowLineNumbers: false,
+        EnterBehavior: TextAreaEnterBehavior.SubmitOnPlainEnter,
+        MaxLines: 2,
+        OnSubmit: (text string) -> submitted.Add(text),
+      }
+      let composeRoot = editorRoot(compose, 20, 4)
+      let composeScreen = Screen(20, 4)
+      composeRoot.Draw(composeScreen)
+      failed = failed + Checks.Expect(composeScreen.Probe(0, 0) == "h",
+        "TextArea can hide its line-number gutter")
+      let submitResult = composeRoot.Handle(keyEv(Key.Enter))
+      failed = failed + Checks.Expect(submitResult == EventResult.Handled
+        && submitted.Count == 1 && submitted[0] == "hello" && compose.Text == "hello",
+        "TextArea can submit plain Enter without editing its text")
+
+      composeRoot.Handle(UiEvent{
+        Kind: UiEventKind.Key,
+        Key: Key.Enter,
+        Modifiers: KeyModifiers.Shift,
+      })
+      failed = failed + Checks.Expect(compose.LineCount == 2 && compose.Text == "\nhello",
+        "TextArea can reserve modified Enter for a new line")
+      composeRoot.Handle(UiEvent{
+        Kind: UiEventKind.Key,
+        Key: Key.Enter,
+        Modifiers: KeyModifiers.Shift,
+      })
+      composeRoot.Handle(UiEvent{ Kind: UiEventKind.Paste, Text: "a\nb\nc" })
+      failed = failed + Checks.Expect(compose.LineCount == 2 && compose.Text == "\nhello",
+        "TextArea MaxLines rejects line-producing edits beyond its limit")
+
+      let firstClipboard = MemoryClipboard()
+      let secondClipboard = MemoryClipboard()
+      firstClipboard.SetText("first")
+      failed = failed + Checks.Expect(firstClipboard.GetText() == "first" && secondClipboard.GetText() == "",
+        "MemoryClipboard supports independent public clipboard instances")
+
       return failed
     }
 
@@ -364,9 +417,7 @@ public class DataCheck {
       }
     }
 
-    private func ctrlArrow(key Key) UiEvent {
-      return UiEvent{ Kind: UiEventKind.Key, Key: key, Modifiers: KeyModifiers.Ctrl }
-    }
+    private func ctrlArrow(key Key) UiEvent -> UiEvent{ Kind: UiEventKind.Key, Key: key, Modifiers: KeyModifiers.Ctrl }
 
     private func ctrl(text string) UiEvent {
       return UiEvent{

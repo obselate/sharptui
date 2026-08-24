@@ -2,6 +2,7 @@ type|SharpTui.Animation|class
 type|SharpTui.AnimationController|class
 type|SharpTui.AnimationHandle|class
 type|SharpTui.AnimationState|enum
+type|SharpTui.AnsiColor|enum
 type|SharpTui.App|class
 type|SharpTui.Badge|class
 type|SharpTui.Bind|class
@@ -17,6 +18,7 @@ type|SharpTui.CellPoint|struct
 type|SharpTui.CellRect|struct
 type|SharpTui.CellSize|struct
 type|SharpTui.CellText|class
+type|SharpTui.Clipboard|interface
 type|SharpTui.Color|struct
 type|SharpTui.Column|class
 type|SharpTui.ColumnWidth|struct
@@ -36,6 +38,7 @@ type|SharpTui.ListItem|class
 type|SharpTui.ListView|class
 type|SharpTui.MarkdownTheme|class
 type|SharpTui.MarkdownView|class
+type|SharpTui.MemoryClipboard|class
 type|SharpTui.MouseButton|enum
 type|SharpTui.MouseKind|enum
 type|SharpTui.MouseTracking|enum
@@ -66,8 +69,10 @@ type|SharpTui.TableColumn|class
 type|SharpTui.TableRow|class
 type|SharpTui.TableView|class
 type|SharpTui.Tabs|class
+type|SharpTui.TerminalColorMode|enum
 type|SharpTui.TestDriver|class
 type|SharpTui.TextArea|class
+type|SharpTui.TextAreaEnterBehavior|enum
 type|SharpTui.TextAttributes|enum
 type|SharpTui.TextBlock|class
 type|SharpTui.TextInput|class
@@ -82,4 +87,8 @@ type|SharpTui.TreeSource|interface
 type|SharpTui.TreeView|class
 type|SharpTui.UiEvent|struct
 type|SharpTui.UiEventKind|enum
+type|SharpTui.Viewport|class
+type|SharpTui.VirtualListItemState|enum
+type|SharpTui.VirtualListSource|interface
+type|SharpTui.VirtualListView|class
 type|SharpTui.Worker|class

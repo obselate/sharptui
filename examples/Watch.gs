@@ -232,9 +232,7 @@ func watchFresh(before List[string], now List[string]) List[bool] {
   return out
 }
 
-func watchMany(count int32, noun string) string {
-  return count.ToString() + " " + noun + (count == 1 ? "" : "s")
-}
+func watchMany(count int32, noun string) string -> count.ToString() + " " + noun + (count == 1 ? "" : "s")
 
 func watchCount(flags List[bool]) int32 {
   var count = 0

@@ -57,15 +57,22 @@ internal class Ansi {
 
     public func SetDefaultBackground(color string) string -> Esc + "]11;" + color + Esc + "\\"
 
+    public func Clipboard(encoded string) string -> Esc + "]52;c;" + encoded + char(7).ToString()
+
     /// Truecolor plus attributes. A negative channel means "terminal default".
     public func Style(fg int32, bg int32, attr int32) string {
       let sb = StringBuilder()
-      Ansi.AppendStyle(sb, fg, bg, attr)
+      Ansi.AppendStyle(sb, fg, bg, attr, TerminalColorMode.TrueColor)
       return sb.ToString()
     }
 
     /// Appends truecolor and attributes without creating intermediate strings.
     public func AppendStyle(sb StringBuilder, fg int32, bg int32, attr int32) {
+      AppendStyle(sb, fg, bg, attr, TerminalColorMode.TrueColor)
+    }
+
+    internal func AppendStyle(sb StringBuilder, fg int32, bg int32, attr int32,
+        colorMode TerminalColorMode) {
       sb.Append(Ansi.Reset)
       if (attr & int32(TextAttributes.Bold)) != 0 {
         sb.Append(Ansi.Csi)
@@ -91,8 +98,8 @@ internal class Ansi {
         sb.Append(Ansi.Csi)
         sb.Append("9m")
       }
-      if fg >= 0 { Ansi.appendColor(sb, "38;2;", fg) }
-      if bg >= 0 { Ansi.appendColor(sb, "48;2;", bg) }
+      appendColor(sb, fg, false, colorMode)
+      appendColor(sb, bg, true, colorMode)
     }
 
     internal func AppendSyncOn(output TerminalBuffer) {
@@ -110,6 +117,23 @@ internal class Ansi {
       output.AppendAscii("[0m")
     }
 
+    internal func AppendHyperlink(output TerminalBuffer, id int32, target string) {
+      output.AppendByte(uint8(27))
+      output.AppendAscii("]8;id=sharptui-")
+      output.AppendInt(id)
+      output.AppendByte(uint8(59))
+      output.AppendUtf8(target)
+      output.AppendByte(uint8(27))
+      output.AppendByte(uint8(92))
+    }
+
+    internal func AppendHyperlinkEnd(output TerminalBuffer) {
+      output.AppendByte(uint8(27))
+      output.AppendAscii("]8;;")
+      output.AppendByte(uint8(27))
+      output.AppendByte(uint8(92))
+    }
+
     internal func AppendMoveTo(output TerminalBuffer, x int32, y int32) {
       output.AppendByte(uint8(27))
       output.AppendByte(uint8(91))
@@ -120,6 +144,11 @@ internal class Ansi {
     }
 
     internal func AppendStyle(output TerminalBuffer, fg int32, bg int32, attr int32) {
+      AppendStyle(output, fg, bg, attr, TerminalColorMode.TrueColor)
+    }
+
+    internal func AppendStyle(output TerminalBuffer, fg int32, bg int32, attr int32,
+        colorMode TerminalColorMode) {
       Ansi.AppendReset(output)
       if (attr & int32(TextAttributes.Bold)) != 0 { appendSgr(output, "1m") }
       if (attr & int32(TextAttributes.Dim)) != 0 { appendSgr(output, "2m") }
@@ -127,11 +156,35 @@ internal class Ansi {
       if (attr & int32(TextAttributes.Underline)) != 0 { appendSgr(output, "4m") }
       if (attr & int32(TextAttributes.Reverse)) != 0 { appendSgr(output, "7m") }
       if (attr & int32(TextAttributes.Strikethrough)) != 0 { appendSgr(output, "9m") }
-      if fg >= 0 { appendColor(output, "38;2;", fg) }
-      if bg >= 0 { appendColor(output, "48;2;", bg) }
+      appendColor(output, fg, false, colorMode)
+      appendColor(output, bg, true, colorMode)
     }
 
-    private func appendColor(sb StringBuilder, prefix string, rgb int32) {
+    private func appendColor(sb StringBuilder, color int32, background bool,
+        colorMode TerminalColorMode) {
+      if color < 0 { return }
+      let indexed = color >= 0x01000000
+      var index = indexed ? TerminalColors.PaletteIndex(color) : -1
+      let mode = TerminalColors.Resolve(colorMode)
+      if mode == TerminalColorMode.Palette16 {
+        index = indexed ? TerminalColors.IndexedTo16(index) : TerminalColors.To16(color)
+        sb.Append(Ansi.Csi)
+        sb.Append(ansi16Code(index, background))
+        sb.Append("m")
+        return
+      }
+      if indexed || mode == TerminalColorMode.Palette256 {
+        if !indexed { index = TerminalColors.To256(color) }
+        sb.Append(Ansi.Csi)
+        sb.Append(background ? "48;5;" : "38;5;")
+        sb.Append(index)
+        sb.Append("m")
+        return
+      }
+      appendRgb(sb, background ? "48;2;" : "38;2;", color)
+    }
+
+    private func appendRgb(sb StringBuilder, prefix string, rgb int32) {
       let r = (rgb >> 16) & 255
       let g = (rgb >> 8) & 255
       let b = rgb & 255
@@ -151,7 +204,33 @@ internal class Ansi {
       output.AppendAscii(body)
     }
 
-    private func appendColor(output TerminalBuffer, prefix string, rgb int32) {
+    private func appendColor(output TerminalBuffer, color int32, background bool,
+        colorMode TerminalColorMode) {
+      if color < 0 { return }
+      let indexed = color >= 0x01000000
+      var index = indexed ? TerminalColors.PaletteIndex(color) : -1
+      let mode = TerminalColors.Resolve(colorMode)
+      if mode == TerminalColorMode.Palette16 {
+        index = indexed ? TerminalColors.IndexedTo16(index) : TerminalColors.To16(color)
+        output.AppendByte(uint8(27))
+        output.AppendByte(uint8(91))
+        output.AppendInt(ansi16Code(index, background))
+        output.AppendByte(uint8(109))
+        return
+      }
+      if indexed || mode == TerminalColorMode.Palette256 {
+        if !indexed { index = TerminalColors.To256(color) }
+        output.AppendByte(uint8(27))
+        output.AppendByte(uint8(91))
+        output.AppendAscii(background ? "48;5;" : "38;5;")
+        output.AppendInt(index)
+        output.AppendByte(uint8(109))
+        return
+      }
+      appendRgb(output, background ? "48;2;" : "38;2;", color)
+    }
+
+    private func appendRgb(output TerminalBuffer, prefix string, rgb int32) {
       let r = (rgb >> 16) & 255
       let g = (rgb >> 8) & 255
       let b = rgb & 255
@@ -164,6 +243,11 @@ internal class Ansi {
       output.AppendByte(uint8(59))
       output.AppendInt(b)
       output.AppendByte(uint8(109))
+    }
+
+    private func ansi16Code(index int32, background bool) int32 {
+      if index < 8 { return (background ? 40 : 30) + index }
+      return (background ? 100 : 90) + index - 8
     }
   }
 }

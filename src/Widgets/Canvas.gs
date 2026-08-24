@@ -34,15 +34,15 @@ public class CanvasSurface {
   }
 
   /// The number of terminal cells across the surface.
-  public prop WidthCells int32 { get { return widthCells } }
+  public prop WidthCells int32 -> widthCells
   /// The number of terminal rows in the surface.
-  public prop HeightRows int32 { get { return heightRows } }
+  public prop HeightRows int32 -> heightRows
   /// The packing mode used by the surface.
-  public prop Mode CanvasMode { get { return mode } }
+  public prop Mode CanvasMode -> mode
   /// The horizontal subcell count.
-  public prop SubcellWidth int32 { get { return widthCells * modeWidth() } }
+  public prop SubcellWidth int32 -> widthCells * modeWidth()
   /// The vertical subcell count.
-  public prop SubcellHeight int32 { get { return heightRows * modeHeight() } }
+  public prop SubcellHeight int32 -> heightRows * modeHeight()
 
   /// Creates a surface with the given terminal-cell dimensions and packing mode.
   /// @param width The number of terminal cells across the surface.
@@ -308,9 +308,7 @@ public class CanvasSurface {
     }
   }
 
-  private func modeWidth() int32 {
-    return mode == CanvasMode.Braille || mode == CanvasMode.Quadrant ? 2 : 1
-  }
+  private func modeWidth() int32 -> mode == CanvasMode.Braille || mode == CanvasMode.Quadrant ? 2 : 1
 
   private func modeHeight() int32 {
     if mode == CanvasMode.Braille { return 4 }
@@ -362,7 +360,7 @@ public class CanvasSurface {
     return "█"
   }
 
-  private func abs(value int32) int32 { return value < 0 ? -value : value }
+  private func abs(value int32) int32 -> value < 0 ? -value : value
 }
 
 /// Displays a retained CanvasSurface as ordinary terminal cells.
@@ -371,8 +369,8 @@ public open class CanvasView : Box {
 
   /// The retained surface painted by this view.
   public prop Surface CanvasSurface {
-    get { return surface }
-    set { surface = value }
+    get -> surface
+    set -> surface = value
   }
 
   /// Creates a one-cell cell-mode canvas.
@@ -395,7 +393,7 @@ public open class CanvasView : Box {
   }
 
   /// Always true, so an auto-sized canvas measures from its surface.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Reports the surface's terminal-cell dimensions.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {

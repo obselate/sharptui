@@ -118,9 +118,7 @@ internal class WindowsConsoleNative {
 
 internal class WindowsConsoleModePolicy {
   shared {
-    internal func HasReaderWake(handle IntPtr) bool {
-      return handle != IntPtr.Zero
-    }
+    internal func HasReaderWake(handle IntPtr) bool -> handle != IntPtr.Zero
 
     internal func Input(original uint32) uint32 {
       let clear = WindowsConsoleNative.ProcessedInput | WindowsConsoleNative.LineInput
@@ -129,9 +127,7 @@ internal class WindowsConsoleModePolicy {
         | WindowsConsoleNative.WindowInput | WindowsConsoleNative.ExtendedFlags
     }
 
-    internal func Output(original uint32) uint32 {
-      return original | WindowsConsoleNative.VirtualTerminalProcessing
-    }
+    internal func Output(original uint32) uint32 -> original | WindowsConsoleNative.VirtualTerminalProcessing
   }
 }
 
@@ -243,21 +239,13 @@ internal class WindowsTerminalHost : TerminalHost {
     restoreModes()
   }
 
-  public func Columns() int32 {
-    return columnsOf(currentSize())
-  }
+  public func Columns() int32 -> columnsOf(currentSize())
 
-  public func Rows() int32 {
-    return rowsOf(currentSize())
-  }
+  public func Rows() int32 -> rowsOf(currentSize())
 
-  public func ConsumeResize() bool {
-    return Interlocked.Exchange(ref resized, 0) != 0
-  }
+  public func ConsumeResize() bool -> Interlocked.Exchange(ref resized, 0) != 0
 
-  public func ConsumeExit() bool {
-    return Interlocked.Exchange(ref exitRequested, 0) != 0
-  }
+  public func ConsumeExit() bool -> Interlocked.Exchange(ref exitRequested, 0) != 0
 
   public func WakeReader() {
     if readerWakeHandle != IntPtr.Zero { WindowsConsoleNative.SetEvent(readerWakeHandle) }
@@ -293,9 +281,7 @@ internal class WindowsTerminalHost : TerminalHost {
     return written
   }
 
-  public func Output() Stream {
-    return output
-  }
+  public func Output() Stream -> output
 
   private func currentSize() WindowsCoord {
     var info = WindowsConsoleBufferInfo{}
@@ -306,13 +292,9 @@ internal class WindowsTerminalHost : TerminalHost {
     }
   }
 
-  private func columnsOf(size WindowsCoord) int32 {
-    return size.X > int16(0) ? int32(size.X) : 80
-  }
+  private func columnsOf(size WindowsCoord) int32 -> size.X > int16(0) ? int32(size.X) : 80
 
-  private func rowsOf(size WindowsCoord) int32 {
-    return size.Y > int16(0) ? int32(size.Y) : 24
-  }
+  private func rowsOf(size WindowsCoord) int32 -> size.Y > int16(0) ? int32(size.Y) : 24
 
   private func onCancel(sender object, args ConsoleCancelEventArgs) {
     args.Cancel = true

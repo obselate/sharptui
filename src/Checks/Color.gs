@@ -19,10 +19,15 @@ internal class ColorCheck {
         "Color.Inherit is distinct from the terminal default")
       failed = failed + Checks.Expect(Color.TerminalDefault.IsTerminalDefault && !Color.TerminalDefault.IsInherited,
         "Color.TerminalDefault is a named terminal color")
+      failed = failed + Checks.Expect(Color.Indexed(42).IsIndexed && Color.Indexed(42).IndexedValue == 42
+        && Color.Ansi(AnsiColor.BrightGreen).IndexedValue == 10,
+        "Color preserves indexed and named ANSI palette colors")
       failed = failed + Checks.Expect(rejectsRgb("6CBC5") && rejectsRgb("6CBC5FG") && rejectsRgb("6CBC5X"),
         "Color.Rgb rejects malformed RGB hex")
       failed = failed + Checks.Expect(rejectsRgbChannels(256, 0, 0),
         "Color.Rgb rejects channels outside the byte range")
+      failed = failed + Checks.Expect(rejectsIndex(256),
+        "Color.Indexed rejects palette indexes outside the byte range")
 
       let style = Style{
         Foreground: green,
@@ -44,6 +49,18 @@ internal class ColorCheck {
       direct.Write(0, 0, "x", Style{ Foreground: Color.Inherit, Background: Color.Inherit })
       failed = failed + Checks.Expect(direct.Flush().Contains("[38;2;108;188;95m"),
         "Screen resolves direct inherited colors before serialization")
+
+      let palette = Screen(2, 1)
+      palette.ColorMode = TerminalColorMode.Palette256
+      palette.Write(0, 0, "x", Style{ Foreground: Color.Indexed(42) })
+      failed = failed + Checks.Expect(palette.Flush().Contains("[38;5;42m"),
+        "Palette256 emits indexed SGR colors")
+
+      let lowColor = Screen(2, 1)
+      lowColor.ColorMode = TerminalColorMode.Palette16
+      lowColor.Write(0, 0, "x", Style{ Foreground: Color.Ansi(AnsiColor.BrightGreen) })
+      failed = failed + Checks.Expect(lowColor.Flush().Contains("[92m"),
+        "Palette16 emits base ANSI SGR colors")
 
       let child = Label{
         Text: "x",
@@ -79,6 +96,15 @@ private func rejectsRgb(value string) bool {
 private func rejectsRgbChannels(red int32, green int32, blue int32) bool {
   try {
     Color.Rgb(red, green, blue)
+    return false
+  } catch (error ArgumentOutOfRangeException) {
+    return true
+  }
+}
+
+private func rejectsIndex(index int32) bool {
+  try {
+    Color.Indexed(index)
     return false
   } catch (error ArgumentOutOfRangeException) {
     return true

@@ -53,17 +53,11 @@ internal class TerminalNegotiation {
     state = KeyboardProtocolState.Unsupported
   }
 
-  internal func IsQuerying() bool {
-    return state == KeyboardProtocolState.Querying
-  }
+  internal func IsQuerying() bool -> state == KeyboardProtocolState.Querying
 
-  internal func IsSupported() bool {
-    return state == KeyboardProtocolState.Supported
-  }
+  internal func IsSupported() bool -> state == KeyboardProtocolState.Supported
 
-  internal func HasPendingPrefix() bool {
-    return state != KeyboardProtocolState.Querying && backgroundDone && heldCount > 0
-  }
+  internal func HasPendingPrefix() bool -> state != KeyboardProtocolState.Querying && backgroundDone && heldCount > 0
 
   internal func FlushPending(input Input) {
     if !HasPendingPrefix() { return }

@@ -92,14 +92,14 @@
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#choose-the-view">Choose the view</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#lists">Lists</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#tables">Tables</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#trees">Trees</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#tabs-and-status">Tabs and status</a></td><td>5-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#choose-the-view">Choose the view</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#lists">Lists</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#variable-height-lists">Variable-height lists</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#tables">Tables</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#trees">Trees</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#tabs-and-status">Tabs and status</a></td><td>6-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
       <h3 class="block-title" id="register-title">Illustration and listing register</h3>
       <table class="contents-table register-table" aria-label="Illustration and listing register">
   <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
-  <tbody><tr><td>Figure</td><td>0-1</td><td>Collection view operating cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Lists</td><td>2-1</td></tr><tr><td>Listing</td><td>3-1</td><td>Tables</td><td>3-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Trees</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Tabs and status</td><td>5-1</td></tr></tbody>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Collection view operating cycle</td><td>Cover</td></tr><tr><td>Listing</td><td>2-1</td><td>Lists</td><td>2-1</td></tr><tr><td>Listing</td><td>4-1</td><td>Tables</td><td>4-1</td></tr><tr><td>Listing</td><td>5-1</td><td>Trees</td><td>5-1</td></tr><tr><td>Listing</td><td>6-1</td><td>Tabs and status</td><td>6-1</td></tr></tbody>
 </table>
     </section>
     <div class="instruction">
@@ -143,6 +143,11 @@
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistitem"><code>ListItem</code></a> values or a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeyedsource2"><code>KeyedSource[ListItem, string]</code></a>.</td>
 </tr>
 <tr>
+<td>Variable-height virtual items</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuivirtuallistview"><code>VirtualListView</code></a></td>
+<td>A <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuivirtuallistsource"><code>VirtualListSource</code></a> that measures and renders only visible items.</td>
+</tr>
+<tr>
 <td>Columns with a header</td>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView</code></a></td>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitablerow"><code>TableRow</code></a> values or a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuikeyedsource2"><code>KeyedSource[TableRow, string]</code></a>.</td>
@@ -160,7 +165,7 @@
 <tr>
 <td>Persistent context</td>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistatusbar"><code>StatusBar</code></a></td>
-<td>Left, center, and right text.</td>
+<td>Left, center, and right text or styled runs.</td>
 </tr>
 </tbody>
 </table></div>
@@ -211,7 +216,7 @@
   <span>2-1</span>
 </footer>
 </section>
-<section class="sheet" aria-labelledby="tables">
+<section class="sheet" aria-labelledby="variable-height-lists">
   <header class="running-head">
   <span>Collections</span>
   <span>STUI-COL / Revision A</span>
@@ -221,12 +226,36 @@
       <div class="chapter-number">3</div>
       <div>
         <p class="chapter-label">Chapter 3</p>
+        <h2 id="variable-height-lists">Variable-height lists</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuivirtuallistview"><code>VirtualListView</code></a> when one item can occupy multiple terminal rows. Its source provides a stable key, selection eligibility, a positive <code>HeightAt(index, width)</code>, and <code>Render</code>. The view caches item offsets for the current width and renders only items that intersect the viewport.</p>
+<p><code>Render</code> receives the full item bounds plus <code>clipBounds</code>. Draw only inside <code>clipBounds</code>. Call <code>Refresh()</code> after a same-count height or selection-eligibility change. A count or width change rebuilds the cached offsets automatically.</p>
+<p><code>FirstVisibleRowOffset</code> is a content-row offset, not an item index. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiviewport"><code>Viewport.ClampOffset</code></a>, <code>BringIntoView</code>, and <code>BringRangeIntoView</code> expose the same general clamp math for custom uniformly indexed or row-based controls.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Variable-height lists</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="tables">
+  <header class="running-head">
+  <span>Collections</span>
+  <span>STUI-COL / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
         <h2 id="tables">Tables</h2>
       </div>
     </div>
     <div class="chapter-copy">
       <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView</code></a> separates columns, rows, and cells. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumnwidth"><code>ColumnWidth.Cells(count)</code></a> fixes a width. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumnwidth"><code>ColumnWidth.Share(weight)</code></a> divides remaining width after fixed columns and gaps.</p>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Tables</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>table<span class="w"> </span>=<span class="w"> </span><span class="nc">TableView</span>{
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Tables</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>table<span class="w"> </span>=<span class="w"> </span><span class="nc">TableView</span>{
 <span class="w">  </span><span class="nc">Columns</span>:<span class="w"> </span>{
 <span class="w">    </span><span class="nc">TableColumn</span>{<span class="w"> </span><span class="nc">Header</span>:<span class="w"> </span><span class="s2">"NAME"</span>,<span class="w"> </span><span class="nc">ColumnWidth</span>:<span class="w"> </span><span class="nc">ColumnWidth</span>.<span class="nf">Share</span>(<span class="m">2</span>)<span class="w"> </span>},
 <span class="w">    </span><span class="nc">TableColumn</span>{<span class="w"> </span><span class="nc">Header</span>:<span class="w"> </span><span class="s2">"STATE"</span>,<span class="w"> </span><span class="nc">ColumnWidth</span>:<span class="w"> </span><span class="nc">ColumnWidth</span>.<span class="nf">Cells</span>(<span class="m">8</span>)<span class="w"> </span>},
@@ -274,7 +303,7 @@
   </div>
   <footer class="folio">
   <span>Tables</span>
-  <span>3-1</span>
+  <span>4-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="trees">
@@ -284,15 +313,15 @@
 </header>
   <div class="page-body">
     <div class="chapter-mark">
-      <div class="chapter-number">4</div>
+      <div class="chapter-number">5</div>
       <div>
-        <p class="chapter-label">Chapter 4</p>
+        <p class="chapter-label">Chapter 5</p>
         <h2 id="trees">Trees</h2>
       </div>
     </div>
     <div class="chapter-copy">
       <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitreeview"><code>TreeView</code></a> flattens expanded rows for every render. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitreenode"><code>TreeNode.Id</code></a> is stable selection identity. <code>Text</code> is displayed. <code>Value</code> is unrestricted application data, such as a path. <code>IsLeaf</code> reports whether the node has children.</p>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Trees</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>tree<span class="w"> </span>=<span class="w"> </span><span class="nc">TreeView</span>{
+<figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Trees</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>tree<span class="w"> </span>=<span class="w"> </span><span class="nc">TreeView</span>{
 <span class="w">  </span><span class="nc">Roots</span>:<span class="w"> </span>{
 <span class="w">    </span><span class="nc">TreeNode</span>{
 <span class="w">      </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"src"</span>,
@@ -313,7 +342,7 @@ tree.<span class="nf">Refresh</span>()
   </div>
   <footer class="folio">
   <span>Trees</span>
-  <span>4-1</span>
+  <span>5-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="tabs-and-status">
@@ -323,14 +352,14 @@ tree.<span class="nf">Refresh</span>()
 </header>
   <div class="page-body">
     <div class="chapter-mark">
-      <div class="chapter-number">5</div>
+      <div class="chapter-number">6</div>
       <div>
-        <p class="chapter-label">Chapter 5</p>
+        <p class="chapter-label">Chapter 6</p>
         <h2 id="tabs-and-status">Tabs and status</h2>
       </div>
     </div>
     <div class="chapter-copy">
-      <figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Tabs and status</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>tabs<span class="w"> </span>=<span class="w"> </span><span class="nc">Tabs</span>{<span class="w"> </span><span class="nc">Titles</span>:<span class="w"> </span>{<span class="w"> </span><span class="s2">"FILES"</span>,<span class="w"> </span><span class="s2">"SEARCH"</span>,<span class="w"> </span><span class="s2">"LOG"</span><span class="w"> </span>}<span class="w"> </span>}
+      <figure class="listing"><figcaption class="listing-head"><span>Listing 6-1</span><span>Tabs and status</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>tabs<span class="w"> </span>=<span class="w"> </span><span class="nc">Tabs</span>{<span class="w"> </span><span class="nc">Titles</span>:<span class="w"> </span>{<span class="w"> </span><span class="s2">"FILES"</span>,<span class="w"> </span><span class="s2">"SEARCH"</span>,<span class="w"> </span><span class="s2">"LOG"</span><span class="w"> </span>}<span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">StatusBar</span>{
 <span class="w">  </span><span class="nc">LeftText</span>:<span class="w"> </span><span class="s2">"project"</span>,
 <span class="w">  </span><span class="nc">CenterText</span>:<span class="w"> </span><span class="s2">"ready"</span>,
@@ -341,7 +370,7 @@ tree.<span class="nf">Refresh</span>()
 <span class="w">  </span>status.<span class="nc">CenterText</span><span class="w"> </span>=<span class="w"> </span>tabs.<span class="nc">Titles</span>[tabs.<span class="nc">SelectedIndex</span>]
 }
 </code></pre></figure>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitabs"><code>Tabs.Refresh()</code></a> re-resolves selection after direct title-list mutation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistatusbar"><code>StatusBar</code></a> has no hidden state: set <code>LeftText</code>, <code>CenterText</code>, and <code>RightText</code> to the current facts.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitabs"><code>Tabs.Refresh()</code></a> re-resolves selection after direct title-list mutation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuistatusbar"><code>StatusBar</code></a> has no hidden state. Set <code>LeftText</code>, <code>CenterText</code>, and <code>RightText</code>, or use <code>LeftRuns</code>, <code>CenterRuns</code>, and <code>RightRuns</code> for styled and linked segments. A non-empty run list takes precedence over its plain-text segment.</p>
 <h3 id="collection-rules">Collection rules</h3>
 <ul>
 <li>Don't use list index as a durable identity. Use <code>Id</code> for list, table, and tree restoration.</li>
@@ -350,12 +379,12 @@ tree.<span class="nf">Refresh</span>()
 <li>Call <code>Refresh()</code> only where the widget documents explicit cache invalidation. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistview"><code>ListView</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView</code></a> reconcile live data automatically.</li>
 <li>Don't let a selected row be color-only. Keep <code>SelectionMarker</code>, hierarchy markers, or focus state visible.</li>
 </ul>
-<p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistitem">list types</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitablecell">table types</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitreenode">tree types</a>.</p>
+<p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuilistitem">list types</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuivirtuallistview">variable lists</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitablecell">table types</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitreenode">tree types</a>.</p>
     </div>
   </div>
   <footer class="folio">
   <span>Tabs and status</span>
-  <span>5-1</span>
+  <span>6-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="appendix-title">

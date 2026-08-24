@@ -10,14 +10,14 @@ public class TestDriver {
   private var nowMilliseconds int64
 
   /// The application used for routing, posted work, and animations.
-  public prop App App { get { return app } }
+  public prop App App -> app
   /// The test screen used for drawing and frame capture.
-  public prop Screen Screen { get { return screen } }
+  public prop Screen Screen -> screen
   /// The current caller-controlled absolute time in milliseconds.
-  public prop NowMilliseconds int64 { get { return nowMilliseconds } }
+  public prop NowMilliseconds int64 -> nowMilliseconds
   /// The focused descendant in the driven tree.
   public prop FocusedElement Box? {
-    get { return root.FocusedElement }
+    get -> root.FocusedElement
   }
 
   /// Creates a driver for a retained Box tree.
@@ -76,4 +76,7 @@ public class TestDriver {
     root.Draw(screen)
     return screen.Flush()
   }
+  /// Returns the complete staged screen as rows separated by line feeds.
+  /// @returns The full cell-grid text from the most recent draw.
+  public func FrameText() string -> screen.FrameText()
 }

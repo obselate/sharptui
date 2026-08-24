@@ -1,6 +1,8 @@
 bin/
 obj/
 __pycache__/
+AGENTS.md
+gslint.json
 
 # internal working data, not part of the public repo
 docs/superpowers/

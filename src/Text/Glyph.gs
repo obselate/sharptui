@@ -12,9 +12,7 @@ internal struct GlyphElements {
     Source = source
   }
 
-  public func GetEnumerator() GlyphEnumerator {
-    return GlyphEnumerator(Source)
-  }
+  public func GetEnumerator() GlyphEnumerator -> GlyphEnumerator(Source)
 }
 
 internal struct GlyphEnumerator {
@@ -58,14 +56,10 @@ internal struct GlyphEnumerator {
 
 internal class Glyph {
   shared {
-    internal func Clusters(text string) List[string] {
-      return CellText.Graphemes(text)
-    }
+    internal func Clusters(text string) List[string] -> CellText.Graphemes(text)
 
     /// Scans grapheme clusters without allocating a list.
-    internal func Elements(text string) GlyphElements {
-      return GlyphElements(text)
-    }
+    internal func Elements(text string) GlyphElements -> GlyphElements(text)
 
     /// Display width of one cluster, in terminal cells.
     public func Of(cluster string) int32 {

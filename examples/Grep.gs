@@ -126,9 +126,7 @@ open class Hunt : Column {
 
   /// Typing is wherever focus is: tab can land in an input box without any
   /// shortcut, so plain keys must never fire while one holds focus.
-  private func typing() bool {
-    return entry.IsFocused || glob.IsFocused
-  }
+  private func typing() bool -> entry.IsFocused || glob.IsFocused
 
   /// .NET regex approximating the live pattern, for cosmetic highlighting only.
   private func buildMatcher() Regex? {

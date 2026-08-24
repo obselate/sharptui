@@ -18,7 +18,7 @@ public open class TextBlock : Box {
 
   /// The text content rendered by this block. Setting it invalidates the wrap cache.
   public prop Text string {
-    get { return text }
+    get -> text
     set {
       text = value
       cachedWidth = -1
@@ -27,7 +27,7 @@ public open class TextBlock : Box {
 
   /// The wrapping mode applied to Text. Setting it invalidates the wrap cache.
   public prop Wrapping TextWrapping {
-    get { return wrapping }
+    get -> wrapping
     set {
       wrapping = value
       cachedWidth = -1
@@ -36,8 +36,8 @@ public open class TextBlock : Box {
 
   /// The index of the topmost visible wrapped line. Negative values clamp to zero.
   public prop FirstVisibleLine int32 {
-    get { return firstVisibleLine }
-    private set { firstVisibleLine = value < 0 ? 0 : value }
+    get -> firstVisibleLine
+    private set -> firstVisibleLine = value < 0 ? 0 : value
   }
 
   /// Creates an empty, focusable text block with word wrapping enabled.
@@ -53,7 +53,7 @@ public open class TextBlock : Box {
   }
 
   /// TextBlock always sizes itself via MeasureIntrinsic rather than Width and Height.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the block by wrapping Text to the available width and returning the widest line and the line count.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -97,21 +97,18 @@ public open class TextBlock : Box {
 
   /// Returns the total number of wrapped lines.
   /// @returns The total number of wrapped lines.
-  protected override func ScrollExtentRows() int32 {
-    return cache.Count
-  }
+  protected override func ScrollExtentRows() int32 -> cache.Count
 
   /// Returns FirstVisibleLine as the current scroll offset.
   /// @returns The index of the topmost visible wrapped line.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleLine
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleLine
 
   /// Scrolls the viewport on mouse wheel events within the content bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
     if ev.Kind == UiEventKind.Mouse && bounds.Contains(ev.Position) {
@@ -136,8 +133,6 @@ public open class TextBlock : Box {
     return true
   }
 
-  private func clamp(s int32, count int32, height int32) int32 {
-    return Selection.ClampScroll(count, s, height)
-  }
+  private func clamp(s int32, count int32, height int32) int32 -> Selection.ClampScroll(count, s, height)
 
 }

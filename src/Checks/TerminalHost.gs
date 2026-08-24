@@ -399,16 +399,16 @@ internal class TerminalHostFake : TerminalHost {
     ReadProcessed = AutoResetEvent(false)
   }
 
-  public func IsTty() bool { return true }
+  public func IsTty() bool -> true
   public func Enter() bool {
     Entered = Entered + 1
     return true
   }
   public func Restore() { Restored = Restored + 1 }
-  public func Columns() int32 { return 80 }
-  public func Rows() int32 { return 24 }
-  public func ConsumeResize() bool { return false }
-  public func ConsumeExit() bool { return false }
+  public func Columns() int32 -> 80
+  public func Rows() int32 -> 24
+  public func ConsumeResize() bool -> false
+  public func ConsumeExit() bool -> false
   public func WakeReader() {
     Woken = Woken + 1
     readerWake.Set()
@@ -430,11 +430,9 @@ internal class TerminalHostFake : TerminalHost {
     readerWake.WaitOne(timeoutMilliseconds)
     return 0
   }
-  public func Output() Stream { return output }
+  public func Output() Stream -> output
 
-  internal func OutputText() string {
-    return Encoding.UTF8.GetString(output.ToArray())
-  }
+  internal func OutputText() string -> Encoding.UTF8.GetString(output.ToArray())
 }
 
 /// The Windows reader hands every record to this, so cover it on every platform.

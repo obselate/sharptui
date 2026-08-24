@@ -2,6 +2,7 @@ SharpTui.Animation
 SharpTui.AnimationController
 SharpTui.AnimationHandle
 SharpTui.AnimationState
+SharpTui.AnsiColor
 SharpTui.App
 SharpTui.Badge
 SharpTui.Bind
@@ -17,6 +18,7 @@ SharpTui.CellPoint
 SharpTui.CellRect
 SharpTui.CellSize
 SharpTui.CellText
+SharpTui.Clipboard
 SharpTui.Color
 SharpTui.Column
 SharpTui.ColumnWidth
@@ -36,6 +38,7 @@ SharpTui.ListItem
 SharpTui.ListView
 SharpTui.MarkdownTheme
 SharpTui.MarkdownView
+SharpTui.MemoryClipboard
 SharpTui.MouseButton
 SharpTui.MouseKind
 SharpTui.MouseTracking
@@ -66,8 +69,10 @@ SharpTui.TableColumn
 SharpTui.TableRow
 SharpTui.TableView
 SharpTui.Tabs
+SharpTui.TerminalColorMode
 SharpTui.TestDriver
 SharpTui.TextArea
+SharpTui.TextAreaEnterBehavior
 SharpTui.TextAttributes
 SharpTui.TextBlock
 SharpTui.TextInput
@@ -82,4 +87,8 @@ SharpTui.TreeSource
 SharpTui.TreeView
 SharpTui.UiEvent
 SharpTui.UiEventKind
+SharpTui.Viewport
+SharpTui.VirtualListItemState
+SharpTui.VirtualListSource
+SharpTui.VirtualListView
 SharpTui.Worker

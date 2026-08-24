@@ -11,7 +11,7 @@ public open class Overlay : Box {
   /// The overlay's single child. Setting replaces any existing content; getting returns nil when
   /// the overlay is empty.
   public prop Content Box? {
-    get { return Children.Count == 1 ? Children[0] : nil }
+    get -> Children.Count == 1 ? Children[0] : nil
     set {
       Children.Clear()
       if value != nil {
@@ -23,20 +23,20 @@ public open class Overlay : Box {
 
   /// Whether Render dims everything outside the overlay's bounds while it is open. Defaults to false.
   public prop DimBackground bool {
-    get { return dimBackground }
-    set { dimBackground = value }
+    get -> dimBackground
+    set -> dimBackground = value
   }
 
   /// The descendant offered Enter after focused content declines it.
   public prop DefaultAction Box? {
-    get { return defaultAction }
-    set { defaultAction = value }
+    get -> defaultAction
+    set -> defaultAction = value
   }
 
   /// The descendant offered Enter after Escape reaches the scope.
   public prop CancelAction Box? {
-    get { return cancelAction }
-    set { cancelAction = value }
+    get -> cancelAction
+    set -> cancelAction = value
   }
 
   /// Creates a centered overlay with background dimming off and no default or cancel action set.
@@ -58,9 +58,7 @@ public open class Overlay : Box {
     if DimBackground { screen.DimOutside(Bounds) }
   }
 
-  internal override func IsInputScope() bool {
-    return IsVisible
-  }
+  internal override func IsInputScope() bool -> IsVisible
 
   internal override func PrepareInputScope() {
     activate()
@@ -80,6 +78,7 @@ public open class Overlay : Box {
   internal override func ScopeFallback(ev UiEvent) EventResult {
     if ev.Kind != UiEventKind.Key { return EventResult.Continue }
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Key == Key.Enter { return invoke(DefaultAction) }
     if ev.Key == Key.Escape { return invoke(CancelAction) }
     return EventResult.Continue

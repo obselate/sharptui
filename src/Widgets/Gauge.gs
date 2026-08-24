@@ -29,7 +29,7 @@ public open class ProgressBar : Box {
   }
 
   /// Always true, so this progress bar sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures an auto width as the cell width of OverlayText, at least one cell.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -78,15 +78,15 @@ public struct NumericRange {
   private var maximum float64
 
   /// True when the range is computed automatically from the plotted values rather than fixed.
-  public prop IsAuto bool { get { return kind == NumericRangeKind.Auto } }
+  public prop IsAuto bool -> kind == NumericRangeKind.Auto
   /// The fixed lower bound; meaningless when IsAuto is true.
-  public prop Minimum float64 { get { return minimum } }
+  public prop Minimum float64 -> minimum
   /// The fixed upper bound; meaningless when IsAuto is true.
-  public prop Maximum float64 { get { return maximum } }
+  public prop Maximum float64 -> maximum
 
   shared {
     /// A range that is recomputed from the minimum and maximum of the plotted values on each render.
-    public prop Auto NumericRange { get { return NumericRange{} } }
+    public prop Auto NumericRange -> NumericRange{}
 
     /// Creates a fixed range. Throws when either bound is NaN or infinite, or when maximum does not exceed minimum.
     /// @param minimum The fixed lower bound.
@@ -110,8 +110,8 @@ public open class Sparkline : Box {
   public prop Values List[float64] { get; set; }
   /// The scale used to map values to glyph levels.
   public prop ValueRange NumericRange {
-    get { return valueRange }
-    set { valueRange = value }
+    get -> valueRange
+    set -> valueRange = value
   }
 
   private var levels List[string]
@@ -132,7 +132,7 @@ public open class Sparkline : Box {
   }
 
   /// Always true, so this sparkline sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures an intrinsic width of one cell per value.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -189,8 +189,6 @@ public open class Sparkline : Box {
     return levels[idx]
   }
 
-  private func finite(value float64) bool {
-    return !Double.IsNaN(value) && !Double.IsInfinity(value)
-  }
+  private func finite(value float64) bool -> !Double.IsNaN(value) && !Double.IsInfinity(value)
 
 }

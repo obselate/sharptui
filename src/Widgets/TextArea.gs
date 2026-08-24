@@ -5,6 +5,9 @@ import System.Collections.Generic
 import System.Collections.Immutable
 import System.Globalization
 
+/// Controls how TextArea handles Enter key presses.
+public enum TextAreaEnterBehavior { NewLine; Submit; SubmitOnPlainEnter }
+
 /// A multi-line plain text editor, cluster indexed like Entry.
 public open class TextArea : Box {
   private var lines ImmutableList[string]
@@ -18,40 +21,45 @@ public open class TextArea : Box {
   private var anchorCol int32
   private var marked bool
   private var gutterStyle Style
+  private var showLineNumbers bool
   private var selectedTextStyle Style
+  private var enterBehavior TextAreaEnterBehavior
+  private var maxLines int32
+  private var clipboard Clipboard
+  private var onSubmit Action[string]?
 
   /// The full text content, joined with '\n'. Setting it replaces all lines, resets the caret, and clears undo history.
   public prop Text string {
-    get { return textOfLines() }
-    set { loadText(value) }
+    get -> textOfLines()
+    set -> loadText(value)
   }
 
   /// The caret position as a line and grapheme index. Setting it moves the caret and scrolls it into view.
   public prop Caret TextPosition {
-    get { return position(row, col) }
-    set { moveTo(value.LineIndex, value.GraphemeIndex, ContentBounds.HeightRows) }
+    get -> position(row, col)
+    set -> moveTo(value.LineIndex, value.GraphemeIndex, ContentBounds.HeightRows)
   }
 
   /// The index of the topmost visible visual row. Negative values clamp to zero.
   public prop FirstVisibleRowIndex int32 {
-    get { return firstVisibleRowIndex }
-    set { firstVisibleRowIndex = value < 0 ? 0 : value }
+    get -> firstVisibleRowIndex
+    set -> firstVisibleRowIndex = value < 0 ? 0 : value
   }
 
   /// The horizontal scroll offset in cells, used when Wrapping is None. Negative values clamp to zero.
   public prop HorizontalCellOffset int32 {
-    get { return horizontalCellOffset }
-    set { horizontalCellOffset = value < 0 ? 0 : value }
+    get -> horizontalCellOffset
+    set -> horizontalCellOffset = value < 0 ? 0 : value
   }
 
   /// The line wrapping mode; None preserves lines and pans horizontally, Word wraps at the content width.
   public prop Wrapping TextWrapping {
-    get { return wrapping }
-    set { wrapping = value }
+    get -> wrapping
+    set -> wrapping = value
   }
 
   /// True once the text has changed since it was last loaded via the Text setter.
-  public prop IsModified bool { get { return isModified } }
+  public prop IsModified bool -> isModified
 
   /// The current selection range, or nil when nothing is marked.
   public prop Selection TextSelection? {
@@ -62,20 +70,59 @@ public open class TextArea : Box {
   }
 
   /// True when a selection is currently marked.
-  public prop HasSelection bool { get { return marked } }
+  public prop HasSelection bool -> marked
   /// The text within the current selection, or an empty string when nothing is marked.
-  public prop SelectedText string { get { return markedText() } }
+  public prop SelectedText string -> markedText()
 
   /// The style applied to the line-number gutter.
   public prop GutterStyle Style {
-    get { return gutterStyle }
-    set { gutterStyle = value }
+    get -> gutterStyle
+    set -> gutterStyle = value
+  }
+
+  /// Whether physical line numbers are shown in the gutter. Defaults to true.
+  public prop ShowLineNumbers bool {
+    get -> showLineNumbers
+    set -> showLineNumbers = value
   }
 
   /// The style applied to the highlighted selection background.
   public prop SelectedTextStyle Style {
-    get { return selectedTextStyle }
-    set { selectedTextStyle = value }
+    get -> selectedTextStyle
+    set -> selectedTextStyle = value
+  }
+
+  /// How Enter inserts a line or invokes OnSubmit. Defaults to NewLine.
+  public prop EnterBehavior TextAreaEnterBehavior {
+    get -> enterBehavior
+    set -> enterBehavior = value
+  }
+
+  /// The maximum editable physical line count. Zero means unlimited. Existing loaded text is not truncated.
+  public prop MaxLines int32 {
+    get -> maxLines
+    set {
+      if value < 0 { throw ArgumentOutOfRangeException("MaxLines") }
+      maxLines = value
+    }
+  }
+
+  /// The current physical line count.
+  public prop LineCount int32 -> lines.Count
+
+  /// The clipboard used by copy, cut, and paste commands.
+  public prop Clipboard Clipboard {
+    get -> clipboard
+    set {
+      if value == nil { throw ArgumentNullException("Clipboard") }
+      clipboard = value
+    }
+  }
+
+  /// Invoked with the current text when EnterBehavior submits the editor.
+  public prop OnSubmit Action[string]? {
+    get -> onSubmit
+    set -> onSubmit = value
   }
 
   private var undos List[Snapshot]
@@ -100,10 +147,15 @@ public open class TextArea : Box {
     wrapping = TextWrapping.None
     isModified = false
     gutterStyle = Style()
+    showLineNumbers = true
     anchorRow = 0
     anchorCol = 0
     marked = false
     selectedTextStyle = Style()
+    enterBehavior = TextAreaEnterBehavior.NewLine
+    maxLines = 0
+    clipboard = MemoryClipboard.Shared
+    onSubmit = nil
     undos = List[Snapshot]()
     redos = List[Snapshot]()
     typing = false
@@ -147,15 +199,11 @@ public open class TextArea : Box {
 
   /// Returns the number of visual rows, accounting for word wrap when enabled.
   /// @returns The number of visual rows.
-  protected override func ScrollExtentRows() int32 {
-    return rows.Count > 0 ? rows.Count : lines.Count
-  }
+  protected override func ScrollExtentRows() int32 -> rows.Count > 0 ? rows.Count : lines.Count
 
   /// Returns FirstVisibleRowIndex as the current scroll offset.
   /// @returns The index of the topmost visible visual row.
-  protected override func ScrollOffsetRows() int32 {
-    return firstVisibleRowIndex
-  }
+  protected override func ScrollOffsetRows() int32 -> firstVisibleRowIndex
 
   /// Paints the gutter, visible text rows, selection highlight, and caret.
   /// @param screen The screen to paint into.
@@ -165,8 +213,8 @@ public open class TextArea : Box {
     if r.WidthCells <= 0 || r.HeightRows <= 0 { return }
     clampCursor()
 
-    let digits = digitCount(lines.Count)
-    let gutterWidth = digits + 1
+    let digits = ShowLineNumbers ? digitCount(lines.Count) : 0
+    let gutterWidth = ShowLineNumbers ? digits + 1 : 0
     let textWidth = r.WidthCells - gutterWidth
     if textWidth <= 0 { return }
     layout(textWidth)
@@ -179,7 +227,9 @@ public open class TextArea : Box {
       let drawRow = v - firstVisibleRowIndex
       if drawRow >= r.HeightRows { break }
       let seg = rows[v]
-      if seg.From == 0 { screen.WriteClipped(r, 0, drawRow, lineNumbers[seg.Line], gutterStyle) }
+      if ShowLineNumbers && seg.From == 0 {
+        screen.WriteClipped(r, 0, drawRow, lineNumbers[seg.Line], gutterStyle)
+      }
       let to = wrapping == TextWrapping.Word ? seg.To : -1
       let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
       screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
@@ -307,6 +357,7 @@ public open class TextArea : Box {
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     clampCursor()
 
@@ -330,6 +381,12 @@ public open class TextArea : Box {
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
+      if EnterBehavior == TextAreaEnterBehavior.Submit { return submit() }
+      if EnterBehavior == TextAreaEnterBehavior.SubmitOnPlainEnter {
+        let locks = int32(KeyModifiers.CapsLock) | int32(KeyModifiers.NumLock)
+        if (int32(ev.Modifiers) & (int32(0x7fffffff) ^ locks)) == 0 { return submit() }
+      }
+      if MaxLines > 0 && lines.Count >= MaxLines { return EventResult.Handled }
       dropMark()
       endRun()
       return result(splitLine())
@@ -442,9 +499,7 @@ public open class TextArea : Box {
   /// @param needle The text to search for.
   /// @param direction The direction to search in.
   /// @returns True when a match was found and selected.
-  public func Find(needle string, direction SearchDirection) bool {
-    return find(needle, direction == SearchDirection.Forward)
-  }
+  public func Find(needle string, direction SearchDirection) bool -> find(needle, direction == SearchDirection.Forward)
 
   private func find(needle string, forward bool) bool {
     if needle == "" { return false }
@@ -486,6 +541,7 @@ public open class TextArea : Box {
   /// @returns True when the selection was replaced.
   public func ReplaceSelection(text string) bool {
     if !marked { return false }
+    if !canInsertLines(text) { return false }
     endRun()
     record()
     deleteMark()
@@ -591,9 +647,7 @@ public open class TextArea : Box {
     return true
   }
 
-  private func blank(cluster string) bool {
-    return cluster == " " || cluster == "\t"
-  }
+  private func blank(cluster string) bool -> cluster == " " || cluster == "\t"
 
   private func moveRight() bool {
     let count = graphemeCount(lines[row])
@@ -609,8 +663,8 @@ public open class TextArea : Box {
 
   private func moveVertical(delta int32, bounds CellRect) bool {
     if wrapping != TextWrapping.Word { return moveTo(row + delta, col, bounds.HeightRows) }
-    let digits = digitCount(lines.Count)
-    layout(bounds.WidthCells - digits - 1)
+    let gutterWidth = ShowLineNumbers ? digitCount(lines.Count) + 1 : 0
+    layout(bounds.WidthCells - gutterWidth)
     let here = visualOf(row, col)
     let want = here + delta
     if want < 0 || want >= rows.Count { return false }
@@ -643,8 +697,7 @@ public open class TextArea : Box {
   }
 
   private func clickAt(position CellPoint, bounds CellRect) bool {
-    let digits = digitCount(lines.Count)
-    let gutterWidth = digits + 1
+    let gutterWidth = ShowLineNumbers ? digitCount(lines.Count) + 1 : 0
     layout(bounds.WidthCells - gutterWidth)
     if rows.Count == 0 { return false }
     var v = firstVisibleRowIndex + (position.Row - bounds.Row)
@@ -680,9 +733,7 @@ public open class TextArea : Box {
     firstVisibleRowIndex = Selection.ScrollIntoView(ScrollExtentRows(), here, firstVisibleRowIndex, height)
   }
 
-  private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(ScrollExtentRows(), s, height)
-  }
+  private func clampScroll(s int32, height int32) int32 -> Selection.ClampScroll(ScrollExtentRows(), s, height)
 
   private func mark() {
     isModified = true
@@ -778,22 +829,21 @@ public open class TextArea : Box {
 
   private func copy() bool {
     if !marked { return false }
-    Clip.Set(SelectedText)
+    Clipboard.SetText(SelectedText)
     return true
   }
 
   private func cut() bool {
     if !marked { return false }
-    Clip.Set(SelectedText)
+    Clipboard.SetText(SelectedText)
     return cutMark()
   }
 
-  private func paste() bool {
-    return insertPaste(Clip.Get())
-  }
+  private func paste() bool -> insertPaste(Clipboard.GetText())
 
   private func insertPaste(text string) bool {
     if text == "" { return false }
+    if !canInsertLines(text) { return false }
     endRun()
     record()
     if marked { deleteMark() }
@@ -815,6 +865,28 @@ public open class TextArea : Box {
       if parts[i] != "" { insert(parts[i]) }
     }
     mark()
+  }
+
+  private func submit() EventResult {
+    guard let action = OnSubmit else { return EventResult.Continue }
+    endRun()
+    action(Text)
+    return EventResult.Handled
+  }
+
+  private func canInsertLines(text string) bool {
+    if MaxLines == 0 { return true }
+    var added = 0
+    for value in text {
+      if value == '\n' { added = added + 1 }
+    }
+    var removed = 0
+    if marked {
+      let start = markStart()
+      let end = markEnd()
+      removed = end.LineIndex - start.LineIndex
+    }
+    return lines.Count + added - removed <= MaxLines
   }
 
   private func cutMark() bool {
@@ -960,7 +1032,7 @@ public struct TextPosition {
 
   /// The zero-based line index.
   public prop LineIndex int32 {
-    get { return lineIndex }
+    get -> lineIndex
     init {
       if value < 0 { throw ArgumentOutOfRangeException("LineIndex") }
       lineIndex = value
@@ -969,7 +1041,7 @@ public struct TextPosition {
 
   /// The zero-based grapheme-cluster index within the line.
   public prop GraphemeIndex int32 {
-    get { return graphemeIndex }
+    get -> graphemeIndex
     init {
       if value < 0 { throw ArgumentOutOfRangeException("GraphemeIndex") }
       graphemeIndex = value
@@ -983,9 +1055,9 @@ public struct TextSelection {
   private var end TextPosition
 
   /// The position where the selection begins.
-  public prop Start TextPosition { get { return start } init { start = value } }
+  public prop Start TextPosition { get -> start init -> start = value }
   /// The position where the selection ends.
-  public prop End TextPosition { get { return end } init { end = value } }
+  public prop End TextPosition { get -> end init -> end = value }
 }
 
 /// The direction TextArea.Find searches from the caret.
@@ -995,19 +1067,4 @@ internal struct VisRow {
   var Line int32
   var From int32
   var To int32
-}
-
-internal class Clip {
-  shared {
-    let box List[string] = List[string]()
-
-    public func Set(text string) {
-      box.Clear()
-      box.Add(text)
-    }
-
-    public func Get() string {
-      return box.Count > 0 ? box[0] : ""
-    }
-  }
 }

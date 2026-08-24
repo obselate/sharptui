@@ -8,16 +8,14 @@ public struct ColumnWidth : IEquatable[ColumnWidth] {
   private var amount int32
   private var isCellWidth bool
 
-  internal prop IsCellWidth bool { get { return isCellWidth } }
-  internal prop CellCount int32 { get { return amount } }
-  internal prop ShareWeight int32 { get { return amount > 0 ? amount : 1 } }
+  internal prop IsCellWidth bool -> isCellWidth
+  internal prop CellCount int32 -> amount
+  internal prop ShareWeight int32 -> amount > 0 ? amount : 1
 
   /// Tests whether another width uses the same policy and amount.
   /// @param other The width to compare against.
   /// @returns True when other has the same policy and amount as this width.
-  public func Equals(other ColumnWidth) bool {
-    return amount == other.amount && isCellWidth == other.isCellWidth
-  }
+  public func Equals(other ColumnWidth) bool -> amount == other.amount && isCellWidth == other.isCellWidth
 
   shared {
     /// A column width fixed at count cells.
@@ -42,17 +40,13 @@ public struct ColumnWidth : IEquatable[ColumnWidth] {
 /// @param left The first column width.
 /// @param right The second column width.
 /// @returns True when left and right have the same policy and amount.
-public func (left ColumnWidth) operator ==(right ColumnWidth) bool {
-  return left.Equals(right)
-}
+public func (left ColumnWidth) operator == (right ColumnWidth) bool -> left.Equals(right)
 
 /// Tests two column widths for inequality.
 /// @param left The first column width.
 /// @param right The second column width.
 /// @returns True when left and right differ in policy or amount.
-public func (left ColumnWidth) operator !=(right ColumnWidth) bool {
-  return !left.Equals(right)
-}
+public func (left ColumnWidth) operator != (right ColumnWidth) bool -> !left.Equals(right)
 
 /// A named table column, its width policy, and its text alignment.
 public class TableColumn {
@@ -82,18 +76,18 @@ public struct TableCell {
 
   /// Plain text drawn when Runs is nil or empty.
   public prop Text string {
-    get { return text }
-    init { text = value }
+    get -> text
+    init -> text = value
   }
   /// Styled text segments drawn instead of Text when the list is non-empty.
   public prop Runs List[TextRun]? {
-    get { return runs }
-    init { runs = value }
+    get -> runs
+    init -> runs = value
   }
   /// Style merged over the row style before this cell is drawn.
   public prop Style Style {
-    get { return style }
-    init { style = value }
+    get -> style
+    init -> style = value
   }
 
   /// Creates an empty plain-text cell inheriting its row's style.
@@ -148,7 +142,7 @@ public open class TableView : Box {
   public prop Columns List[TableColumn] { get; set; }
   /// Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.
   public prop Rows List[TableRow] {
-    get { return rows }
+    get -> rows
     set {
       source = nil
       rows = value
@@ -157,7 +151,7 @@ public open class TableView : Box {
   }
   /// An optional indexed row source. When set, the source supplies rows instead of Rows.
   public prop Source KeyedSource[TableRow, string]? {
-    get { return source }
+    get -> source
     set {
       if Object.ReferenceEquals(source, value) { return }
       source = value
@@ -170,7 +164,7 @@ public open class TableView : Box {
       reconcileSelection()
       return selection.Index
     }
-    set { setProgrammaticSelection(value) }
+    set -> setProgrammaticSelection(value)
   }
   /// Id of the selected row, or empty when no row is selected.
   public prop SelectedRowId string {
@@ -185,7 +179,7 @@ public open class TableView : Box {
   public prop FirstVisibleColumnIndex int32 { get; set; }
   /// Cells inserted between displayed columns.
   public prop ColumnGapCells int32 {
-    get { return columnGapCells }
+    get -> columnGapCells
     set {
       if value < 0 { throw ArgumentOutOfRangeException("ColumnGapCells") }
       columnGapCells = value
@@ -193,8 +187,8 @@ public open class TableView : Box {
   }
   /// Text drawn at the start of each inter-column gap; empty leaves the gap blank.
   public prop ColumnSeparator string {
-    get { return columnSeparator }
-    set { columnSeparator = value }
+    get -> columnSeparator
+    set -> columnSeparator = value
   }
   /// Style merged over the current header or row style for column separators.
   public prop ColumnSeparatorStyle Style { get; set; }
@@ -236,15 +230,11 @@ public open class TableView : Box {
     reconcileSelection(true)
   }
 
-  protected override func ScrollExtentRows() int32 {
-    return rowCount() + 1
-  }
+  protected override func ScrollExtentRows() int32 -> rowCount() + 1
 
   /// Returns FirstVisibleRowIndex as the current scroll offset.
   /// @returns The index of the first visible row.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleRowIndex
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleRowIndex
 
   /// Paints the header row followed by the visible data rows, highlighting the selected row.
   /// @param screen The screen to paint into.
@@ -279,6 +269,7 @@ public open class TableView : Box {
   /// @returns Handled when the event changed the selection or scroll position, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     let height = bounds.HeightRows - 1
     if height <= 0 { return EventResult.Continue }
@@ -435,7 +426,8 @@ public open class TableView : Box {
     while i < runs.Count && offset < width {
       let run = runs[i]
       let remaining = width - offset
-      screen.WriteClipped(cellRect, offset, 0, run.Text, run.Style.MergedOver(ink))
+      screen.WriteClipped(cellRect, offset, 0,
+        TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink))
       let runWidth = boundedWidth(run.Text, remaining)
       if runWidth >= remaining { return }
       offset = offset + runWidth
@@ -476,9 +468,7 @@ public open class TableView : Box {
     return total
   }
 
-  private func boundedWidth(text string, width int32) int32 {
-    return accumulateWidth(text, 0, width)
-  }
+  private func boundedWidth(text string, width int32) int32 -> accumulateWidth(text, 0, width)
 
   private func clippedWidth(text string, width int32) int32 {
     var used = 0
@@ -525,13 +515,9 @@ public open class TableView : Box {
     return true
   }
 
-  private func clampIndex(i int32) int32 {
-    return Selection.ClampIndex(rowCount(), i)
-  }
+  private func clampIndex(i int32) int32 -> Selection.ClampIndex(rowCount(), i)
 
-  private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(rowCount(), s, height)
-  }
+  private func clampScroll(s int32, height int32) int32 -> Selection.ClampScroll(rowCount(), s, height)
 
   private func setSelection(value int32, emit bool) bool {
     let count = rowCount()
@@ -602,9 +588,7 @@ public open class TableView : Box {
     setSelection(selected < 0 ? clampIndex(want) : selected, false)
   }
 
-  private func directionFor(want int32) int32 {
-    return Selection.DirectionFor(want, selection.Index)
-  }
+  private func directionFor(want int32) int32 -> Selection.DirectionFor(want, selection.Index)
 
   private func nearestSelectable(start int32, direction int32) int32 {
     let count = rowCount()

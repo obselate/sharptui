@@ -675,7 +675,7 @@ internal func parseInline(text string, style Style, theme MarkdownTheme, referen
       if resolveLink(text, i + 1, references, out skip, out label, out target) {
         literal = flushLiteral(spans, literal, style)
         let imageStyle = theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Underline)
-        appendAll(spans, parseInline(label, imageStyle, theme, references))
+        appendLinked(spans, parseInline(label, imageStyle, theme, references), target)
         i = skip
         continue
       }
@@ -687,10 +687,11 @@ internal func parseInline(text string, style Style, theme MarkdownTheme, referen
       if resolveLink(text, i, references, out skip, out label, out target) {
         literal = flushLiteral(spans, literal, style)
         let linkStyle = theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Underline)
-        appendAll(spans, parseInline(label, linkStyle, theme, references))
+        appendLinked(spans, parseInline(label, linkStyle, theme, references), target)
         if target != "" && !target.StartsWith("#") && !stringEqualIgnoreCase(target, label) {
           let shownTarget = label == "" ? target : " (" + target + ")"
-          spans.Add(Span(shownTarget, theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Dim)))
+          spans.Add(Span(shownTarget,
+            theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Dim), target))
         }
         i = skip
         continue
@@ -703,7 +704,10 @@ internal func parseInline(text string, style Style, theme MarkdownTheme, referen
         if isAutolink(inner) {
           literal = flushLiteral(spans, literal, style)
           let shown = inner.StartsWith("mailto:") ? inner.Substring(7) : inner
-          spans.Add(Span(shown, theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Underline)))
+          var target = inner
+          if inner.IndexOf('@') > 0 && inner.IndexOf(':') < 0 { target = "mailto:" + inner }
+          spans.Add(Span(shown,
+            theme.Link.WithAttributes(style.Attributes).WithAttributes(TextAttributes.Underline), target))
           i = close + 1
           continue
         }
@@ -1029,16 +1033,18 @@ internal func decodeEntity(text string, at int32, out next int32, out value stri
   return true
 }
 
-internal func stringEqualIgnoreCase(a string, b string) bool {
-  return String.Equals(a, b, StringComparison.OrdinalIgnoreCase)
-}
+internal func stringEqualIgnoreCase(a string, b string) bool -> String.Equals(a, b, StringComparison.OrdinalIgnoreCase)
 
 internal func appendAll(spans List[Span], more List[Span]) {
   for s in more { spans.Add(s) }
 }
 
+internal func appendLinked(spans List[Span], more List[Span], target string) {
+  for span in more { spans.Add(Span(span.Text, span.Ink, target)) }
+}
+
 internal func asRuns(spans List[Span]) List[TextRun] {
   let runs = List[TextRun]()
-  for span in spans { runs.Add(TextRun(span.Text, span.Ink)) }
+  for span in spans { runs.Add(TextRun(span.Text, span.Ink, span.Hyperlink)) }
   return runs
 }

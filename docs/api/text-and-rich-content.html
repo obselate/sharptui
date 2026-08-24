@@ -260,11 +260,17 @@ filter.<span class="nf">MoveCaretToEnd</span>()
     </div>
     <div class="chapter-copy">
       <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea</code></a> owns a multi-line document, a grapheme-indexed <code>Caret</code>, selection, undo, redo, and search. Set <code>Text</code> to load a document. That resets the caret and clears undo history.</p>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Text areas</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>editor<span class="w"> </span>=<span class="w"> </span><span class="nc">TextArea</span>{
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Text areas</span></figcaption><pre class="language-gsharp"><code><span class="k">var</span><span class="w"> </span>submitted<span class="w"> </span>=<span class="w"> </span><span class="s2">""</span>
+<span class="k">let</span><span class="w"> </span>editor<span class="w"> </span>=<span class="w"> </span><span class="nc">TextArea</span>{
 <span class="w">  </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"one\ntwo\nthree"</span>,
+<span class="w">  </span><span class="nc">ShowLineNumbers</span>:<span class="w"> </span><span class="k">false</span>,
 <span class="w">  </span><span class="nc">Wrapping</span>:<span class="w"> </span><span class="nc">TextWrapping</span>.<span class="nc">Word</span>,
+<span class="w">  </span><span class="nc">EnterBehavior</span>:<span class="w"> </span><span class="nc">TextAreaEnterBehavior</span>.<span class="nc">SubmitOnPlainEnter</span>,
+<span class="w">  </span><span class="nc">MaxLines</span>:<span class="w"> </span><span class="m">5</span>,
 <span class="w">  </span><span class="nc">SelectedTextStyle</span>:<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"FFFFFF"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"2563EB"</span>)<span class="w"> </span>},
 }
+
+editor.<span class="nc">OnSubmit</span><span class="w"> </span>=<span class="w"> </span>text<span class="w"> </span>-&gt;<span class="w"> </span>submitted<span class="w"> </span>=<span class="w"> </span>text
 
 <span class="k">if</span><span class="w"> </span>editor.<span class="nf">Find</span>(<span class="s2">"two"</span>,<span class="w"> </span><span class="nc">SearchDirection</span>.<span class="nc">Forward</span>)<span class="w"> </span>{
 <span class="w">  </span>editor.<span class="nf">ReplaceSelection</span>(<span class="s2">"second"</span>)
@@ -306,6 +312,26 @@ filter.<span class="nf">MoveCaretToEnd</span>()
 <td><code>HorizontalCellOffset</code></td>
 <td>The horizontal scroll offset when wrapping is <code>None</code>.</td>
 </tr>
+<tr>
+<td><code>LineCount</code></td>
+<td>The current physical line count.</td>
+</tr>
+<tr>
+<td><code>ShowLineNumbers</code></td>
+<td>Shows or hides the physical line-number gutter.</td>
+</tr>
+<tr>
+<td><code>EnterBehavior</code></td>
+<td>Inserts lines, always submits, or submits only for plain Enter.</td>
+</tr>
+<tr>
+<td><code>MaxLines</code></td>
+<td>Limits physical lines when positive. Zero is unlimited.</td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiclipboard"><code>Clipboard</code></a></td>
+<td>Supplies copy, cut, and paste text.</td>
+</tr>
 </tbody>
 </table></div>
 <p><code>Find</code> searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Forward</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Backward</code></a> select the direction. <code>ReplaceSelection</code>, <code>Undo</code>, and <code>Redo</code> report whether they changed editor state.</p>
@@ -336,7 +362,7 @@ filter.<span class="nf">MoveCaretToEnd</span>()
       </div>
     </div>
     <div class="chapter-copy">
-      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> is one immutable text-and-style pair. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextline"><code>RichTextLine</code></a> groups runs for one logical line. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a> supplies indexed rich lines without retaining all output in the block.</p>
+      <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> is immutable text, style, and an optional semantic hyperlink target. A non-empty <code>Hyperlink</code> emits OSC 8 when <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.HyperlinksEnabled</code></a> is true. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextline"><code>RichTextLine</code></a> groups runs for one logical line. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a> supplies indexed rich lines without retaining all output in the block.</p>
 <figure class="listing"><figcaption class="listing-head"><span>Listing 5-1</span><span>Rich lines</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>output<span class="w"> </span>=<span class="w"> </span><span class="nc">RichTextBlock</span>{
 <span class="w">  </span><span class="nc">Runs</span>:<span class="w"> </span>{
 <span class="w">    </span><span class="nf">TextRun</span>(<span class="s2">"PASS "</span>,<span class="w"> </span><span class="nc">Style</span>{<span class="w"> </span><span class="nc">Foreground</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nf">Rgb</span>(<span class="s2">"16A34A"</span>),<span class="w"> </span><span class="nc">Background</span>:<span class="w"> </span><span class="nc">Color</span>.<span class="nc">Inherit</span><span class="w"> </span>}),
@@ -385,7 +411,7 @@ output.<span class="nf">ScrollToEnd</span>()
 <span class="w">  </span><span class="nc">ShowScrollbar</span>:<span class="w"> </span><span class="k">true</span>,
 }
 </code></pre></figure>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdowntheme"><code>MarkdownTheme</code></a> separates <code>Body</code>, <code>Heading</code>, <code>Code</code>, <code>Link</code>, <code>Marker</code>, and <code>Quote</code> styles. Parsing adds bold to headings and underline to links. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisyntaxhighlighter"><code>SyntaxHighlighter.CreateLineSource(lines, language, baseStyle)</code></a> creates a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a>. <code>HighlightLines</code> returns <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> values. <code>Supports(language)</code> is the capability check.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdowntheme"><code>MarkdownTheme</code></a> separates <code>Body</code>, <code>Heading</code>, <code>Code</code>, <code>Link</code>, <code>Marker</code>, and <code>Quote</code> styles. Parsing adds bold to headings, underline to links, and the resolved target to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun.Hyperlink</code></a>. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisyntaxhighlighter"><code>SyntaxHighlighter.CreateLineSource(lines, language, baseStyle)</code></a> creates a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichlinesource"><code>RichLineSource</code></a>. <code>HighlightLines</code> returns <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextrun"><code>TextRun</code></a> values. <code>Supports(language)</code> is the capability check.</p>
 <p>For exhaustive signatures, see <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextblock">reference.md</a>, <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea">the text-area entry</a>, and <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuirichtextblock">the rich-content entries</a>.</p>
     </div>
   </div>

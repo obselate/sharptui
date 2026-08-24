@@ -16,7 +16,7 @@ internal open class IntrinsicProbe : Box {
     SeenHeight = nil
   }
 
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     SeenWidth = availableWidth
@@ -36,7 +36,7 @@ internal open class TextIntrinsicProbe : Box {
     MeasuredRows = 0
   }
 
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     SeenWidth = availableWidth
@@ -212,6 +212,44 @@ internal class LayoutCheck {
         && ruleRow.Bounds.HeightRows == 1 && buttonRow.Bounds.HeightRows == 1
         && menuRow.Bounds.HeightRows == 1,
         "one-row widgets measure one terminal row")
+
+      let nestedStatus = Box{ Height: CellLength.Cells(1) }
+      let nestedConversation = Box{ GrowWeight: 1 }
+      let nestedChat = Column{
+        GrowWeight: 1,
+        ShowBorder: true,
+        Children: {
+          Box{ Height: CellLength.Cells(1) },
+          nestedConversation,
+          Box{ Height: CellLength.Cells(3) },
+        },
+      }
+      let nestedBody = Row{
+        GrowWeight: 1,
+        Children: {
+          Box{ Width: CellLength.Cells(34) },
+          Box{ Width: CellLength.Cells(1) },
+          nestedChat,
+        },
+      }
+      let nestedFooter = Box{ Height: CellLength.Cells(1) }
+      let nestedView = Column{
+        GrowWeight: 1,
+        Children: {
+          nestedStatus,
+          nestedBody,
+          nestedFooter,
+          Box{ Width: CellLength.Cells(0), Height: CellLength.Cells(0) },
+          Box{ Width: CellLength.Cells(0), Height: CellLength.Cells(0) },
+        },
+      }
+      let applicationView = Column{ Children: { nestedView } }
+      applicationView.Compute(120, 32)
+      failed = failed + Checks.Expect(nestedView.Bounds.HeightRows == 32
+        && nestedBody.Bounds.HeightRows == 30
+        && nestedFooter.Bounds.Row == 31
+        && nestedConversation.Bounds.HeightRows == 24,
+        "nested grow paths fill the terminal and preserve fixed top and bottom rows")
 
       return failed
     }

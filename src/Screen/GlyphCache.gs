@@ -82,9 +82,7 @@ internal class GlyphCache {
     return entries[id - GlyphIds.DynamicFirst].Width
   }
 
-  internal func Entry(id int32) GlyphEntry {
-    return entries[id - GlyphIds.DynamicFirst]
-  }
+  internal func Entry(id int32) GlyphEntry -> entries[id - GlyphIds.DynamicFirst]
 
   internal func Append(id int32, output TerminalBuffer) {
     if id == GlyphIds.Tail {
@@ -98,9 +96,7 @@ internal class GlyphCache {
     output.AppendBytes(entries[id - GlyphIds.DynamicFirst].Utf8)
   }
 
-  internal func Count() int32 {
-    return entries.Count
-  }
+  internal func Count() int32 -> entries.Count
 
   internal func Limit(width int32, height int32) int32 {
     let cells = width * height
@@ -112,7 +108,5 @@ internal class GlyphCache {
     entries.Clear()
   }
 
-  private func ascii(text string) bool {
-    return text.Length == 1 && text[0] >= char(32) && text[0] <= char(126)
-  }
+  private func ascii(text string) bool -> text.Length == 1 && text[0] >= char(32) && text[0] <= char(126)
 }

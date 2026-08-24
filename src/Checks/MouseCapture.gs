@@ -31,11 +31,9 @@ internal open class MouseCaptureProbe : Box {
     CanFocus = true
   }
 
-  internal func TryCapture() bool {
-    return CaptureMouse()
-  }
+  internal func TryCapture() bool -> CaptureMouse()
 
-  internal prop Captured bool { get { return HasMouseCapture } }
+  internal prop Captured bool -> HasMouseCapture
 
   protected override func Accept(ev UiEvent) EventResult {
     if ev.Kind != UiEventKind.Mouse { return EventResult.Continue }

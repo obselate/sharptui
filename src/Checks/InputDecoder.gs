@@ -304,9 +304,7 @@ internal class InputDecoderCheck {
   }
 }
 
-private func csi(body string) []uint8 {
-  return Encoding.UTF8.GetBytes(char(27).ToString() + "[" + body)
-}
+private func csi(body string) []uint8 -> Encoding.UTF8.GetBytes(char(27).ToString() + "[" + body)
 
 private func rhelVteFixture() []TerminfoKeySequence {
   return []TerminfoKeySequence{

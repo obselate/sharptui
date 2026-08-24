@@ -14,7 +14,7 @@ public open class Select : Box {
 
   /// Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.
   public prop Options List[string] {
-    get { return options }
+    get -> options
     set {
       options = value
       Refresh()
@@ -26,10 +26,10 @@ public open class Select : Box {
       normalizeSelection()
       return selection.Index
     }
-    set { setSelection(value, false) }
+    set -> setSelection(value, false)
   }
   /// Whether the floating option list is currently shown.
-  public prop IsOpen bool { get { return isOpen } }
+  public prop IsOpen bool -> isOpen
   /// Style merged over the highlighted option's inherited style in the open list.
   public prop SelectedStyle Style { get; set; }
   /// Text shown in the closed control when Options is empty.
@@ -49,9 +49,7 @@ public open class Select : Box {
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? {
-    return selection.Consume()
-  }
+  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Re-resolves selection after direct Options mutation.
   public func Refresh() {
@@ -61,7 +59,7 @@ public open class Select : Box {
   }
 
   /// Always true, so this select sizes itself via MeasureIntrinsic.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the select as the widest option, or Placeholder when empty, plus two cells of padding.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -112,14 +110,13 @@ public open class Select : Box {
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     normalizeSelection()
     if !IsOpen { return acceptClosed(ev) }
     return acceptOpen(ev)
   }
 
-  internal override func IsInputScope() bool {
-    return IsOpen
-  }
+  internal override func IsInputScope() bool -> IsOpen
 
   internal override func ScopeFallback(ev UiEvent) EventResult {
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press { return Accept(ev) }
@@ -196,11 +193,7 @@ public open class Select : Box {
     selection.Change = nil
   }
 
-  private func setSelection(want int32, emit bool) bool {
-    return selection.Set(clampIndex(want), emit)
-  }
+  private func setSelection(want int32, emit bool) bool -> selection.Set(clampIndex(want), emit)
 
-  private func clampIndex(value int32) int32 {
-    return Selection.ClampIndex(Options.Count, value)
-  }
+  private func clampIndex(value int32) int32 -> Selection.ClampIndex(Options.Count, value)
 }

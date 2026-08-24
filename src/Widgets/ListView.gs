@@ -15,7 +15,7 @@ public open class ListView : Box {
 
   /// The rows shown by this list; setting it replaces all items and preserves selection by stable Id when possible.
   public prop Items List[ListItem] {
-    get { return items }
+    get -> items
     set {
       source = nil
       items = value
@@ -25,7 +25,7 @@ public open class ListView : Box {
 
   /// An optional indexed item source. When set, the source supplies rows instead of Items.
   public prop Source KeyedSource[ListItem, string]? {
-    get { return source }
+    get -> source
     set {
       if Object.ReferenceEquals(source, value) { return }
       source = value
@@ -39,7 +39,7 @@ public open class ListView : Box {
       reconcileSelection()
       return selection.Index
     }
-    set { setProgrammaticSelection(value) }
+    set -> setProgrammaticSelection(value)
   }
 
   /// Index of the first item visible in the viewport.
@@ -146,21 +146,18 @@ public open class ListView : Box {
     }
   }
 
-  protected override func ScrollExtentRows() int32 {
-    return itemCount()
-  }
+  protected override func ScrollExtentRows() int32 -> itemCount()
 
   /// Returns FirstVisibleItemIndex as the current scroll offset.
   /// @returns The topmost visible item index.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleItemIndex
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleItemIndex
 
   /// Handles keyboard navigation, mouse-wheel scrolling, and click-to-select within the content bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
     reconcileSelection()
@@ -228,13 +225,9 @@ public open class ListView : Box {
     return true
   }
 
-  private func clampIndex(i int32) int32 {
-    return Selection.ClampIndex(itemCount(), i)
-  }
+  private func clampIndex(i int32) int32 -> Selection.ClampIndex(itemCount(), i)
 
-  private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(itemCount(), s, height)
-  }
+  private func clampScroll(s int32, height int32) int32 -> Selection.ClampScroll(itemCount(), s, height)
 
   private func setProgrammaticSelection(want int32) {
     reconcileSelection()
@@ -306,9 +299,7 @@ public open class ListView : Box {
     selection.Change = nil
   }
 
-  private func directionFor(want int32) int32 {
-    return Selection.DirectionFor(want, selection.Index)
-  }
+  private func directionFor(want int32) int32 -> Selection.DirectionFor(want, selection.Index)
 
   private func nearestSelectable(start int32, direction int32) int32 {
     let count = itemCount()
@@ -356,7 +347,8 @@ public open class ListView : Box {
     var i = 0
     while i < runs.Count && offset < r.WidthCells {
       let run = runs[i]
-      screen.WriteClipped(r, offset, row, run.Text, run.Style.MergedOver(inherited))
+      screen.WriteClipped(r, offset, row,
+        TextRun(run.Text, run.Style.MergedOver(inherited), run.Hyperlink))
       offset = offset + Glyph.WidthOf(run.Text)
       i = i + 1
     }

@@ -17,9 +17,7 @@ internal class TerminalBuffer {
     writer.ResetWrittenCount()
   }
 
-  internal func Count() int32 {
-    return writer.WrittenCount
-  }
+  internal func Count() int32 -> writer.WrittenCount
 
   internal func Text() string {
     if writer.WrittenCount == 0 { return "" }
@@ -45,6 +43,14 @@ internal class TerminalBuffer {
       i = i + 1
     }
     writer.Advance(value.Length)
+  }
+
+  internal func AppendUtf8(value string) {
+    if value.Length == 0 { return }
+    let capacity = Encoding.UTF8.GetByteCount(value)
+    let span = writer.GetSpan(capacity)
+    let written = Encoding.UTF8.GetBytes(value, span)
+    writer.Advance(written)
   }
 
   internal func AppendBytes(value []uint8) {

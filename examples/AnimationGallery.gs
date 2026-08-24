@@ -446,9 +446,7 @@ open class AnimationGallery : Column {
     return "1.0x"
   }
 
-  private func paint(color Color) Style {
-    return Style{ Foreground: color, Background: Color.Inherit }
-  }
+  private func paint(color Color) Style -> Style{ Foreground: color, Background: Color.Inherit }
 }
 
 func animationGallery() int32 {

@@ -110,9 +110,7 @@ internal class SyntaxLineSource : RichLineSource {
     for line in this.lines { cache.Add(nil) }
   }
 
-  public func Count() int32 {
-    return lines.Count
-  }
+  public func Count() int32 -> lines.Count
 
   public func MaximumLineWidth() int32 {
     if maximumReady { return maximumWidth }
@@ -156,9 +154,7 @@ internal class SyntaxLineSource : RichLineSource {
     }
   }
 
-  internal func CachedLineCount() int32 {
-    return cachedLines
-  }
+  internal func CachedLineCount() int32 -> cachedLines
 }
 
 internal func highlightStatefulLine(line string, language string, base Style, state int32) List[Span] {
@@ -280,9 +276,7 @@ internal func HighlightBlock(lines List[string], lang string, base Style) List[L
 }
 
 
-internal func opensCommentFor(line string, backtick bool, dash bool) bool {
-  return opensCommentFor(line, backtick, dash, 0)
-}
+internal func opensCommentFor(line string, backtick bool, dash bool) bool -> opensCommentFor(line, backtick, dash, 0)
 
 internal func opensCommentFor(line string, backtick bool, dash bool, start int32) bool {
   let n = line.Length
@@ -323,9 +317,7 @@ internal func opensCommentFor(line string, backtick bool, dash bool, start int32
   return false
 }
 
-internal func opensTriple(line string) int32 {
-  return opensTriple(line, 0)
-}
+internal func opensTriple(line string) int32 -> opensTriple(line, 0)
 
 internal func opensTriple(line string, start int32) int32 {
   let n = line.Length
@@ -365,9 +357,7 @@ internal func closerOf(state int32) string {
   return "'''"
 }
 
-internal func spillStyle(state int32, base Style) Style {
-  return state == 1 ? commentStyle(base) : stringStyle(base)
-}
+internal func spillStyle(state int32, base Style) Style -> state == 1 ? commentStyle(base) : stringStyle(base)
 
 /// Data that parameterizes the shared line scanner in `scanLine`. Every
 /// field is a per-language on/off switch or table; the two bits of behaviour
@@ -664,12 +654,12 @@ internal func scanIdentEnd(line string, start int32) int32 {
   return j
 }
 
-internal func commentStyle(base Style) Style { return colored(base, "555C6B") }
-internal func stringStyle(base Style) Style { return colored(base, "6CBC5F") }
-internal func numberStyle(base Style) Style { return colored(base, "D1A047") }
-internal func keywordStyle(base Style) Style { return colored(base, "B47FD1") }
-internal func typeStyle(base Style) Style { return colored(base, "478AD1") }
-internal func removedStyle(base Style) Style { return colored(base, "C96C6C") }
+internal func commentStyle(base Style) Style -> colored(base, "555C6B")
+internal func stringStyle(base Style) Style -> colored(base, "6CBC5F")
+internal func numberStyle(base Style) Style -> colored(base, "D1A047")
+internal func keywordStyle(base Style) Style -> colored(base, "B47FD1")
+internal func typeStyle(base Style) Style -> colored(base, "478AD1")
+internal func removedStyle(base Style) Style -> colored(base, "C96C6C")
 
 internal func colored(base Style, foreground string) Style {
   return Style{

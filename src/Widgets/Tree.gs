@@ -14,7 +14,7 @@ public open class TreeNode {
   public prop Text string { get; set; }
   /// Whether this node's children are shown. Changing it advances the shared structure revision, forcing every TreeView to rebuild its visible rows.
   public prop IsExpanded bool {
-    get { return isExpanded }
+    get -> isExpanded
     set {
       if isExpanded == value { return }
       isExpanded = value
@@ -22,10 +22,10 @@ public open class TreeNode {
     }
   }
   /// True when this node has no children.
-  public prop IsLeaf bool { get { return Children.Count == 0 } }
+  public prop IsLeaf bool -> Children.Count == 0
   /// This node's child nodes. Setting it advances the shared structure revision, forcing every TreeView to rebuild its visible rows.
   public prop Children List[TreeNode] {
-    get { return children }
+    get -> children
     set {
       children = value
       TreeNode.AdvanceStructureRevision()
@@ -48,7 +48,7 @@ public open class TreeNode {
 
     init { structureRevision = 0 }
 
-    internal func StructureRevision() int32 { return structureRevision }
+    internal func StructureRevision() int32 -> structureRevision
     internal func AdvanceStructureRevision() { structureRevision = structureRevision + 1 }
   }
 }
@@ -98,7 +98,7 @@ public open class TreeView : Box {
   private var selectedNode TreeNode?
   /// Top-level nodes of the tree; setting it replaces the roots and calls Refresh.
   public prop Roots List[TreeNode] {
-    get { return roots }
+    get -> roots
     set {
       source = nil
       roots = value
@@ -107,7 +107,7 @@ public open class TreeView : Box {
   }
   /// An optional indexed visible-row source. When set, the source supplies rows instead of Roots.
   public prop Source TreeSource? {
-    get { return source }
+    get -> source
     set {
       if Object.ReferenceEquals(source, value) { return }
       source = value
@@ -116,7 +116,7 @@ public open class TreeView : Box {
   }
   /// Index of the selected row among the currently visible (expanded) nodes. Setting it selects programmatically and does not emit a SelectionChange.
   public prop SelectedIndex int32 {
-    get { return selection.Index }
+    get -> selection.Index
     set {
       rebuild()
       setSelection(clampIndex(value), false)
@@ -172,9 +172,7 @@ public open class TreeView : Box {
 
   /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
   /// @returns The pending selection change, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? {
-    return selection.Consume()
-  }
+  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Paints each visible node's indent, expand marker, and text, highlighting the selected row.
   /// @param screen The screen to paint into.
@@ -222,15 +220,14 @@ public open class TreeView : Box {
 
   /// Returns FirstVisibleNodeIndex as the current scroll offset.
   /// @returns The topmost visible node index.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleNodeIndex
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleNodeIndex
 
   /// Handles keyboard navigation, expand/collapse, mouse-wheel scrolling, and click-to-select within the content bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
     rebuild()
@@ -317,13 +314,9 @@ public open class TreeView : Box {
     return true
   }
 
-  private func clampIndex(i int32) int32 {
-    return Selection.ClampIndex(rowCount(), i)
-  }
+  private func clampIndex(i int32) int32 -> Selection.ClampIndex(rowCount(), i)
 
-  private func clampScroll(s int32, height int32) int32 {
-    return Selection.ClampScroll(rowCount(), s, height)
-  }
+  private func clampScroll(s int32, height int32) int32 -> Selection.ClampScroll(rowCount(), s, height)
 
   private func rebuild() {
     if source != nil {

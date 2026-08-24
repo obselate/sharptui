@@ -15,7 +15,7 @@ public open class Label : Box {
 
   /// The text to display. Setting it rebuilds the grapheme cluster cache when the value changes.
   public prop Text string {
-    get { return text }
+    get -> text
     set {
       if text == value { return }
       text = value
@@ -25,8 +25,8 @@ public open class Label : Box {
 
   /// How Text is positioned within the box when the box is wider than the text.
   public prop Alignment HorizontalAlignment {
-    get { return alignment }
-    set { alignment = value }
+    get -> alignment
+    set -> alignment = value
   }
 
   /// Creates an empty, left-aligned label.
@@ -38,7 +38,7 @@ public open class Label : Box {
   }
 
   /// Enables intrinsic sizing so MeasureIntrinsic determines the auto width.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures an auto width as the cell width of Text.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -75,6 +75,7 @@ public open class Label : Box {
   }
 
   private func rebuild() {
+    // MarkMeasureDirty()
     clusters.Clear()
     textWidth = 0
     for cluster in Glyph.Elements(text) {

@@ -64,12 +64,13 @@ Use `Centered` for a bounded overlay. Use `At` only when the coordinates come fr
 
 | Type | Role | Exact rule |
 | --- | --- | --- |
-| `Color` | RGB or inherited color | `Rgb(hex)` accepts exactly 6 hexadecimal digits, without `#`. |
+| `Color` | RGB, indexed, or inherited color | `Rgb(hex)` accepts exactly 6 hexadecimal digits, without `#`. |
 | `Style` | Foreground, background, attributes | Explicit colors override inherited colors. Attributes combine. |
 | `TextAttributes` | Terminal appearance bits | `Bold`, `Dim`, `Italic`, `Underline`, `Reverse`, `Strikethrough`. |
 | `HorizontalAlignment` | Label position | `Left`, `Center`, or `Right`. |
 
 `Color.Rgb(red, green, blue)` accepts each channel from 0 through 255. No other channel values are valid.
+`Color.Indexed(index)` selects terminal palette entries 0 through 255. `Color.Ansi(color)` names one of the base 16 entries.
 
 ```gs
 let ink = Style{
@@ -86,6 +87,8 @@ let title = Label{
 ```
 
 Focus must remain visible. Give a focusable control a `FocusedStyle` that differs from its normal `Style`. Do not use color as the only selection cue. A prefix, marker, border, or text change gives the same state to terminals with limited color support.
+
+`App.ColorMode` selects `TrueColor`, `Palette256`, `Palette16`, or `Auto`. Auto reads terminal capability environment variables when the app starts. RGB values are quantized when the selected mode has a smaller palette.
 
 ## 04 / Define application tokens
 

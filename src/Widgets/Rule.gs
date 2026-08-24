@@ -19,7 +19,7 @@ public open class Separator : Box {
   }
 
   /// Separator always sizes itself via MeasureIntrinsic rather than Width and Height.
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   /// Measures the effective glyph's cell width as one row tall.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
@@ -48,7 +48,5 @@ public open class Separator : Box {
     }
   }
 
-  private func defaultGlyph() string {
-    return Orientation == SeparatorOrientation.Horizontal ? "─" : "│"
-  }
+  private func defaultGlyph() string -> Orientation == SeparatorOrientation.Horizontal ? "─" : "│"
 }

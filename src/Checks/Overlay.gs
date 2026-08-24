@@ -14,7 +14,7 @@ internal open class OverlayProbe : Box {
     CanFocus = true
   }
 
-  protected override prop MeasuresIntrinsic bool { get { return true } }
+  protected override prop MeasuresIntrinsic bool -> true
 
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     return CellSize{ WidthCells: 3, HeightRows: 1 }
@@ -34,7 +34,7 @@ internal open class OverlayProbe : Box {
 }
 
 internal open class OverlayScrollProbe : OverlayProbe {
-  protected override func ScrollExtentRows() int32 { return 10 }
+  protected override func ScrollExtentRows() int32 -> 10
 }
 
 internal class OverlayCheck {

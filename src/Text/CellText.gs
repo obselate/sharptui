@@ -12,9 +12,7 @@ public class CellText {
     /// Measures text in terminal display cells.
     /// @param text The text to measure.
     /// @returns The display width in terminal cells.
-    public func MeasureWidth(text string) int32 {
-      return Glyph.WidthOf(text)
-    }
+    public func MeasureWidth(text string) int32 -> Glyph.WidthOf(text)
 
     /// Splits text into user-perceived grapheme clusters.
     /// @param text The text to split.

@@ -25,9 +25,7 @@ public class Chore {
 }
 
 /// The marker words looked for when none are named on the command line.
-func choreDefaultTags() List[string] {
-  return List[string]{ "TODO", "FIXME", "HACK", "XXX", "BUG", "NOTE" }
-}
+func choreDefaultTags() List[string] -> List[string]{ "TODO", "FIXME", "HACK", "XXX", "BUG", "NOTE" }
 
 /// "todo,wip" as marker words, uppercased; the default set when empty.
 func choreTagList(spec string) List[string] {

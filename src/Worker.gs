@@ -13,11 +13,11 @@ public class Worker {
     running = 1
   }
 
-  internal prop Cancellation CancellationTokenSource { get { return cancellation } }
+  internal prop Cancellation CancellationTokenSource -> cancellation
 
   /// True until completion, failure, or cancellation reaches the application loop.
   public prop IsRunning bool {
-    get { return Interlocked.CompareExchange(ref running, 0, 0) != 0 }
+    get -> Interlocked.CompareExchange(ref running, 0, 0) != 0
   }
 
   internal func Start[T](app App, work Func[CancellationToken, T], completed Action[T],

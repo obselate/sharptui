@@ -334,5 +334,34 @@
     <member name="F:SharpTui.UiEventKind.Unknown">
       <summary>Indicates that no recognized event variant is present.</summary>
     </member>
+    <member name="F:SharpTui.AnsiColor.Black"><summary>Selects ANSI black.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Red"><summary>Selects ANSI red.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Green"><summary>Selects ANSI green.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Yellow"><summary>Selects ANSI yellow.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Blue"><summary>Selects ANSI blue.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Magenta"><summary>Selects ANSI magenta.</summary></member>
+    <member name="F:SharpTui.AnsiColor.Cyan"><summary>Selects ANSI cyan.</summary></member>
+    <member name="F:SharpTui.AnsiColor.White"><summary>Selects ANSI white.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightBlack"><summary>Selects bright ANSI black.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightRed"><summary>Selects bright ANSI red.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightGreen"><summary>Selects bright ANSI green.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightYellow"><summary>Selects bright ANSI yellow.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightBlue"><summary>Selects bright ANSI blue.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightMagenta"><summary>Selects bright ANSI magenta.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightCyan"><summary>Selects bright ANSI cyan.</summary></member>
+    <member name="F:SharpTui.AnsiColor.BrightWhite"><summary>Selects bright ANSI white.</summary></member>
+
+    <member name="F:SharpTui.TerminalColorMode.Auto"><summary>Selects a color mode from terminal capabilities.</summary></member>
+    <member name="F:SharpTui.TerminalColorMode.TrueColor"><summary>Emits 24-bit RGB terminal colors.</summary></member>
+    <member name="F:SharpTui.TerminalColorMode.Palette256"><summary>Quantizes colors to the 256-entry terminal palette.</summary></member>
+    <member name="F:SharpTui.TerminalColorMode.Palette16"><summary>Quantizes colors to the base ANSI palette.</summary></member>
+
+    <member name="F:SharpTui.TextAreaEnterBehavior.NewLine"><summary>Inserts a line break for Enter.</summary></member>
+    <member name="F:SharpTui.TextAreaEnterBehavior.Submit"><summary>Submits for Enter with any non-window modifier combination.</summary></member>
+    <member name="F:SharpTui.TextAreaEnterBehavior.SubmitOnPlainEnter"><summary>Submits for plain Enter and inserts a line break for modified Enter.</summary></member>
+
+    <member name="F:SharpTui.VirtualListItemState.None"><summary>Indicates a visible item with no active state.</summary></member>
+    <member name="F:SharpTui.VirtualListItemState.Selected"><summary>Indicates the selected item.</summary></member>
+    <member name="F:SharpTui.VirtualListItemState.Focused"><summary>Indicates the selected item while its list has focus.</summary></member>
   </members>
 </doc>

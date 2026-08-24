@@ -19,9 +19,12 @@ public class App {
   private var defaultStyle Style
   private var tickInterval TimeSpan
   private var mouseTracking MouseTracking
+  private var colorMode TerminalColorMode
+  private var hyperlinksEnabled bool
   private var keys Keymap
   private var quitGestures List[KeyGesture]
   private var animations AnimationController
+  private var clipboard Clipboard
   private var postGate Object
   private var posted Queue[Action]
   private var postsPending int32
@@ -31,13 +34,13 @@ public class App {
 
   /// The style used for unstyled drawing in the application.
   public prop DefaultStyle Style {
-    get { return defaultStyle }
-    set { defaultStyle = value }
+    get -> defaultStyle
+    set -> defaultStyle = value
   }
 
   /// The interval between tick events. TimeSpan.Zero disables ticks.
   public prop TickInterval TimeSpan {
-    get { return tickInterval }
+    get -> tickInterval
     set {
       if value.TotalMilliseconds < 0.0 {
         throw ArgumentOutOfRangeException("TickInterval")
@@ -48,24 +51,39 @@ public class App {
   }
 
   /// Owns animations and their shared frame deadline.
-  public prop Animations AnimationController { get { return animations } }
+  public prop Animations AnimationController -> animations
 
   /// Terminal mouse reporting selected when Run enters the terminal.
   public prop MouseTracking MouseTracking {
-    get { return mouseTracking }
-    set { mouseTracking = value }
+    get -> mouseTracking
+    set -> mouseTracking = value
+  }
+
+  /// The terminal color encoding. Auto detects a mode from the terminal environment when Run starts.
+  public prop ColorMode TerminalColorMode {
+    get -> colorMode
+    set -> colorMode = value
+  }
+
+  /// Whether semantic TextRun hyperlinks are emitted with OSC 8.
+  public prop HyperlinksEnabled bool {
+    get -> hyperlinksEnabled
+    set -> hyperlinksEnabled = value
   }
 
   /// Application bindings offered before and after tree event handling.
   public prop Keys Keymap {
-    get { return keys }
-    set { keys = value }
+    get -> keys
+    set -> keys = value
   }
 
   /// Fallback quit gestures. The tree receives each event before these are tested.
-  public prop QuitGestures List[KeyGesture] { get { return quitGestures } }
+  public prop QuitGestures List[KeyGesture] -> quitGestures
 
-  internal prop IsDrawRequested bool { get { return invalidated != 0 } }
+  /// A clipboard that stores text locally and publishes writes through OSC 52 while the app runs.
+  public prop Clipboard Clipboard -> clipboard
+
+  internal prop IsDrawRequested bool -> invalidated != 0
 
   /// Creates an app with terminal-default colors, no ticking, drag mouse tracking, and
   /// Escape/Ctrl+C as quit gestures.
@@ -81,6 +99,8 @@ public class App {
     }
     tickInterval = TimeSpan.Zero
     mouseTracking = MouseTracking.Drag
+    colorMode = TerminalColorMode.Auto
+    hyperlinksEnabled = true
     keys = Keymap()
     quitGestures = List[KeyGesture]()
     quitGestures.Add(KeyGesture{ Key: Key.Escape })
@@ -92,6 +112,7 @@ public class App {
     workerGate = Object()
     workerCancellations = List[CancellationTokenSource]()
     animations = AnimationController(wake)
+    clipboard = AppClipboard(term)
     screen = Screen(term.Columns(), term.Rows())
   }
 
@@ -106,6 +127,8 @@ public class App {
     Trace.Open()
     defer Trace.Close()
     screen.DefaultStyle = DefaultStyle
+    screen.ColorMode = colorMode
+    screen.HyperlinksEnabled = hyperlinksEnabled
     term.DesiredBackground = DefaultStyle.Background.Packed
     try {
       term.Enter(input, mouseTracking)
@@ -298,13 +321,9 @@ public class App {
     DrainPostedWork()
   }
 
-  internal func SampleAnimations(nowMilliseconds int64) bool {
-    return animations.Sample(nowMilliseconds)
-  }
+  internal func SampleAnimations(nowMilliseconds int64) bool -> animations.Sample(nowMilliseconds)
 
-  internal func AnimationDeadline(nowMilliseconds int64) int64 {
-    return animations.NextDeadline(nowMilliseconds)
-  }
+  internal func AnimationDeadline(nowMilliseconds int64) int64 -> animations.NextDeadline(nowMilliseconds)
 
   internal func Route(root Box, ev UiEvent) EventResult {
     if Keys.Offer(ev, BindingPhase.BeforeWidgets) { return EventResult.Handled }
@@ -325,7 +344,5 @@ public class App {
     return milliseconds < 1.0 ? 1 : int64(milliseconds)
   }
 
-  private func tickEvent() UiEvent {
-    return UiEvent{ Kind: UiEventKind.Tick, Key: Key.Unknown, Mouse: MouseKind.None }
-  }
+  private func tickEvent() UiEvent -> UiEvent{ Kind: UiEventKind.Tick, Key: Key.Unknown, Mouse: MouseKind.None }
 }

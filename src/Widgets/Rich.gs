@@ -7,10 +7,12 @@ import System.Text
 private struct RichGlyph {
   public var Text string
   public var Style Style
+  public var Hyperlink string
 
-  public init(text string, style Style) {
+  public init(text string, style Style, hyperlink string) {
     Text = text
     Style = style
+    Hyperlink = hyperlink
   }
 }
 
@@ -45,10 +47,10 @@ private class RichRunWrapper {
   }
 
   /// The packed lines committed so far, including any attached open (trailing, still-open) line.
-  internal prop Lines List[List[TextRun]] { get { return lines } }
+  internal prop Lines List[List[TextRun]] -> lines
 
   internal func Append(run TextRun) {
-    for cluster in Glyph.Elements(run.Text) { appendGlyph(cluster, run.Style) }
+    for cluster in Glyph.Elements(run.Text) { appendGlyph(cluster, run.Style, run.Hyperlink) }
   }
 
   /// Packs and appends the still-open trailing line, then returns Lines.
@@ -89,7 +91,7 @@ private class RichRunWrapper {
     wordWidth = state.WordWidth
   }
 
-  private func appendGlyph(text string, style Style) {
+  private func appendGlyph(text string, style Style, hyperlink string) {
     if text == "\n" {
       commit(start, pending.Count)
       start = pending.Count
@@ -115,7 +117,7 @@ private class RichRunWrapper {
       }
     }
 
-    pending.Add(RichGlyph(text, style))
+    pending.Add(RichGlyph(text, style, hyperlink))
     if text == " " {
       used = used + wordWidth + glyphWidth
       wordAt = pending.Count
@@ -136,19 +138,21 @@ private class RichRunWrapper {
     if end <= from { return line }
 
     var style = pending[from].Style
+    var hyperlink = pending[from].Hyperlink
     let text = StringBuilder()
     var i = from
     while i < end {
       let glyph = pending[i]
-      if !stylesEqual(style, glyph.Style) {
-        line.Add(TextRun(text.ToString(), style))
+      if !stylesEqual(style, glyph.Style) || hyperlink != glyph.Hyperlink {
+        line.Add(TextRun(text.ToString(), style, hyperlink))
         text.Clear()
         style = glyph.Style
+        hyperlink = glyph.Hyperlink
       }
       text.Append(glyph.Text)
       i = i + 1
     }
-    if text.Length > 0 { line.Add(TextRun(text.ToString(), style)) }
+    if text.Length > 0 { line.Add(TextRun(text.ToString(), style, hyperlink)) }
     return line
   }
 }
@@ -196,7 +200,7 @@ public open class RichTextBlock : Box {
 
   /// An optional immutable physical-line source. Setting it selects unwrapped mode and clears Runs.
   public prop LineSource RichLineSource? {
-    get { return lineSource }
+    get -> lineSource
     set {
       if Object.ReferenceEquals(lineSource, value) { return }
       lineSource = value
@@ -213,7 +217,7 @@ public open class RichTextBlock : Box {
 
   /// Whether rich text wraps at word boundaries or preserves physical lines.
   public prop Wrapping TextWrapping {
-    get { return wrapping }
+    get -> wrapping
     set {
       if wrapping == value { return }
       wrapping = value
@@ -225,7 +229,7 @@ public open class RichTextBlock : Box {
 
   /// Whether unwrapped physical lines display a right-aligned line-number gutter.
   public prop ShowLineNumbers bool {
-    get { return showLineNumbers }
+    get -> showLineNumbers
     set {
       if showLineNumbers == value { return }
       showLineNumbers = value
@@ -234,21 +238,21 @@ public open class RichTextBlock : Box {
 
   /// The style applied to the line-number gutter in unwrapped mode.
   public prop GutterStyle Style {
-    get { return gutterStyle }
-    set { gutterStyle = value }
+    get -> gutterStyle
+    set -> gutterStyle = value
   }
 
   /// The index of the topmost visible line. Negative values clamp to zero.
   public prop FirstVisibleLine int32 {
-    get { return firstVisibleLine }
-    private set { firstVisibleLine = value < 0 ? 0 : value }
+    get -> firstVisibleLine
+    private set -> firstVisibleLine = value < 0 ? 0 : value
   }
 
   /// The number of content cells skipped from the left edge in unwrapped mode.
   /// Negative values clamp to zero.
   public prop HorizontalCellOffset int32 {
-    get { return horizontalCellOffset }
-    set { horizontalCellOffset = value < 0 ? 0 : value }
+    get -> horizontalCellOffset
+    set -> horizontalCellOffset = value < 0 ? 0 : value
   }
 
   /// Creates an empty, focusable rich text block.
@@ -283,9 +287,7 @@ public open class RichTextBlock : Box {
 
   /// Returns the number of active wrapped or physical lines.
   /// @returns The number of active lines.
-  public func LineCount() int32 {
-    return activeLineCount()
-  }
+  public func LineCount() int32 -> activeLineCount()
 
   /// Scrolls so that the given line index becomes the topmost visible line.
   /// @param line The line index to scroll to.
@@ -478,21 +480,18 @@ public open class RichTextBlock : Box {
 
   /// Returns the total number of active lines.
   /// @returns The total number of active lines.
-  protected override func ScrollExtentRows() int32 {
-    return activeLineCount()
-  }
+  protected override func ScrollExtentRows() int32 -> activeLineCount()
 
   /// Returns FirstVisibleLine as the current scroll offset.
   /// @returns The index of the topmost visible line.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleLine
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleLine
 
   /// Handles keyboard and mouse-wheel scrolling. End follows the final line.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if wrapping == TextWrapping.None && dirty {
       if lineSource != nil {
         dirty = false
@@ -554,9 +553,7 @@ public open class RichTextBlock : Box {
     return true
   }
 
-  private func clamp(s int32, height int32) int32 {
-    return Selection.ClampScroll(activeLineCount(), s, height)
-  }
+  private func clamp(s int32, height int32) int32 -> Selection.ClampScroll(activeLineCount(), s, height)
 
   private func activeLines() List[List[TextRun]] {
     if wrapping == TextWrapping.None {
@@ -630,7 +627,7 @@ public open class RichTextBlock : Box {
             let segment = text.Substring(start, i - start)
             var segmentWidth = i - start
             if segmentHasNonAscii { segmentWidth = Glyph.WidthOf(segment) }
-            line.Add(TextRun(segment, run.Style))
+            line.Add(TextRun(segment, run.Style, run.Hyperlink))
             lineWidths.Add(segmentWidth)
             lineWidth = lineWidth + segmentWidth
           }
@@ -651,7 +648,7 @@ public open class RichTextBlock : Box {
         let segment = text.Substring(start)
         var segmentWidth = text.Length - start
         if segmentHasNonAscii { segmentWidth = Glyph.WidthOf(segment) }
-        line.Add(TextRun(segment, run.Style))
+        line.Add(TextRun(segment, run.Style, run.Hyperlink))
         lineWidths.Add(segmentWidth)
         lineWidth = lineWidth + segmentWidth
       }
@@ -763,7 +760,8 @@ public open class RichTextBlock : Box {
         runIndex = runIndex + 1
         continue
       }
-      screen.WriteClippedRange(r, x, row, run.Text, 0, -1, skipCells, run.Style.MergedOver(ink))
+      screen.WriteClippedRange(r, x, row,
+        TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink), 0, -1, skipCells)
       x = x + runWidth - skipCells
       skipCells = 0
       runIndex = runIndex + 1
@@ -783,7 +781,8 @@ public open class RichTextBlock : Box {
         runIndex = runIndex + 1
         continue
       }
-      screen.WriteClippedRange(r, x, row, run.Text, 0, -1, skipCells, run.Style.MergedOver(ink))
+      screen.WriteClippedRange(r, x, row,
+        TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink), 0, -1, skipCells)
       x = x + runWidth - skipCells
       skipCells = 0
       runIndex = runIndex + 1

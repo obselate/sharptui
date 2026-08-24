@@ -24,7 +24,7 @@ public open class MarkdownView : Box {
 
   /// The raw markdown text. Setting it invalidates the parsed and laid-out cache.
   public prop Source string {
-    get { return source }
+    get -> source
     set {
       source = value
       dirty = true
@@ -33,7 +33,7 @@ public open class MarkdownView : Box {
 
   /// The styles applied to parsed markdown elements. Setting it invalidates the cache.
   public prop Theme MarkdownTheme {
-    get { return markdownTheme }
+    get -> markdownTheme
     set {
       markdownTheme = value
       dirty = true
@@ -42,7 +42,7 @@ public open class MarkdownView : Box {
 
   /// The maximum width a wrapped line may occupy before centering; Auto uses the full available width.
   public prop MaximumLineWidth CellLength {
-    get { return maximumLineWidth }
+    get -> maximumLineWidth
     set {
       maximumLineWidth = value
       dirty = true
@@ -51,8 +51,8 @@ public open class MarkdownView : Box {
 
   /// The index of the topmost visible wrapped line. Negative values clamp to zero.
   public prop FirstVisibleLine int32 {
-    get { return firstVisibleLine }
-    private set { firstVisibleLine = value < 0 ? 0 : value }
+    get -> firstVisibleLine
+    private set -> firstVisibleLine = value < 0 ? 0 : value
   }
 
   /// Creates an empty, focusable markdown view with the default theme.
@@ -78,9 +78,7 @@ public open class MarkdownView : Box {
 
   /// Wrapped line count at the last painted width.
   /// @returns The wrapped line count.
-  public func LineCount() int32 {
-    return cache.Count
-  }
+  public func LineCount() int32 -> cache.Count
 
   /// Scrolls so that the given wrapped line index becomes the topmost visible line.
   /// @param line The wrapped line index to scroll to.
@@ -90,15 +88,11 @@ public open class MarkdownView : Box {
 
   /// Returns the total number of wrapped lines.
   /// @returns The wrapped line count.
-  protected override func ScrollExtentRows() int32 {
-    return cache.Count
-  }
+  protected override func ScrollExtentRows() int32 -> cache.Count
 
   /// Returns FirstVisibleLine as the current scroll offset.
   /// @returns The topmost visible wrapped line index.
-  protected override func ScrollOffsetRows() int32 {
-    return FirstVisibleLine
-  }
+  protected override func ScrollOffsetRows() int32 -> FirstVisibleLine
 
   /// Reparses Source when it or Theme changed, relays out the cache if the width changed, and paints the visible lines centered within r.
   /// @param screen The screen to paint into.
@@ -128,6 +122,7 @@ public open class MarkdownView : Box {
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
+    if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
     if bounds.HeightRows <= 0 { return EventResult.Continue }
 
@@ -151,9 +146,7 @@ public open class MarkdownView : Box {
     return true
   }
 
-  private func clamp(s int32, height int32) int32 {
-    return Selection.ClampScroll(cache.Count, s, height)
-  }
+  private func clamp(s int32, height int32) int32 -> Selection.ClampScroll(cache.Count, s, height)
 
   private func constrainedWidth(available int32) int32 {
     if !MaximumLineWidth.IsAuto && MaximumLineWidth.CellCount < available {
@@ -341,7 +334,7 @@ public open class MarkdownView : Box {
         room = room - sw
       } else {
         let cut = CellText.Clip(s.Text, room)
-        if cut != "" { line.Add(TextRun(cut, s.Style)) }
+        if cut != "" { line.Add(TextRun(cut, s.Style, s.Hyperlink)) }
         room = 0
       }
     }
@@ -376,7 +369,7 @@ public open class MarkdownView : Box {
         room = room - sw
       } else {
         let cut = CellText.Clip(s.Text, room)
-        if cut != "" { out.Add(TextRun(cut, s.Style)) }
+        if cut != "" { out.Add(TextRun(cut, s.Style, s.Hyperlink)) }
         break
       }
     }

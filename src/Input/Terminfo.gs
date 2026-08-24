@@ -25,8 +25,8 @@ internal class TerminfoKeyDecoder {
   private var outputs List[TerminfoOutput]
   private var outputHead int32
 
-  internal prop Enabled bool { get { return sequences.Length > 0 } }
-  internal prop HasPendingPrefix bool { get { return pending.Count > 0 } }
+  internal prop Enabled bool -> sequences.Length > 0
+  internal prop HasPendingPrefix bool -> pending.Count > 0
 
   internal init() {
     sequences = []TerminfoKeySequence{}

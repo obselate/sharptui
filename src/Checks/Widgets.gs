@@ -6,13 +6,9 @@ import System
 import System.Collections.Generic
 import System.Threading
 
-func charEv(text string) UiEvent {
-  return UiEvent{ Kind: UiEventKind.TextInput, Key: Key.Character, Text: text }
-}
+func charEv(text string) UiEvent -> UiEvent{ Kind: UiEventKind.TextInput, Key: Key.Character, Text: text }
 
-func keyEv(key Key) UiEvent {
-  return UiEvent{ Kind: UiEventKind.Key, Key: key }
-}
+func keyEv(key Key) UiEvent -> UiEvent{ Kind: UiEventKind.Key, Key: key }
 
 func mouseEv(column int32, row int32) UiEvent {
   return UiEvent{
@@ -39,10 +35,63 @@ func makeTable() TableView {
   return t
 }
 
+class VariableSourceCheck : VirtualListSource {
+  let heights List[int32]
+
+  public init() {
+    heights = List[int32]{ 2, 3, 1, 4 }
+  }
+
+  public func Count() int32 -> heights.Count
+
+  public func KeyAt(index int32) string -> index.ToString()
+
+  public func IndexOfKey(key string) int32 {
+    var value = -1
+    if !Int32.TryParse(key, out value) { return -1 }
+    return value >= 0 && value < heights.Count ? value : -1
+  }
+
+  public func IsSelectable(index int32) bool -> true
+
+  public func HeightAt(index int32, width int32) int32 -> heights[index]
+
+  public func Render(index int32, screen Screen, bounds CellRect, clipBounds CellRect,
+      style Style, state VirtualListItemState) {
+    screen.Fill(clipBounds, style)
+    if bounds.Row >= clipBounds.Row {
+      screen.WriteClipped(clipBounds, 0, 0, index.ToString(), style)
+    }
+  }
+}
+
 public class WidgetCheck {
   shared {
     public func Run() int32 {
       var failed = 0
+
+      failed = failed + Checks.Expect(Viewport.ClampOffset(20, 18, 5) == 15
+        && Viewport.BringIntoView(20, 12, 2, 5) == 8,
+        "Viewport clamps offsets and minimally reveals an indexed unit")
+
+      let variable = VirtualListView{
+        Source: VariableSourceCheck(),
+        Width: CellLength.Cells(8),
+        Height: CellLength.Cells(3),
+      }
+      let variableRoot = Box{ Children: { variable } }
+      variableRoot.Draw(Screen(8, 3))
+      variableRoot.Focus(variable)
+      variableRoot.Handle(mouseEv(1, 2))
+      failed = failed + Checks.Expect(variable.SelectedIndex == 1 && variable.FirstVisibleRowOffset == 2,
+        "VirtualListView maps variable row heights to selection and reveals the whole item")
+      let windowListMove = variableRoot.Handle(UiEvent{
+        Kind: UiEventKind.Key,
+        Key: Key.Down,
+        Modifiers: KeyModifiers.Super,
+      })
+      failed = failed + Checks.Expect(windowListMove == EventResult.Continue && variable.SelectedIndex == 1,
+        "collection views leave window-modified navigation unconsumed")
 
       let entry = TextInput{}
       let eroot = Box{ Children: { entry } }
@@ -603,6 +652,9 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(bscr.Probe(0, 0) == "L", "LeftText lands at column zero")
       failed = failed + Checks.Expect(bscr.Probe(4, 0) == "M", "CenterText lands centred")
       failed = failed + Checks.Expect(bscr.Probe(bar.Bounds.WidthCells - 1, 0) == "R", "RightText is flush with the right edge")
+      bar.LeftRuns.Add(TextRun("linked", Style(), "https://example.com"))
+      broot.Draw(bscr)
+      failed = failed + Checks.Expect(bscr.Probe(0, 0) == "l", "StatusBar rich segments take precedence over plain text")
 
       let area = TextArea{}
       area.Text = "ab\ncd"
@@ -671,8 +723,8 @@ private class CheckListSource : KeyedSource[ListItem, string] {
     }
   }
 
-  public func Count() int32 { return items.Count }
-  public func ItemAt(index int32) ListItem { return items[index] }
+  public func Count() int32 -> items.Count
+  public func ItemAt(index int32) ListItem -> items[index]
 
   public func IndexOfKey(key string) int32 {
     var i = 0
@@ -700,8 +752,8 @@ private class CheckTableSource : KeyedSource[TableRow, string] {
     }
   }
 
-  public func Count() int32 { return rows.Count }
-  public func ItemAt(index int32) TableRow { return rows[index] }
+  public func Count() int32 -> rows.Count
+  public func ItemAt(index int32) TableRow -> rows[index]
 
   public func IndexOfKey(key string) int32 {
     var i = 0
@@ -728,9 +780,7 @@ private class ScenarioTreeSource : TreeSource {
     child = TreeNode{ Text: "virtual child", Value: "child" }
   }
 
-  public func Count() int32 {
-    return root.IsExpanded ? 2 : 1
-  }
+  public func Count() int32 -> root.IsExpanded ? 2 : 1
 
   public func ItemAt(index int32) TreeRow {
     if index == 0 {
@@ -762,9 +812,7 @@ private class MillionTreeSource : TreeSource {
     ItemReads = 0
   }
 
-  public func Count() int32 {
-    return 1000000
-  }
+  public func Count() int32 -> 1000000
 
   public func ItemAt(index int32) TreeRow {
     ItemReads = ItemReads + 1
@@ -788,7 +836,7 @@ private class WidgetScenarioView : Box {
   private var surface CanvasSurface
   private var status Label
 
-  public prop Surface CanvasSurface { get { return surface } }
+  public prop Surface CanvasSurface -> surface
 
   public init() {
     let tree = TreeView{

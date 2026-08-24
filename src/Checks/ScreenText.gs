@@ -30,6 +30,12 @@ internal class ScreenTextCheck {
       canvas.WriteClipped(clipped, 0, 0, "hello")
       failed = failed + Checks.Expect(canvas.Probe(3, 1) == "l" && canvas.Probe(4, 1) == " ",
         "Screen.WriteClipped stops at a CellRect edge")
+      let leftClip = Screen(5, 1)
+      leftClip.Write(0, 0, "xxxxx")
+      leftClip.WriteClipped(CellRect{ Column: 2, WidthCells: 2, HeightRows: 1 }, -1, 0, "abc")
+      failed = failed + Checks.Expect(leftClip.Probe(1, 0) == "x" && leftClip.Probe(2, 0) == "b"
+        && leftClip.Probe(3, 0) == "c" && leftClip.Probe(4, 0) == "x",
+        "Screen.WriteClipped clips both rectangle edges")
 
       let border = CellRect{ Column: 4, Row: 1, WidthCells: 4, HeightRows: 2 }
       canvas.DrawBorder(border, accent)
@@ -61,7 +67,35 @@ internal class ScreenTextCheck {
         && second.Background == accent.Background && second.Attributes == accent.Attributes
         && TextRunWidth(flowed[0]) == 7,
         "TextRun is the styled text surface")
+
+      let target = "https://example.com/docs"
+      let linked = TextRun("open", accent, target)
+      let linkScreen = Screen(8, 1)
+      linkScreen.Write(0, 0, linked)
+      let linkWire = linkScreen.Flush()
+      failed = failed + Checks.Expect(linked.Hyperlink == target
+        && linkWire.Contains("]8;id=sharptui-1;" + target)
+        && linkWire.Contains("]8;;") && linkScreen.Flush() == "",
+        "TextRun hyperlinks emit balanced OSC 8 transitions through the screen diff")
+
+      let linkedWrapped = WrapTextRuns(List[TextRun]{ linked }, 2)
+      failed = failed + Checks.Expect(linkedWrapped.Count == 2
+        && linkedWrapped[0][0].Hyperlink == target && linkedWrapped[1][0].Hyperlink == target,
+        "TextRun wrapping preserves hyperlink identity")
+
+      failed = failed + Checks.Expect(rejectsHyperlinkControl(accent),
+        "Screen rejects control characters in hyperlink targets")
       return failed
     }
+  }
+}
+
+private func rejectsHyperlinkControl(style Style) bool {
+  try {
+    let screen = Screen(2, 1)
+    screen.Write(0, 0, TextRun("x", style, "https://example.com/" + char(7).ToString()))
+    return false
+  } catch (error ArgumentException) {
+    return true
   }
 }

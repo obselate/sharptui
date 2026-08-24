@@ -7,10 +7,11 @@ A collection owns one current selection. Keep stable identities. Consume user ch
 | Need | Type | Data shape |
 | --- | --- | --- |
 | One selectable text row per item | `ListView` | `ListItem` values or a `KeyedSource[ListItem, string]`. |
+| Variable-height virtual items | `VirtualListView` | A `VirtualListSource` that measures and renders only visible items. |
 | Columns with a header | `TableView` | `TableRow` values or a `KeyedSource[TableRow, string]`. |
 | Expandable hierarchy | `TreeView` | `TreeNode` roots or a flattened `TreeSource`. |
 | One active content section | `Tabs` | Ordered title strings. |
-| Persistent context | `StatusBar` | Left, center, and right text. |
+| Persistent context | `StatusBar` | Left, center, and right text or styled runs. |
 
 ## Lists
 
@@ -38,6 +39,14 @@ if changed != nil {
 Set `Source` to a `KeyedSource[ListItem, string]` for indexed data. It provides `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. Item data and counts are read live. Before selection is observed, routed, or rendered, the list preserves the selected stable Id through `IndexOfKey` or a fallback `Items` scan. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
 
 `FollowTail` is for logs. It selects the last selectable row and keeps the viewport at the end. Upward navigation, upward scrolling, Home, PageUp, or a click turns it off. It does not re-enable itself.
+
+## Variable-height lists
+
+Use `VirtualListView` when one item can occupy multiple terminal rows. Its source provides a stable key, selection eligibility, a positive `HeightAt(index, width)`, and `Render`. The view caches item offsets for the current width and renders only items that intersect the viewport.
+
+`Render` receives the full item bounds plus `clipBounds`. Draw only inside `clipBounds`. Call `Refresh()` after a same-count height or selection-eligibility change. A count or width change rebuilds the cached offsets automatically.
+
+`FirstVisibleRowOffset` is a content-row offset, not an item index. `Viewport.ClampOffset`, `BringIntoView`, and `BringRangeIntoView` expose the same general clamp math for custom uniformly indexed or row-based controls.
 
 ## Tables
 
@@ -107,7 +116,7 @@ if tabs.ConsumeSelectionChange() != nil {
 }
 ```
 
-`Tabs.Refresh()` re-resolves selection after direct title-list mutation. `StatusBar` has no hidden state: set `LeftText`, `CenterText`, and `RightText` to the current facts.
+`Tabs.Refresh()` re-resolves selection after direct title-list mutation. `StatusBar` has no hidden state. Set `LeftText`, `CenterText`, and `RightText`, or use `LeftRuns`, `CenterRuns`, and `RightRuns` for styled and linked segments. A non-empty run list takes precedence over its plain-text segment.
 
 ### Collection rules
 
@@ -117,4 +126,4 @@ if tabs.ConsumeSelectionChange() != nil {
 - Call `Refresh()` only where the widget documents explicit cache invalidation. `ListView` and `TableView` reconcile live data automatically.
 - Don't let a selected row be color-only. Keep `SelectionMarker`, hierarchy markers, or focus state visible.
 
-For exhaustive signatures, see [list types](reference.md#sharptuilistitem), [table types](reference.md#sharptuitablecell), and [tree types](reference.md#sharptuitreenode).
+For exhaustive signatures, see [list types](reference.md#sharptuilistitem), [variable lists](reference.md#sharptuivirtuallistview), [table types](reference.md#sharptuitablecell), and [tree types](reference.md#sharptuitreenode).

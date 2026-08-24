@@ -114,9 +114,7 @@ func gitRun(dir string, args List[string]) GitResult {
 }
 
 /// Runs git and returns stdout, empty when it fails.
-func gitExec(dir string, args List[string]) string {
-  return gitRun(dir, args).Output
-}
+func gitExec(dir string, args List[string]) string -> gitRun(dir, args).Output
 
 /// A beginner-friendly interactive Git workbench.
 /// `sharptui --git [DIR]`.
@@ -283,9 +281,7 @@ open class Git : Box {
     dir = repoOk ? top : base
   }
 
-  private func dimInherit() Style {
-    return Style{ Foreground: palette.Dim, Background: Color.Inherit }
-  }
+  private func dimInherit() Style -> Style{ Foreground: palette.Dim, Background: Color.Inherit }
 
   /// Focus never lands on the wrapper boxes, so their border chrome is driven
   /// here from the inner list: an asterisk in the title plus an accent border.
