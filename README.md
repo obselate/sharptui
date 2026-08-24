@@ -13,109 +13,18 @@ A small retained-tree TUI framework for G#.
 
 ## Install
 
-SharpTUI uses `Gsharp.NET.Sdk/0.4.59` and requires the .NET 10 SDK.
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```sh
 dotnet new install Gsharp.Templates@0.4.59
 dotnet new gsharp-console -n MyApp
 dotnet add MyApp/MyApp.gsproj package SharpTui.Framework --version 0.1.0
+dotnet run --project MyApp/MyApp.gsproj
 ```
-
-The generated project restores the G# SDK, compiler, and SharpTUI from NuGet.
-
-```xml
-<Project Sdk="Gsharp.NET.Sdk/0.4.59">
-
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SharpTui.Framework" Version="0.1.0" />
-  </ItemGroup>
-
-</Project>
-```
-
-## ChatGPT plugin
-
-SharpTUI includes a skills-only plugin for ChatGPT and Codex. Add this GitHub
-repository as a plugin marketplace:
-
-```sh
-codex plugin marketplace add obselate/sharptui
-```
-
-Restart the ChatGPT desktop app, open the Plugins Directory, select the
-**SharpTUI** marketplace, and install **SharpTUI**. You can also install it
-from the CLI:
-
-```sh
-codex plugin add sharptui@sharptui
-```
-
-The plugin supplies generated API lookup, concise G# authoring guidance, and
-real-terminal viewport verification. It does not require an account, remote
-service, or API key.
-
-## Documentation
-
-- [API guides and complete reference](docs/api/README.md) ([HTML edition](docs/api/README.html))
-- [Migration from the polling API](docs/api/README.md#04-migration)
-- [G# language and tooling](https://github.com/DavidOBando/gsharp)
-- [Performance and allocation numbers](docs/performance.md)
-- [ChatGPT plugin privacy](docs/plugin-privacy.md)
-- [ChatGPT plugin terms](docs/plugin-terms.md)
-- [examples/](examples/): eight complete applications, from a Git workbench to retained subcell drawing and animation galleries
-- [LICENSE](LICENSE): MIT, with vendored Yoga.Net provenance in [vendor/Yoga.Net/UPSTREAM.md](vendor/Yoga.Net/UPSTREAM.md)
-
-## tuitool
-
-`SharpTui.Examples.gsproj` compiles the G# sources under `examples/` into
-`tuitool`, an interactive picker for the eight bundled applications.
-
-Run it without installing:
-
-```sh
-dotnet run -c Release --project SharpTui.Examples.gsproj
-```
-
-Build and install a stripped, self-contained Linux x64 NativeAOT executable:
-
-```sh
-dotnet build SharpTui.Framework.gsproj -c Release
-dotnet restore SharpTui.Examples.gsproj \
-  -r linux-x64 \
-  --force \
-  -p:PublishAot=true \
-  -p:RestoreRecursive=false
-dotnet publish SharpTui.Examples.gsproj \
-  -c Release \
-  -r linux-x64 \
-  --self-contained true \
-  --no-restore \
-  -p:PublishAot=true \
-  -p:UseAppHost=true \
-  -p:StripSymbols=true \
-  -p:BuildProjectReferences=false \
-  -o bin/tuitool-publish
-install -Dm755 bin/tuitool-publish/tuitool "$HOME/.local/bin/tuitool"
-```
-
-The framework build is required because the root projects share `obj/`. The
-publish step reuses that Release framework output. `tools/install-tuitool`
-performs the same build and installs the executable atomically:
-
-```sh
-./tools/install-tuitool
-```
-
-Ensure `$HOME/.local/bin` is in `PATH`, then run `tuitool`.
 
 ## Example
 
-Save this as `Main.gs` beside the project file above and `dotnet run`.
+Replace `MyApp/Main.gs` with:
 
 ```gs
 package Demo
@@ -144,3 +53,26 @@ func Main(args []string) int32 {
 ```
 
 Escape or Ctrl+C quits.
+
+## Documentation
+
+- [API guides and reference](docs/api/README.md)
+- [HTML manual](docs/api/README.html)
+- [Examples](examples/)
+- [Performance](docs/performance.md)
+- [G#](https://github.com/DavidOBando/gsharp)
+
+Run the bundled example picker with `dotnet run -c Release --project SharpTui.Examples.gsproj`. Install its Linux x64 NativeAOT build with `./tools/install-tuitool`.
+
+## ChatGPT plugin
+
+```sh
+codex plugin marketplace add obselate/sharptui
+codex plugin add sharptui@sharptui
+```
+
+See the [privacy policy](docs/plugin-privacy.md) and [terms](docs/plugin-terms.md).
+
+## License
+
+[MIT](LICENSE). Yoga.Net provenance is recorded in [UPSTREAM.md](vendor/Yoga.Net/UPSTREAM.md).
