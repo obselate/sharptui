@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.gif?v=3" alt="sharptui" width="720"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/obselate/sharptui/main/docs/banner.gif" alt="sharptui" width="720"></p>
 
 # sharptui
 
@@ -13,18 +13,15 @@ A small retained-tree TUI framework for G#.
 
 ## Install
 
-SharpTUI uses `Gsharp.NET.Sdk/0.4.59` and requires the .NET 10 SDK. When
-starting a new application, install the matching G# template package:
+SharpTUI uses `Gsharp.NET.Sdk/0.4.59` and requires the .NET 10 SDK.
 
 ```sh
 dotnet new install Gsharp.Templates@0.4.59
 dotnet new gsharp-console -n MyApp
-git clone https://github.com/obselate/sharptui
+dotnet add MyApp/MyApp.gsproj package SharpTui.Framework --version 0.1.0
 ```
 
-Keep the generated application and `sharptui` beside each other, then add the
-framework project reference to the application's `.gsproj`. The G# SDK and
-compiler restore from NuGet.
+The generated project restores the G# SDK, compiler, and SharpTUI from NuGet.
 
 ```xml
 <Project Sdk="Gsharp.NET.Sdk/0.4.59">
@@ -35,7 +32,7 @@ compiler restore from NuGet.
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../sharptui/SharpTui.Framework.gsproj" />
+    <PackageReference Include="SharpTui.Framework" Version="0.1.0" />
   </ItemGroup>
 
 </Project>

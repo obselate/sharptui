@@ -4,6 +4,21 @@
     <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SharpTui</RootNamespace>
+    <PackageId>SharpTui.Framework</PackageId>
+    <Version>0.1.0</Version>
+    <Title>SharpTUI</Title>
+    <Authors>Obselate</Authors>
+    <Description>A small retained-tree TUI framework for G#</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/obselate/sharptui</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/obselate/sharptui</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>tui;terminal;retained-tree;gsharp</PackageTags>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeSharpTuiDocumentation</TargetsForTfmSpecificBuildOutput>
     <InvariantGlobalization>true</InvariantGlobalization>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -17,6 +32,7 @@
     <Compile Remove="agent-testing/**/*.gs" />
     <Compile Remove="showcases/**/*.gs" />
     <Compile Remove="archive/**/*.gs" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
     <ProjectReference Include="vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj" />
   </ItemGroup>
 
@@ -27,6 +43,15 @@
     <ItemGroup>
       <DocFileItem Include="$(DocumentationFile)" />
       <FinalDocFile Include="$(OutDir)$([System.IO.Path]::GetFileName('$(DocumentationFile)'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="IncludeSharpTuiDocumentation" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(TargetDir)$(AssemblyName).xml" Condition="Exists('$(TargetDir)$(AssemblyName).xml')">
+        <TargetPath>$(AssemblyName).xml</TargetPath>
+        <FinalOutputPath>$(TargetDir)$(AssemblyName).xml</FinalOutputPath>
+      </BuildOutputInPackage>
     </ItemGroup>
   </Target>
 

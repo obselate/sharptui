@@ -1,0 +1,72 @@
+name: nuget
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify version
+        run: |
+          project_version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' SharpTui.Framework.gsproj)
+          test "$project_version" = "$GITHUB_REF_NAME"
+      - name: Build and verify
+        run: |
+          dotnet build SharpTui.Framework.gsproj -c Release --nologo
+          dotnet run -c Release --project tools/SharpTui.ApiSurface/SharpTui.ApiSurface.csproj
+          dotnet run -c Release --project SharpTui.gsproj -- --selfcheck
+      - name: Pack
+        run: |
+          dotnet pack SharpTui.Framework.gsproj -c Release --nologo -o artifacts
+          unzip -l "artifacts/SharpTui.Framework.$GITHUB_REF_NAME.nupkg" | grep -q "lib/net10.0/SharpTui.Framework.xml"
+          unzip -p "artifacts/SharpTui.Framework.$GITHUB_REF_NAME.nupkg" README.md > /dev/null
+      - name: Verify package consumer
+        run: |
+          consumer="$RUNNER_TEMP/sharptui-consumer"
+          mkdir -p "$consumer"
+          printf '%s\n' \
+            '<Project Sdk="Gsharp.NET.Sdk/0.4.59">' \
+            '  <PropertyGroup>' \
+            '    <OutputType>Exe</OutputType>' \
+            '    <TargetFramework>net10.0</TargetFramework>' \
+            '  </PropertyGroup>' \
+            '  <ItemGroup>' \
+            "    <PackageReference Include=\"SharpTui.Framework\" Version=\"$GITHUB_REF_NAME\" />" \
+            '  </ItemGroup>' \
+            '</Project>' > "$consumer/Consumer.gsproj"
+          printf '%s\n' \
+            'package Consumer' \
+            '' \
+            'import SharpTui' \
+            '' \
+            'func Main(args []string) int32 {' \
+            '  let label = Label{ Text: "package consumer" }' \
+            '  return if label.Text == "package consumer" { 0 } else { 1 }' \
+            '}' > "$consumer/Main.gs"
+          dotnet restore "$consumer/Consumer.gsproj" \
+            --source "$GITHUB_WORKSPACE/artifacts" \
+            --source https://api.nuget.org/v3/index.json
+          dotnet build "$consumer/Consumer.gsproj" -c Release --no-restore --nologo
+          dotnet run --project "$consumer/Consumer.gsproj" -c Release --no-build
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: Obselate
+      - name: Publish
+        run: >-
+          dotnet nuget push
+          "artifacts/SharpTui.Framework.$GITHUB_REF_NAME.nupkg"
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json

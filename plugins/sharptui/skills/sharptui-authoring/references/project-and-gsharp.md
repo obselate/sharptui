@@ -1,6 +1,6 @@
 # Project and G#
 
-Use .NET 10, the G# SDK, and the local SharpTUI project:
+Use .NET 10, the G# SDK, and the SharpTUI package:
 
 ```xml
 <Project Sdk="Gsharp.NET.Sdk/0.4.59">
@@ -9,12 +9,12 @@ Use .NET 10, the G# SDK, and the local SharpTUI project:
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../sharptui/SharpTui.Framework.gsproj" />
+    <PackageReference Include="SharpTui.Framework" Version="0.1.0" />
   </ItemGroup>
 </Project>
 ```
 
-Adjust only the reference path. Source begins with a package and `import SharpTui`. Entry points use `func Main(args []string) int32`.
+Source begins with a package and `import SharpTui`. Entry points use `func Main(args []string) int32`.
 
 G# forms commonly mistranslated from C#:
 
