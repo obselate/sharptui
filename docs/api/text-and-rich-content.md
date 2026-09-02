@@ -68,6 +68,12 @@ let editor = TextArea{
 }
 
 editor.OnSubmit = text -> submitted = text
+editor.OnChanged = text -> {
+  editor.StyleSource = SyntaxHighlighter.CreateLineSource(
+    List[string](text.Replace("\r", "").Split('\n')),
+    "gs",
+    Style())
+}
 
 if editor.Find("two", SearchDirection.Forward) {
   editor.ReplaceSelection("second")
@@ -77,6 +83,7 @@ if editor.Find("two", SearchDirection.Forward) {
 | State | Meaning |
 | --- | --- |
 | `Caret` | A `TextPosition` with zero-based `LineIndex` and `GraphemeIndex`. Setting it scrolls the caret into view. |
+| `CaretScreenPosition` | The caret's absolute terminal cell while visible, otherwise nil. Use it to anchor completion, hover, and ghost-text overlays. |
 | `Selection` | A read-only optional `TextSelection` with `Start` and `End` positions. |
 | `SelectedText` | The selected text, or an empty string. |
 | `HasSelection` | True only while a selection exists. |
@@ -88,12 +95,17 @@ if editor.Find("two", SearchDirection.Forward) {
 | `EnterBehavior` | Inserts lines, always submits, or submits only for plain Enter. |
 | `MaxLines` | Limits physical lines when positive. Zero is unlimited. |
 | `Clipboard` | Supplies copy, cut, and paste text. |
+| `StyleSource` | Supplies styled physical lines whose concatenated run text must match the editable line. Stale lines render as plain text. |
+| `OnChanged` | Receives current text once after each successful user edit, replacement, undo, or redo. Loading `Text` does not invoke it. |
 
 `Find` searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. `SearchDirection.Forward` and `SearchDirection.Backward` select the direction. `ReplaceSelection`, `Undo`, and `Redo` report whether they changed editor state.
+
+Update `StyleSource` from `OnChanged` or another application-state transition, not during paint. Compose semantic-token colors and diagnostic underline attributes in the source runs. Use `CaretScreenPosition` with `Placement.At` for completion lists, hover panels, and ghost text. Check for nil because a manually scrolled caret can be outside the viewport.
 
 ### Editor rules
 
 - Don't mutate the document after every paint. Mutate it from input or application state.
+- Don't reuse a stale style source as authoritative text. `TextArea` owns the document and ignores source styles for a mismatched line.
 - Don't assume a selection exists. Check `HasSelection` or the result of `ReplaceSelection`.
 - Don't use horizontal panning with `TextWrapping.Word`. The offset belongs to `TextWrapping.None`.
 

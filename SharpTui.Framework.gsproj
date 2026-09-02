@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SharpTui</RootNamespace>
     <PackageId>SharpTui.Framework</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Title>SharpTUI</Title>
     <Authors>Obselate</Authors>
     <Description>A small retained-tree TUI framework for G#</Description>

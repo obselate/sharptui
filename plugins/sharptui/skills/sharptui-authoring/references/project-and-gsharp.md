@@ -9,7 +9,7 @@ Use .NET 10, the G# SDK, and the SharpTUI package:
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SharpTui.Framework" Version="0.1.0" />
+    <PackageReference Include="SharpTui.Framework" Version="0.1.1" />
   </ItemGroup>
 </Project>
 ```

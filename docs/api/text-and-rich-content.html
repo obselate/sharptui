@@ -271,6 +271,12 @@ filter.<span class="nf">MoveCaretToEnd</span>()
 }
 
 editor.<span class="nc">OnSubmit</span><span class="w"> </span>=<span class="w"> </span>text<span class="w"> </span>-&gt;<span class="w"> </span>submitted<span class="w"> </span>=<span class="w"> </span>text
+editor.<span class="nc">OnChanged</span><span class="w"> </span>=<span class="w"> </span>text<span class="w"> </span>-&gt;<span class="w"> </span>{
+<span class="w">  </span>editor.<span class="nc">StyleSource</span><span class="w"> </span>=<span class="w"> </span><span class="nc">SyntaxHighlighter</span>.<span class="nf">CreateLineSource</span>(
+<span class="w">    </span><span class="nc">List</span>[<span class="kt">string</span>](text.<span class="nf">Replace</span>(<span class="s2">"\r"</span>,<span class="w"> </span><span class="s2">""</span>).<span class="nf">Split</span>(<span class="s1">'\n'</span>)),
+<span class="w">    </span><span class="s2">"gs"</span>,
+<span class="w">    </span><span class="nf">Style</span>())
+}
 
 <span class="k">if</span><span class="w"> </span>editor.<span class="nf">Find</span>(<span class="s2">"two"</span>,<span class="w"> </span><span class="nc">SearchDirection</span>.<span class="nc">Forward</span>)<span class="w"> </span>{
 <span class="w">  </span>editor.<span class="nf">ReplaceSelection</span>(<span class="s2">"second"</span>)
@@ -287,6 +293,10 @@ editor.<span class="nc">OnSubmit</span><span class="w"> </span>=<span class="w">
 <tr>
 <td><code>Caret</code></td>
 <td>A <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextposition"><code>TextPosition</code></a> with zero-based <code>LineIndex</code> and <code>GraphemeIndex</code>. Setting it scrolls the caret into view.</td>
+</tr>
+<tr>
+<td><code>CaretScreenPosition</code></td>
+<td>The caret's absolute terminal cell while visible, otherwise nil. Use it to anchor completion, hover, and ghost-text overlays.</td>
 </tr>
 <tr>
 <td><code>Selection</code></td>
@@ -332,12 +342,22 @@ editor.<span class="nc">OnSubmit</span><span class="w"> </span>=<span class="w">
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiclipboard"><code>Clipboard</code></a></td>
 <td>Supplies copy, cut, and paste text.</td>
 </tr>
+<tr>
+<td><code>StyleSource</code></td>
+<td>Supplies styled physical lines whose concatenated run text must match the editable line. Stale lines render as plain text.</td>
+</tr>
+<tr>
+<td><code>OnChanged</code></td>
+<td>Receives current text once after each successful user edit, replacement, undo, or redo. Loading <code>Text</code> does not invoke it.</td>
+</tr>
 </tbody>
 </table></div>
 <p><code>Find</code> searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Forward</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuisearchdirection"><code>SearchDirection.Backward</code></a> select the direction. <code>ReplaceSelection</code>, <code>Undo</code>, and <code>Redo</code> report whether they changed editor state.</p>
+<p>Update <code>StyleSource</code> from <code>OnChanged</code> or another application-state transition, not during paint. Compose semantic-token colors and diagnostic underline attributes in the source runs. Use <code>CaretScreenPosition</code> with <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiplacement"><code>Placement.At</code></a> for completion lists, hover panels, and ghost text. Check for nil because a manually scrolled caret can be outside the viewport.</p>
 <h3 id="editor-rules">Editor rules</h3>
 <ul>
 <li>Don't mutate the document after every paint. Mutate it from input or application state.</li>
+<li>Don't reuse a stale style source as authoritative text. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea</code></a> owns the document and ignores source styles for a mismatched line.</li>
 <li>Don't assume a selection exists. Check <code>HasSelection</code> or the result of <code>ReplaceSelection</code>.</li>
 <li>Don't use horizontal panning with <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.Word</code></a>. The offset belongs to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextwrapping"><code>TextWrapping.None</code></a>.</li>
 </ul>

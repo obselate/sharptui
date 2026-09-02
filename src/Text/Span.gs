@@ -51,6 +51,7 @@ public struct TextRun {
 public class RichTextLine {
   private var runs List[TextRun]
   private var runWidths List[int32]
+  private var runGraphemes List[int32]
   private var widthCells int32
 
   /// The styled runs in this line.
@@ -64,16 +65,32 @@ public class RichTextLine {
   public init(runs List[TextRun]) {
     this.runs = List[TextRun]()
     runWidths = List[int32]()
+    runGraphemes = List[int32]()
     widthCells = 0
     for run in runs {
       this.runs.Add(run)
       let width = fastTextWidth(run.Text)
       runWidths.Add(width)
+      runGraphemes.Add(fastGraphemeCount(run.Text))
       widthCells = widthCells + width
     }
   }
 
   internal func RunWidth(index int32) int32 -> runWidths[index]
+  internal func RunGraphemeCount(index int32) int32 -> runGraphemes[index]
+
+  internal func Matches(text string) bool {
+    var offset = 0
+    var runIndex = 0
+    while runIndex < runs.Count {
+      let value = runs[runIndex].Text
+      if offset + value.Length > text.Length { return false }
+      if String.CompareOrdinal(text, offset, value, 0, value.Length) != 0 { return false }
+      offset = offset + value.Length
+      runIndex = runIndex + 1
+    }
+    return offset == text.Length
+  }
 }
 
 /// Supplies immutable physical lines to a RichTextBlock on demand.
@@ -96,6 +113,19 @@ internal func fastTextWidth(text string) int32 {
   var i = 0
   while i < text.Length {
     if text[i] >= '\u0080' { return Glyph.WidthOf(text) }
+    i = i + 1
+  }
+  return text.Length
+}
+
+internal func fastGraphemeCount(text string) int32 {
+  var i = 0
+  while i < text.Length {
+    if text[i] >= '\u0080' {
+      var count = 0
+      for cluster in Glyph.Elements(text) { count = count + 1 }
+      return count
+    }
     i = i + 1
   }
   return text.Length

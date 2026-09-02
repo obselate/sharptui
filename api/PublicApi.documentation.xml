@@ -359,6 +359,9 @@
     <member name="F:SharpTui.TextAreaEnterBehavior.NewLine"><summary>Inserts a line break for Enter.</summary></member>
     <member name="F:SharpTui.TextAreaEnterBehavior.Submit"><summary>Submits for Enter with any non-window modifier combination.</summary></member>
     <member name="F:SharpTui.TextAreaEnterBehavior.SubmitOnPlainEnter"><summary>Submits for plain Enter and inserts a line break for modified Enter.</summary></member>
+    <member name="P:SharpTui.TextArea.CaretScreenPosition"><summary>The caret's absolute terminal cell while it is visible, or nil when it is outside the current viewport.</summary></member>
+    <member name="P:SharpTui.TextArea.OnChanged"><summary>Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.</summary></member>
+    <member name="P:SharpTui.TextArea.StyleSource"><summary>Supplies styled physical lines for display. A line renders without source styles until its concatenated run text exactly matches the editable line.</summary></member>
 
     <member name="F:SharpTui.VirtualListItemState.None"><summary>Indicates a visible item with no active state.</summary></member>
     <member name="F:SharpTui.VirtualListItemState.Selected"><summary>Indicates the selected item.</summary></member>

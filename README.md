@@ -18,7 +18,7 @@ Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 ```sh
 dotnet new install Gsharp.Templates@0.4.59
 dotnet new gsharp-console -n MyApp
-dotnet add MyApp/MyApp.gsproj package SharpTui.Framework --version 0.1.0
+dotnet add MyApp/MyApp.gsproj package SharpTui.Framework --version 0.1.1
 dotnet run --project MyApp/MyApp.gsproj
 ```
 

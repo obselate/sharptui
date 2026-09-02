@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `230c0ce2b65383a7417da61feae04a03953a5993cbae474d1b717bb236843772`.
+Public-symbol SHA-256: `9ea9e81c64d3630c6a4911e8e4cecf64db5a2a1e0f6a3b8f647bf7614accd5b8`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1738,6 +1738,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop Caret TextPosition { get; set; }` — The caret position as a line and grapheme index. Setting it moves the caret and scrolls it into view.
+- `prop CaretScreenPosition CellPoint? { get; }` — The caret's absolute terminal cell while it is visible, or nil when it is outside the current viewport.
 - `prop Clipboard Clipboard { get; set; }` — The clipboard used by copy, cut, and paste commands.
 - `prop EnterBehavior TextAreaEnterBehavior { get; set; }` — How Enter inserts a line or invokes OnSubmit. Defaults to NewLine.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — The index of the topmost visible visual row. Negative values clamp to zero.
@@ -1747,11 +1748,13 @@ Inherits `Box`; see that type for inherited members.
 - `prop IsModified bool { get; }` — True once the text has changed since it was last loaded via the Text setter.
 - `prop LineCount int32 { get; }` — The current physical line count.
 - `prop MaxLines int32 { get; set; }` — The maximum editable physical line count. Zero means unlimited. Existing loaded text is not truncated.
+- `prop OnChanged Action[string] { get; set; }` — Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.
 - `prop OnSubmit Action[string] { get; set; }` — Invoked with the current text when EnterBehavior submits the editor.
 - `prop SelectedText string { get; }` — The text within the current selection, or an empty string when nothing is marked.
 - `prop SelectedTextStyle Style { get; set; }` — The style applied to the highlighted selection background.
 - `prop Selection TextSelection? { get; }` — The current selection range, or nil when nothing is marked.
 - `prop ShowLineNumbers bool { get; set; }` — Whether physical line numbers are shown in the gutter. Defaults to true.
+- `prop StyleSource RichLineSource { get; set; }` — Supplies styled physical lines for display. A line renders without source styles until its concatenated run text exactly matches the editable line.
 - `prop Text string { get; set; }` — The full text content, joined with '\n'. Setting it replaces all lines, resets the caret, and clears undo history.
 - `prop Wrapping TextWrapping { get; set; }` — The line wrapping mode; None preserves lines and pans horizontally, Word wraps at the content width.
 

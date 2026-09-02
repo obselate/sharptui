@@ -23,9 +23,11 @@ public open class TextArea : Box {
   private var gutterStyle Style
   private var showLineNumbers bool
   private var selectedTextStyle Style
+  private var styleSource RichLineSource?
   private var enterBehavior TextAreaEnterBehavior
   private var maxLines int32
   private var clipboard Clipboard
+  private var onChanged Action[string]?
   private var onSubmit Action[string]?
 
   /// The full text content, joined with '\n'. Setting it replaces all lines, resets the caret, and clears undo history.
@@ -39,6 +41,8 @@ public open class TextArea : Box {
     get -> position(row, col)
     set -> moveTo(value.LineIndex, value.GraphemeIndex, ContentBounds.HeightRows)
   }
+
+  public prop CaretScreenPosition CellPoint? -> caretScreenPosition()
 
   /// The index of the topmost visible visual row. Negative values clamp to zero.
   public prop FirstVisibleRowIndex int32 {
@@ -92,6 +96,11 @@ public open class TextArea : Box {
     set -> selectedTextStyle = value
   }
 
+  public prop StyleSource RichLineSource? {
+    get -> styleSource
+    set -> styleSource = value
+  }
+
   /// How Enter inserts a line or invokes OnSubmit. Defaults to NewLine.
   public prop EnterBehavior TextAreaEnterBehavior {
     get -> enterBehavior
@@ -117,6 +126,11 @@ public open class TextArea : Box {
       if value == nil { throw ArgumentNullException("Clipboard") }
       clipboard = value
     }
+  }
+
+  public prop OnChanged Action[string]? {
+    get -> onChanged
+    set -> onChanged = value
   }
 
   /// Invoked with the current text when EnterBehavior submits the editor.
@@ -152,9 +166,11 @@ public open class TextArea : Box {
     anchorCol = 0
     marked = false
     selectedTextStyle = Style()
+    styleSource = nil
     enterBehavior = TextAreaEnterBehavior.NewLine
     maxLines = 0
     clipboard = MemoryClipboard.Shared
+    onChanged = nil
     onSubmit = nil
     undos = List[Snapshot]()
     redos = List[Snapshot]()
@@ -230,9 +246,7 @@ public open class TextArea : Box {
       if ShowLineNumbers && seg.From == 0 {
         screen.WriteClipped(r, 0, drawRow, lineNumbers[seg.Line], gutterStyle)
       }
-      let to = wrapping == TextWrapping.Word ? seg.To : -1
-      let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
-      screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
+      paintLine(screen, r, drawRow, seg, gutterWidth, ink)
       paintMark(screen, r, drawRow, seg, gutterWidth, textWidth, ink)
       v = v + 1
     }
@@ -254,6 +268,27 @@ public open class TextArea : Box {
   private func originOf(seg VisRow) int32 {
     if Wrapping == TextWrapping.Word { return cellOf(lines[seg.Line], seg.From) }
     return horizontalCellOffset
+  }
+
+  private func caretScreenPosition() CellPoint? {
+    let bounds = ContentBounds
+    if bounds.WidthCells <= 0 || bounds.HeightRows <= 0 { return nil }
+    clampCursor()
+    let gutterWidth = ShowLineNumbers ? digitCount(lines.Count) + 1 : 0
+    let textWidth = bounds.WidthCells - gutterWidth
+    if textWidth <= 0 { return nil }
+    layout(textWidth)
+    followPan(textWidth)
+    firstVisibleRowIndex = clampScroll(firstVisibleRowIndex, bounds.HeightRows)
+    let here = visualOf(row, col)
+    let screenRow = here - firstVisibleRowIndex
+    if screenRow < 0 || screenRow >= bounds.HeightRows { return nil }
+    let screenColumn = cellOf(lines[row], col) - originOf(rows[here])
+    if screenColumn < 0 || screenColumn >= textWidth { return nil }
+    return CellPoint{
+      Column: bounds.Column + gutterWidth + screenColumn,
+      Row: bounds.Row + screenRow,
+    }
   }
 
   private func layout(width int32) {
@@ -378,6 +413,7 @@ public open class TextArea : Box {
       dropMark()
       beginRun()
       insert(ev.Text)
+      notifyChanged()
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
@@ -389,17 +425,23 @@ public open class TextArea : Box {
       if MaxLines > 0 && lines.Count >= MaxLines { return EventResult.Handled }
       dropMark()
       endRun()
-      return result(splitLine())
+      let changed = splitLine()
+      if changed { notifyChanged() }
+      return result(changed)
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Backspace {
       endRun()
       if marked { return result(cutMark()) }
-      return result(backspace())
+      let changed = backspace()
+      if changed { notifyChanged() }
+      return result(changed)
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Delete {
       endRun()
       if marked { return result(cutMark()) }
-      return result(deleteForward())
+      let changed = deleteForward()
+      if changed { notifyChanged() }
+      return result(changed)
     }
 
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left {
@@ -467,6 +509,7 @@ public open class TextArea : Box {
     apply(undos[undos.Count - 1])
     undos.RemoveAt(undos.Count - 1)
     mark()
+    notifyChanged()
     return true
   }
 
@@ -479,6 +522,7 @@ public open class TextArea : Box {
     apply(redos[redos.Count - 1])
     redos.RemoveAt(redos.Count - 1)
     mark()
+    notifyChanged()
     return true
   }
 
@@ -546,6 +590,7 @@ public open class TextArea : Box {
     record()
     deleteMark()
     insertMultiline(text)
+    notifyChanged()
     return true
   }
 
@@ -848,6 +893,7 @@ public open class TextArea : Box {
     record()
     if marked { deleteMark() }
     insertMultiline(text)
+    notifyChanged()
     return true
   }
 
@@ -893,7 +939,70 @@ public open class TextArea : Box {
     if !marked { return false }
     record()
     deleteMark()
+    notifyChanged()
     return true
+  }
+
+  private func notifyChanged() {
+    let action = OnChanged
+    if action != nil { action(Text) }
+  }
+
+  private func paintLine(screen Screen, r CellRect, drawRow int32, seg VisRow,
+      gutterWidth int32, ink Style) {
+    let source = StyleSource
+    if source == nil || seg.Line >= source.Count() {
+      let to = wrapping == TextWrapping.Word ? seg.To : -1
+      let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
+      screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
+      return
+    }
+
+    let styled = source.ItemAt(seg.Line)
+    if !styled.Matches(lines[seg.Line]) {
+      let to = wrapping == TextWrapping.Word ? seg.To : -1
+      let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
+      screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
+      return
+    }
+
+    let from = wrapping == TextWrapping.Word ? seg.From : 0
+    let to = wrapping == TextWrapping.Word ? seg.To : graphemeCount(lines[seg.Line])
+    var x = gutterWidth
+    var skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
+    var at = 0
+    var runIndex = 0
+    while runIndex < styled.Runs.Count && at < to && x < r.WidthCells {
+      let run = styled.Runs[runIndex]
+      let runCount = styled.RunGraphemeCount(runIndex)
+      let end = at + runCount
+      if end > from && at < to {
+        let localFrom = from > at ? from - at : 0
+        let localTo = to < end ? to - at : runCount
+        let width = rangeWidth(run.Text, localFrom, localTo)
+        if skip >= width {
+          skip = skip - width
+        } else {
+          screen.WriteClippedRange(r, x, drawRow,
+            TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink), localFrom, localTo, skip)
+          x = x + width - skip
+          skip = 0
+        }
+      }
+      at = end
+      runIndex = runIndex + 1
+    }
+  }
+
+  private func rangeWidth(text string, from int32, to int32) int32 {
+    var width = 0
+    var index = 0
+    for cluster in Glyph.Elements(text) {
+      if index >= to { break }
+      if index >= from { width = width + Glyph.Of(cluster) }
+      index = index + 1
+    }
+    return width
   }
 
   private func deleteMark() {

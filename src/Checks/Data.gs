@@ -400,6 +400,52 @@ public class DataCheck {
       failed = failed + Checks.Expect(compose.LineCount == 2 && compose.Text == "\nhello",
         "TextArea MaxLines rejects line-producing edits beyond its limit")
 
+      let styledText = "let 語 = 42"
+      let styled = TextArea{
+        Text: styledText,
+        ShowLineNumbers: false,
+        Wrapping: TextWrapping.Word,
+        StyleSource: SyntaxHighlighter.CreateLineSource(
+          List[string]{ styledText }, "gs", Style()),
+        Width: CellLength.Cells(8),
+        Height: CellLength.Cells(3),
+      }
+      styled.Caret = TextPosition{ LineIndex: 0, GraphemeIndex: 8 }
+      let styledScreen = Screen(8, 3)
+      styled.Draw(styledScreen)
+      let styledWire = styledScreen.Flush()
+      let caretPoint = styled.CaretScreenPosition
+      failed = failed + Checks.Expect(styledScreen.Probe(0, 0) == "l"
+          && styledScreen.Probe(4, 0) == "語" && styledScreen.Probe(0, 1) == "="
+          && styledScreen.Probe(2, 1) == "4"
+          && styledWire.Contains("[38;2;180;127;209m")
+          && styledWire.Contains("[38;2;209;160;71m")
+          && caretPoint != nil && caretPoint!!.Column == 2 && caretPoint!!.Row == 1,
+        "TextArea preserves styled runs and exposes its visible caret through wrapping")
+      styled.Text = "plain"
+      let staleStyleScreen = Screen(8, 3)
+      styled.Draw(staleStyleScreen)
+      let staleStyleWire = staleStyleScreen.Flush()
+      failed = failed + Checks.Expect(staleStyleScreen.Probe(0, 0) == "p"
+          && !staleStyleWire.Contains("[38;2;180;127;209m")
+          && !staleStyleWire.Contains("[38;2;209;160;71m"),
+        "TextArea falls back to plain text while its style source is stale")
+
+      let changes = List[string]()
+      let observed = TextArea{
+        ShowLineNumbers: false,
+        OnChanged: (text string) -> changes.Add(text),
+      }
+      let observedRoot = editorRoot(observed, 20, 4)
+      observedRoot.Handle(charEv("x"))
+      observedRoot.Handle(keyEv(Key.Left))
+      observedRoot.Handle(UiEvent{ Kind: UiEventKind.Paste, Text: "y\nz" })
+      observed.Undo()
+      observed.Text = "reset"
+      failed = failed + Checks.Expect(changes.Count == 3 && changes[0] == "x"
+          && changes[1] == "y\nzx" && changes[2] == "x",
+        "TextArea reports user edits once and ignores navigation and text loading")
+
       let firstClipboard = MemoryClipboard()
       let secondClipboard = MemoryClipboard()
       firstClipboard.SetText("first")

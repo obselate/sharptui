@@ -183,6 +183,7 @@ public class AllocBench {
       uiBenchCleanRedraw("label unchanged redraw", uiBenchLabel(w), w, h)
       uiBenchCleanRedraw("text input unchanged redraw", uiBenchTextInput(w), w, h)
       uiBenchCleanRedraw("text area unchanged redraw", uiBenchTextArea(200, w, h), w, h)
+      uiBenchCleanRedraw("styled text area unchanged redraw", uiBenchStyledTextArea(200, w, h), w, h)
       uiBenchTextAreaEdit()
       uiBenchTextAreaScroll()
       uiBenchCleanRedraw("tabs unchanged redraw", uiBenchTabs(w), w, h)
@@ -1635,6 +1636,18 @@ func uiBenchTextArea(lines int32, width int32, height int32) TextArea {
   area.Width = CellLength.Cells(width)
   area.Height = CellLength.Cells(height)
   area.Text = uiBenchTextAreaSource(lines)
+  return area
+}
+
+func uiBenchStyledTextArea(lines int32, width int32, height int32) TextArea {
+  let sourceLines = List[string]()
+  var i = 0
+  while i < lines {
+    sourceLines.Add("line " + i.ToString("D4") + " alpha bravo charlie delta echo foxtrot golf hotel")
+    i = i + 1
+  }
+  let area = uiBenchTextArea(lines, width, height)
+  area.StyleSource = SyntaxHighlighter.CreateLineSource(sourceLines, "gs", Style())
   return area
 }
 
