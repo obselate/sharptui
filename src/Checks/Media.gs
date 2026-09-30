@@ -52,6 +52,14 @@ internal class MediaCheck {
                 screen.Clear()
                 screen.DrawImage(source, bounds, bounds, ImageFit.Stretch)
                 failed += Checks.Expect(screen.Emit(output) == 0, "unchanged native image does not emit another frame")
+                screen.Clear(Style{Background: Color.Rgb("404249")})
+                screen.DrawImage(source, bounds, bounds, ImageFit.Stretch)
+                screen.Emit(output)
+                failed += Checks.Expect(
+                    mode == GraphicsProtocol.Kitty ? output.Text().Contains(Char.ConvertFromUtf32(0x10eeee)) && !output.Text().Contains("a=t")
+                    : output.Text().Contains("\x1bP0;1q"),
+                    "selecting an image row restores native media after its background redraw"
+                )
                 screen.Clear()
                 screen.DrawImage(source, bounds, bounds, ImageFit.Stretch)
                 screen.Fill(CellRect{Column: 2, Row: 1, WidthCells: 3, HeightRows: 2}, Style{})

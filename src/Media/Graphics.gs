@@ -134,8 +134,7 @@ internal class GraphicsPlane {
             for i in 0 ... claims.Count {
                 if claims[i] != previousClaims[i] ||
                     (
-                    mode == GraphicsProtocol.Sixel
-                    && claims[i] != 0 && screen.CellChanged(i)
+                    claims[i] != 0 && screen.CellChanged(i)
                 ) {
                     changed = true
                     repaint = true
