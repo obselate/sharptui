@@ -112,7 +112,7 @@ public class DataCheck {
       let doc = MarkdownView{ Source: "| a | b |\n| - | - |\n| one two three four five six | y |" }
       let docRoot = Box{ Children: { doc } }
       docRoot.Draw(Screen(24, 12))
-      failed = failed + Checks.Expect(doc.LineCount() > 4, "an overlong table cell wraps to more lines")
+      failed = failed + Checks.Expect(doc.LineCount() > 3, "an overlong table cell wraps to more lines")
 
       let wide = MarkdownView{
         Source: "```\nalpha beta gamma delta epsilon zeta eta\n```",
@@ -127,7 +127,7 @@ public class DataCheck {
       sourceRoot.Draw(Screen(4, 4))
       source.Source = "one two four"
       sourceRoot.Draw(Screen(4, 4))
-      failed = failed + Checks.Expect(source.LineCount() == 4, "MarkdownView invalidates when Source changes")
+      failed = failed + Checks.Expect(source.LineCount() == 3, "MarkdownView invalidates when Source changes without a trailing spacer")
 
       let links = ParseMarkdown("see [one][r] then ![pic](p.png) and [two](u)\n\n[r]: one", MarkdownTheme())
       failed = failed + Checks.Expect(flat(links[0].Runs) == "see one then pic and two (u)",

@@ -5,8 +5,8 @@ import System.Diagnostics
 import System.Globalization
 import System.IO
 import System.Text
-import System.Threading
 import System.Text.Json
+import System.Threading
 
 /// Plays local video, animated images and audio using FFmpeg and mpv. Dispose closes owned processes.
 public class MediaPlayer : IDisposable {
@@ -23,6 +23,7 @@ public class MediaPlayer : IDisposable {
     private var hasAudio bool
     private var playing bool
     private var disposed bool
+    private var loop bool
 
     /// The current video raster, or nil for an audio-only file. Advance updates it on the UI thread.
     public prop Source ImageSource? -> source
@@ -32,6 +33,9 @@ public class MediaPlayer : IDisposable {
     public prop Position TimeSpan {
         get {
             let position = anchor + clock.Elapsed
+            if loop && duration > TimeSpan.Zero {
+                return TimeSpan.FromTicks(position.Ticks % duration.Ticks)
+            }
             return duration > TimeSpan.Zero && position > duration ? duration: position
         }
     }
@@ -44,15 +48,24 @@ public class MediaPlayer : IDisposable {
         initialize(path, PixelSize{Width: 640, Height: 360})
     }
 
-    /// Opens a local file with an explicit maximum video raster, up to 1024 by 1024 pixels.
+    /// Opens a local file with an explicit maximum video raster, up to 2048 by 2048 pixels.
     /// @param path The local media file.
     /// @param maxSize The positive pixel limits for the video decoder.
     public init(path string, maxSize PixelSize) {
         initialize(path, maxSize)
     }
 
+    /// Opens local media with bounded decoding and optional continuous looping.
+    /// @param path The local media file.
+    /// @param maxSize Positive pixel limits up to 2048 by 2048.
+    /// @param loop Whether the decoder repeats the file without restarting a process.
+    public init(path string, maxSize PixelSize, loop bool) {
+        this.loop = loop
+        initialize(path, maxSize)
+    }
+
     private func initialize(path string, maxSize PixelSize) {
-        if maxSize.Width <= 0 || maxSize.Height <= 0 || maxSize.Width > 1024 || maxSize.Height > 1024 {
+        if maxSize.Width <= 0 || maxSize.Height <= 0 || maxSize.Width > 2048 || maxSize.Height > 2048 {
             throw ArgumentOutOfRangeException("maxSize")
         }
         this.path = Path.GetFullPath(path)
@@ -195,7 +208,7 @@ public class MediaPlayer : IDisposable {
                 let length = image.Size.Width * image.Size.Height * 4
                 buffers = [][]uint8{[length]uint8, [length]uint8, [length]uint8}
             }
-            playback = VideoPlayback(path, image.Size, anchor, buffers)
+            playback = VideoPlayback(path, image.Size, anchor, buffers, loop)
         }
         try {
             if hasAudio {
@@ -243,7 +256,7 @@ public class MediaPlayer : IDisposable {
         if resume && (duration == TimeSpan.Zero || anchor < duration) {
             Resume()
         } else if !resume && source != nil && (duration == TimeSpan.Zero || anchor < duration) {
-            playback = VideoPlayback(path, source!!.Size, anchor, buffers)
+            playback = VideoPlayback(path, source!!.Size, anchor, buffers, false)
             previewPending = true
         }
     }
@@ -302,7 +315,7 @@ internal class VideoPlayback : IDisposable {
         }
     }
 
-    internal init(path string, size PixelSize, start TimeSpan, buffers[][]uint8) {
+    internal init(path string, size PixelSize, start TimeSpan, buffers[][]uint8, loop bool) {
         gate = Object()
         error = ""
         for i in 0 ... buffers.Length {
@@ -312,6 +325,10 @@ internal class VideoPlayback : IDisposable {
         info.UseShellExecute = false
         info.RedirectStandardOutput = true
         info.RedirectStandardError = true
+        if loop {
+            info.ArgumentList.Add("-stream_loop")
+            info.ArgumentList.Add("-1")
+        }
         for argument in[]string{
             "-nostdin",
             "-v",

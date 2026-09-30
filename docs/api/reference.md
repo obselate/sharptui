@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `b0192446659ef959ceaf9a635d138beccff29b0805334d229358399bbdd0ce23`.
+Public-symbol SHA-256: `79217c91620709a30b9ebee82fc4a71fa2ec1f1b4b67dae818c9845bbc71e9e7`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1141,9 +1141,13 @@ G# kind: `class`.
 
 - `init(path string)` — Opens a local file and starts playback with a video raster bounded to 640 by 360 pixels at 15 FPS.
   - `path`: The local media file. FFmpeg, ffprobe and mpv for audio must be installed.
-- `init(path string, maxSize PixelSize)` — Opens a local file with an explicit maximum video raster, up to 1024 by 1024 pixels.
+- `init(path string, maxSize PixelSize)` — Opens a local file with an explicit maximum video raster, up to 2048 by 2048 pixels.
   - `path`: The local media file.
   - `maxSize`: The positive pixel limits for the video decoder.
+- `init(path string, maxSize PixelSize, loop bool)` — Opens local media with bounded decoding and optional continuous looping.
+  - `path`: The local media file.
+  - `maxSize`: Positive pixel limits up to 2048 by 2048.
+  - `loop`: Whether the decoder repeats the file without restarting a process.
 
 ### Properties
 

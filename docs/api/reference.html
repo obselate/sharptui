@@ -2403,7 +2403,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>45-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuimediaplayer" data-search="sharptui.mediaplayer plays local video, animated images and audio using ffmpeg and mpv. dispose closes owned processes. g# kind: class . constructors init(path string) — opens a local file and starts playback with a video raster bounded to 640 by 360 pixels at 15 fps. path : the local media file. ffmpeg, ffprobe and mpv for audio must be installed. init(path string, maxsize pixelsize) — opens a local file with an explicit maximum video raster, up to 1024 by 1024 pixels. path : the local media file. maxsize : the positive pixel limits for the video decoder. properties prop duration timespan { get; } — the duration reported by the media container. zero means unknown. prop isplaying bool { get; } — whether playback is active. prop position timespan { get; } — the current playback position. prop source imagesource { get; } — the current video raster, or nil for an audio-only file. advance updates it on the ui thread. methods func advance() bool — publishes the newest complete video frame without blocking or allocating. call on the ui thread. returns: true when the image raster changed. func dispose() — stops playback, joins the frame reader and releases all owned processes and buffers. func pause() — pauses playback and keeps the current raster and position. func resume() — resumes from the saved position. decoder buffers are owned until pause or dispose. func seek(position timespan) — seeks to a non-negative position, preserving playback state and publishing one preview frame when paused. position : the new position, clamped to a known duration.">
+<section class="sheet api-type" aria-labelledby="sharptuimediaplayer" data-search="sharptui.mediaplayer plays local video, animated images and audio using ffmpeg and mpv. dispose closes owned processes. g# kind: class . constructors init(path string) — opens a local file and starts playback with a video raster bounded to 640 by 360 pixels at 15 fps. path : the local media file. ffmpeg, ffprobe and mpv for audio must be installed. init(path string, maxsize pixelsize) — opens a local file with an explicit maximum video raster, up to 2048 by 2048 pixels. path : the local media file. maxsize : the positive pixel limits for the video decoder. init(path string, maxsize pixelsize, loop bool) — opens local media with bounded decoding and optional continuous looping. path : the local media file. maxsize : positive pixel limits up to 2048 by 2048. loop : whether the decoder repeats the file without restarting a process. properties prop duration timespan { get; } — the duration reported by the media container. zero means unknown. prop isplaying bool { get; } — whether playback is active. prop position timespan { get; } — the current playback position. prop source imagesource { get; } — the current video raster, or nil for an audio-only file. advance updates it on the ui thread. methods func advance() bool — publishes the newest complete video frame without blocking or allocating. call on the ui thread. returns: true when the image raster changed. func dispose() — stops playback, joins the frame reader and releases all owned processes and buffers. func pause() — pauses playback and keeps the current raster and position. func resume() — resumes from the saved position. decoder buffers are owned until pause or dispose. func seek(position timespan) — seeks to a non-negative position, preserving playback state and publishing one preview frame when paused. position : the new position, clamped to a known duration.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -2426,10 +2426,17 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <li><code>path</code>: The local media file. FFmpeg, ffprobe and mpv for audio must be installed.</li>
 </ul>
 </li>
-<li><code>init(path string, maxSize PixelSize)</code> — Opens a local file with an explicit maximum video raster, up to 1024 by 1024 pixels.
+<li><code>init(path string, maxSize PixelSize)</code> — Opens a local file with an explicit maximum video raster, up to 2048 by 2048 pixels.
 <ul>
 <li><code>path</code>: The local media file.</li>
 <li><code>maxSize</code>: The positive pixel limits for the video decoder.</li>
+</ul>
+</li>
+<li><code>init(path string, maxSize PixelSize, loop bool)</code> — Opens local media with bounded decoding and optional continuous looping.
+<ul>
+<li><code>path</code>: The local media file.</li>
+<li><code>maxSize</code>: Positive pixel limits up to 2048 by 2048.</li>
+<li><code>loop</code>: Whether the decoder repeats the file without restarting a process.</li>
 </ul>
 </li>
 </ul>

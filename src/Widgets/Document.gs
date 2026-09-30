@@ -219,6 +219,9 @@ public open class MarkdownView : Box {
       if lines.Count == 0 || lines[lines.Count - 1].Count == 0 { continue }
       lines.Add(List[TextRun]())
     }
+    while lines.Count > 0 && lines[lines.Count - 1].Count == 0 {
+      lines.RemoveAt(lines.Count - 1)
+    }
     return lines
   }
 

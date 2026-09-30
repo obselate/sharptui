@@ -2,7 +2,7 @@
 
 ## 01 Authority
 
-Do not edit [reference.md](reference.md). The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 101 public types and 656 declared members.
+Do not edit [reference.md](reference.md). The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 101 public types and 681 declared members.
 
 `api/` locks the contract. `PublicApi.allowlist.txt` locks exported type names. `PublicApi.snapshot.txt` locks type kinds. `PublicApi.symbols.sha256` locks exported signatures. `PublicApi.documentation.xml` fills the remaining compiler XML gaps for enum values.
 
