@@ -400,9 +400,23 @@ internal class VideoPlayback : IDisposable {
     }
 
     internal func ReadFrames() {
+        using let timer = tick(TimeSpan.FromMilliseconds(1.0))
         try {
             while true {
-                let buffer = <-free
+                lock gate {
+                    if disposed { return }
+                }
+                var next([]uint8)?
+                var available bool
+                if !free.TryReceive(out next, out available) || !available {
+                    select {
+                        case <- timer { }
+                    }
+                    continue
+                }
+                guard let buffer = next else {
+                    continue
+                }
                 var offset = 0
                 while offset < buffer.Length {
                     let count = process.StandardOutput.BaseStream.Read(buffer, offset, buffer.Length - offset)
