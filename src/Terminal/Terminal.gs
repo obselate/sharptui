@@ -9,6 +9,10 @@ internal class Terminal {
   internal const GraphicsQuery string = "\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[c\x1b[16t\x1b[?80;1004s\x1b[?1004h"
   internal const GraphicsRestore string = "\x1b[?80;1004r"
 
+  private var asynchronous bool
+  private var writer TerminalOutput?
+  private var reserved TerminalBuffer?
+  private var deferred bool
   private var entered bool
   private var wake AutoResetEvent
   private var host TerminalHost
@@ -40,6 +44,7 @@ internal class Terminal {
   /// App.Run's poll loop wakes when a background read or fault needs handling.
   public init(wakeup AutoResetEvent) {
     initialize(wakeup, TerminalHosts.Create(wakeup))
+    asynchronous = true
   }
 
   internal init(wakeup AutoResetEvent, stream Stream) {
@@ -112,6 +117,7 @@ internal class Terminal {
         Interlocked.Exchange(ref readerFault, 0)
         writeText(Ansi.KittyKeyboardQuery + (backgroundPending ? Ansi.DefaultBackgroundQuery : "")
           + GraphicsQuery)
+        if asynchronous { writer = TerminalOutput(host.Output(), wake, frame) }
         Interlocked.Exchange(ref reading, 1)
         let nextReader = Thread(readLoop)
         nextReader.IsBackground = true
@@ -119,6 +125,8 @@ internal class Terminal {
         nextReader.Start()
         hookProcessExit()
       } catch (error Exception) {
+        writer?.Stop()
+        writer = nil
         entered = false
         Interlocked.Exchange(ref reading, 0)
         reader = nil
@@ -150,6 +158,10 @@ internal class Terminal {
     if activeReader != nil && activeReader.ManagedThreadId != Environment.CurrentManagedThreadId {
       activeReader.Join()
     }
+    writer?.Stop()
+    writer = nil
+    reserved = nil
+    deferred = false
     lock outputGate {
       try {
         if let screen = presentedScreen {
@@ -225,6 +237,19 @@ internal class Terminal {
   /// Invalidates the screen so the next Present repaints fully if the write
   /// does not complete.
   public func Present(screen Screen) int32 {
+    if let active = writer {
+      let next = reserved ?? active.Take()
+      reserved = nil
+      guard let output = next else {
+        deferred = true
+        return 0
+      }
+      presentedScreen = screen
+      let count = screen.Emit(output)
+      if count == 0 { active.Return(output) }
+      else { active.Send(output) }
+      return count
+    }
     lock outputGate {
       var sent = false
       try {
@@ -269,10 +294,20 @@ internal class Terminal {
   /// Reports whether the host requested exit or the background reader thread
   /// faulted, clearing both flags as it does.
   public func ConsumeExit() bool -> host.ConsumeExit()
-    || Interlocked.Exchange(ref readerFault, 0) != 0
+    || Interlocked.Exchange(ref readerFault, 0) != 0 || writer?.Error != nil
+
+  internal func ConsumeOutputProgress() bool {
+    if !deferred { return false }
+    guard let active = writer else { return false }
+    reserved = active.Take()
+    if reserved == nil { return false }
+    deferred = false
+    return true
+  }
 
   internal func ConfigureGraphics(screen Screen) {
     lock outputGate {
+      if asynchronous { screen.EnableAsyncGraphics(wake) }
       screen.Graphics = activeGraphics
       screen.CellPixels = activeCellPixels
     }
@@ -430,6 +465,10 @@ internal class Terminal {
 
   private func writeText(text string) {
     if text.Length == 0 { return }
+    if let active = writer {
+      active.Control(text)
+      return
+    }
     let bytes = Encoding.UTF8.GetBytes(text)
     let output = host.Output()
     output.Write(bytes, 0, bytes.Length)

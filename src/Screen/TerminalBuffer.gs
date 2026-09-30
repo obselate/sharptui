@@ -28,6 +28,11 @@ internal class TerminalBuffer {
     output.Write(writer.WrittenSpan)
   }
 
+  internal func AppendBuffer(value TerminalBuffer) {
+    value.writer.WrittenSpan.CopyTo(writer.GetSpan(value.Count()))
+    writer.Advance(value.Count())
+  }
+
   internal func AppendByte(value uint8) {
     let span = writer.GetSpan(1)
     span[0] = value

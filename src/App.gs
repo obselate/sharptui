@@ -243,7 +243,7 @@ public class App {
         screen.Resize(cols, rows)
         dirty = true
       }
-      if term.ConsumeGraphicsChange() { dirty = true }
+      if term.ConsumeGraphicsChange() || term.ConsumeOutputProgress() || screen.PendingGraphics { dirty = true }
       let contentInterval = root.FrameMilliseconds()
       if contentInterval > 0 && now >= nextContentFrame {
         dirty = true
@@ -304,6 +304,7 @@ public class App {
       if !running { continue }
 
       var deadline int64 = contentInterval > 0 ? nextContentFrame : -1
+      if screen.PendingGraphics { deadline = clock.ElapsedMilliseconds + 8 }
       if interval > 0 && (deadline < 0 || nextTick < deadline) { deadline = nextTick }
       let animationDeadline = animations.NextDeadline(clock.ElapsedMilliseconds)
       if animationDeadline >= 0 && (deadline < 0 || animationDeadline < deadline) {

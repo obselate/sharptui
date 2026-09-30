@@ -65,6 +65,17 @@ public class ImageSource {
         findOpacity()
     }
 
+    internal func CopySnapshot(source ImageSource) {
+        if pixels.Length < source.pixels.Length {
+            Array.Resize(ref pixels, source.pixels.Length)
+        }
+        width = source.width
+        height = source.height
+        opaque = source.opaque
+        version = source.version
+        Array.Copy(source.pixels, pixels, source.width * source.height * 4)
+    }
+
     private func findOpacity() {
         opaque = true
         var at = 3

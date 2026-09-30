@@ -3,6 +3,7 @@ package SharpTui
 import System
 import System.Collections.Generic
 import System.Text
+import System.Threading
 
 /// Text attribute bits that can be combined on a Style.
 @Flags
@@ -174,6 +175,14 @@ public class Screen {
   private var front List[Cell]
   private var glyphs GlyphCache
   private var links HyperlinkCache
+  private var graphicsWake AutoResetEvent?
+  internal prop PendingGraphics bool -> images?.Pending ?? false
+
+  internal func EnableAsyncGraphics(wake AutoResetEvent) {
+    graphicsWake = wake
+    images?.EnableAsync(wake)
+  }
+
   private var compatibility TerminalBuffer?
 
   /// Creates a screen of the given size in cells, with the terminal-configured default style.
@@ -604,6 +613,9 @@ public class Screen {
       && visible.WidthCells * cellPixels.Width <= 8192 && visible.HeightRows * cellPixels.Height <= 8192) {
       if images == nil { images = GraphicsPlane(width, height) }
       guard let plane = images else { return }
+      if graphics == GraphicsProtocol.Kitty {
+        if let wake = graphicsWake { plane.EnableAsync(wake) }
+      }
       for y in visible.Row ... visible.Row + visible.HeightRows {
         for x in visible.Column ... visible.Column + visible.WidthCells {
           let index = y * width + x

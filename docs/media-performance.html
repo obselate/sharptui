@@ -187,4 +187,132 @@ for enabled in []bool{false, true} {
 &lt;Project Sdk=&quot;Gsharp.NET.Sdk/0.4.591&quot;&gt;&lt;PropertyGroup&gt;&lt;OutputType&gt;Exe&lt;/OutputType&gt;&lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;&lt;AllowUnsafeBlocks&gt;true&lt;/AllowUnsafeBlocks&gt;&lt;InvariantGlobalization&gt;true&lt;/InvariantGlobalization&gt;&lt;/PropertyGroup&gt;&lt;ItemGroup&gt;&lt;Compile Include=&quot;/home/xaz/Projects/sharptui/src/**/*.gs&quot; Exclude=&quot;/home/xaz/Projects/sharptui/src/Main.gs;/home/xaz/Projects/sharptui/src/Checks/**/*.gs&quot; /&gt;&lt;ProjectReference Include=&quot;/home/xaz/Projects/sharptui/vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj&quot;/&gt;&lt;PackageReference Include=&quot;StbImageSharp&quot; Version=&quot;2.30.16&quot;/&gt;&lt;/ItemGroup&gt;&lt;/Project&gt;
 </pre></details><details><summary>Inline canary source fingerprints</summary><pre>src/Widgets/Document.gs: f324c764e958edf7e70d3a7d4d8f473ac4b718d93cdde70eb6e9e84be68cbd99
 src/Screen/Screen.gs: a4df587e33f44fff070edd178362f79ef6def9b60f7c8205b61fb26fc3a781e7
-src/Media/Raster.gs: d39ba31ab98980d7990b84e1a94f88a81d7e703710897b62be53600a2737696f</pre></details></html>
+src/Media/Raster.gs: d39ba31ab98980d7990b84e1a94f88a81d7e703710897b62be53600a2737696f</pre></details><h2>Scroll blocking follow-up</h2>
+<p>2026-09-30. Baseline f532cbe retransmitted a visible image on every scroll when its source exceeded the 4,194,304-pixel upload cache. The simplest allocation-free fix checks the previous visible uploads as well as the offscreen LRU. It preserves original raster quality and does not enlarge the LRU.</p>
+<p>Three independent managed Release processes per variant, tiering disabled, 80×24 cells, three warm frames and six measured one-row moves. The icon source is 128×128. The large source is 4096×2048. Pixels and placement geometry are unchanged. These numbers are a different workload from the earlier 640×320 comparison above.</p>
+<table><tr><th>Path</th><th>Before median µs/op</th><th>After median µs/op</th><th>Terminal bytes/op before / after</th><th>B/op before / after</th><th>Gen0 in all runs</th></tr>
+<tr><td>128×128 icon scrolling</td><td>68.3</td><td>68.8</td><td>1,848 / 1,848</td><td>0 / 0</td><td>0</td></tr>
+<tr><td>4096×2048 image scrolling</td><td>136,604.1</td><td>92.0</td><td>7,017,226 / 4,504</td><td>0 / 0</td><td>0</td></tr></table>
+<p>Reuse alone does not protect input from first-time image encoding or a blocked terminal stream. Native App presentation now uses a two-slot snapshot/encoding worker and a three-buffer output worker. Jobs and output buffers are bounded. When output buffers are busy, the UI postpones emission and continues input dispatch. Incremental frames remain ordered and are never dropped. The synchronous standalone Screen.Emit behavior is unchanged.</p>
+<p>A separate controlled canary updates the same 4096×2048 source version before each frame. Both variants eventually emit the same raster. The async variant also emits the previous placement while the new raster is pending, adding 3,323 bytes/op. This is a scheduling and ownership comparison, not a reduction in total encoding CPU. Each process warms three updates and measures six updates. Source.Update and worker completion are outside the submission timer.</p>
+<table><tr><th>Path</th><th>Median UI submission µs/op</th><th>UI submission B/op</th><th>Gen0 during measured updates</th><th>Median retained managed heap after collection</th></tr>
+<tr><td>Synchronous new upload</td><td>156,398.6</td><td>0</td><td>0 in all runs</td><td>49,717,064 B</td></tr>
+<tr><td>Worker upload, one warmed slot</td><td>2,019.4</td><td>0</td><td>0 in all runs</td><td>100,080,032 B</td></tr></table>
+<p>The measured retained increase is 50,362,968 B. It pays for an immutable source snapshot and reusable encoded bytes. The pool has two slots, but this one-source canary warms only one. Slots grow only when a larger raster requires capacity and retain that capacity until terminal teardown. Each snapshot is bounded by ImageSource's 64 MiB decoded limit. Discordo bounds static previews to 2048 per edge on fetch workers, reducing each preview snapshot to at most 16 MiB. The three terminal output buffers also retain peak capacity. These costs are explicit and this result does not claim a zero-allocation entire application.</p>
+<table><tr><th>Decision</th><th>Frequency and former cost</th><th>Ownership, lifetime and guard</th><th>Evidence or rejection</th></tr>
+<tr><td>Accepted allocation-free visible upload reuse</td><td>Hot, formerly 0 B/op but repeated full raster transport</td><td>Previous visible descriptors remember the actual uploaded version separately from the desired version. Reuse requires identity, ID, crop, raster size and uploaded version.</td><td>Large scroll cost falls to 92.0 µs/op with 0 B/op. Keep the four-million-pixel offscreen LRU.</td></tr>
+<tr><td>Accepted bounded upload and output pools</td><td>Warm capacity growth, hot submission remains 0 B/op</td><td>Two immutable snapshot jobs, one encoder worker, three ordered output buffers. UI owns source mutation. Ready jobs must be consumed even if a prior version is cached. Stale/offscreen jobs are discarded. Shutdown joins both workers.</td><td>UI submission falls from 156.4 ms to 2.0 ms. The old native binary fails the blocked-output E2E test. The final native binary scrolls and sends a message in 37.5 ms during a blocked 4K upload and exits cleanly.</td></tr>
+<tr><td>Accepted allocation-free decoder handoff</td><td>Hot buffer return, formerly capable of synchronous FFmpeg reads on UI</td><td>Decoder and encoder workers poll their input channels. They never park a receiver that an input-thread TrySend could resume inline. FFmpeg reads stay on workers. Disposal checks stop the reader even while no free buffer is available.</td><td>G# channel continuations can run on the sender. Actual Ghostty exposed an indefinitely blocked UI. Worker polling avoids this path and the measured 104 B submission cost of direct blocking-channel wakeups.</td></tr>
+<tr><td>Accepted async media retirement</td><td>Warm/offscreen boundary</td><td>Full retirement queues start a native go worker rather than disposing on UI. Pending retirements count against the four-player budget. Exit waits for owned retirements. One-second offscreen hysteresis remains.</td><td>Native timeline checks verify offscreen decoder shutdown and clean exit.</td></tr>
+<tr><td>Rejected mutable source borrowing and new per-frame buffers</td><td>Hot encoding</td><td>Borrowing races ImageSource.Update. New arrays on each frame create allocation churn.</td><td>Reuse immutable pooled snapshots instead. No frame allocation exemption is accepted.</td></tr>
+<tr><td>Removed aggregate staged-raster budget</td><td>Frame staging</td><td>Previously a large image could consume the shared native budget and push avatars or popup media to half blocks. Keep 64 staged draws and a 2048×2048 per-raster bound. Encode only draws with visible claimed cells. The upload LRU remains separately bounded.</td><td>Quality now survives multiple images and overlays. Maximum visible native payload can exceed the old shared four-million-pixel limit. Terminal and framework buffers retain peak capacity until teardown.</td></tr>
+<tr><td>Deferred background Sixel encoding and pool compaction</td><td>Changed Sixel frames and rare capacity boundaries</td><td>Sixel still encodes synchronously, while terminal writes use the worker. Buffer shrinking needs its own measured hysteresis comparison.</td><td>The reported responsiveness fix and upload measurements concern Ghostty's Kitty path. Do not generalize them to Sixel encoding.</td></tr></table>
+<p>API handoff: no exported symbols change. Preserve immutable worker ownership, separate desired/uploaded versions, bounded jobs, source version invalidation, pending-frame scheduling, ordered nonblocking output, explicit joined shutdown and warmed 0 B emission. Regression gates passed: Release builds and strict lint, selfcheck, byte/pixel/clipping protocol fixture, generated API/XML contract, native pressure fixture, Kitty/Sixel 1000-message timeline including resize, network/client fixtures, and actual Ghostty 1.3.1 with IBM Plex Mono at wide, tall and narrow sizes.</p>
+<details><summary>Independent scroll measurements</summary><pre>{
+  &quot;Baseline&quot;: [
+    &quot;icon us/op=68.3 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=129500.9 B/op=0 gen0=0 bytes/op=7017226&quot;,
+    &quot;icon us/op=68.3 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=136604.1 B/op=0 gen0=0 bytes/op=7017226&quot;,
+    &quot;icon us/op=68.6 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=158943.8 B/op=0 gen0=0 bytes/op=7017226&quot;
+  ],
+  &quot;Bench&quot;: [
+    &quot;icon us/op=68.7 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=89.7 B/op=0 gen0=0 bytes/op=4504&quot;,
+    &quot;icon us/op=68.8 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=92.0 B/op=0 gen0=0 bytes/op=4504&quot;,
+    &quot;icon us/op=70.3 B/op=0 gen0=0 bytes/op=1848\nlarge us/op=93.1 B/op=0 gen0=0 bytes/op=4504&quot;
+  ]
+}</pre></details><details><summary>Independent upload submission measurements</summary><pre>sync submit-us/op=157785.2 submit-B/op=0 gen0=0 bytes/op=8420671 retained=49717064
+async submit-us/op=1775.5 submit-B/op=0 gen0=0 bytes/op=8423994 retained=100079880
+
+sync submit-us/op=155074.6 submit-B/op=0 gen0=0 bytes/op=8420671 retained=49717064
+async submit-us/op=2025.7 submit-B/op=0 gen0=0 bytes/op=8423994 retained=100080056
+
+sync submit-us/op=156398.6 submit-B/op=0 gen0=0 bytes/op=8420671 retained=49717064
+async submit-us/op=2019.4 submit-B/op=0 gen0=0 bytes/op=8423994 retained=100080032</pre></details><details><summary>Scroll and upload canary sources</summary><pre>package SharpTui
+import System
+import System.Diagnostics
+func Main() int32 {
+  for large in []bool{false, true} {
+    let w = large ? 4096: 128
+    let h = large ? 2048: 128
+    let pixels = [w * h * 4]uint8
+    for i in 0 ... pixels.Length { pixels[i] = uint8(i % 4 == 3 ? 255: i % 251) }
+    let image = ImageSource.FromRgba(w, h, pixels)
+    let screen = Screen(80, 24)
+    screen.Graphics = GraphicsProtocol.Kitty
+    let output = TerminalBuffer(16000000)
+    for i in 0 ... 3 {
+      screen.Clear()
+      screen.DrawImage(image, CellRect{Row: i % 2, WidthCells: large ? 40: 4, HeightRows: large ? 10: 2})
+      screen.Emit(output)
+    }
+    let watch = Stopwatch()
+    let allocated = GC.GetAllocatedBytesForCurrentThread()
+    let gen0 = GC.CollectionCount(0)
+    watch.Start()
+    var bytes int64
+    for i in 0 ... 6 {
+      screen.Clear()
+      screen.DrawImage(image, CellRect{Row: i % 2, WidthCells: large ? 40: 4, HeightRows: large ? 10: 2})
+      bytes += screen.Emit(output)
+    }
+    watch.Stop()
+    let allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated
+    let collections = GC.CollectionCount(0) - gen0
+    Console.WriteLine((large ? &quot;large&quot;: &quot;icon&quot;) + &quot; us/op=&quot; + (watch.Elapsed.TotalMilliseconds * 1000.0 / 6.0).ToString(&quot;F1&quot;) + &quot; B/op=&quot; + (allocatedBytes / 6).ToString() + &quot; gen0=&quot; + collections.ToString() + &quot; bytes/op=&quot; + (bytes / 6).ToString())
+  }
+  return 0
+}
+
+package SharpTui
+import System
+import System.Diagnostics
+import System.Threading
+func Main() int32 {
+  for asynchronous in []bool{false, true} {
+    let pixels = [4096 * 2048 * 4]uint8
+    for i in 0 ... pixels.Length { pixels[i] = uint8(i % 4 == 3 ? 255: i % 251) }
+    let image = ImageSource.FromRgba(4096, 2048, pixels)
+    let screen = Screen(80, 24)
+    screen.Graphics = GraphicsProtocol.Kitty
+    using let wake = AutoResetEvent(false)
+    if asynchronous { screen.EnableAsyncGraphics(wake) }
+    let output = TerminalBuffer(16000000)
+    let watch = Stopwatch()
+    var elapsed float64
+    var allocated int64
+    var bytes int64
+    var collections = 0
+    for i in 0 ... 9 {
+      if i == 3 { collections = GC.CollectionCount(0) }
+      image.Update(pixels)
+      screen.Clear()
+      screen.DrawImage(image, CellRect{Row: i % 2, WidthCells: 40, HeightRows: 10})
+      wake.Reset()
+      let before = GC.GetAllocatedBytesForCurrentThread()
+      watch.Restart()
+      let submitted = screen.Emit(output)
+      watch.Stop()
+      let cost = GC.GetAllocatedBytesForCurrentThread() - before
+      if i &gt;= 3 {
+        elapsed += watch.Elapsed.TotalMicroseconds
+        allocated += cost
+        bytes += submitted
+      }
+      if asynchronous {
+        if !wake.WaitOne(5000) { throw Exception(&quot;upload timed out&quot;) }
+        let completed = screen.Emit(output)
+        if i &gt;= 3 { bytes += completed }
+      }
+    }
+    let gen0 = GC.CollectionCount(0) - collections
+    let retained = GC.GetTotalMemory(true)
+    screen.ReleaseGraphics(output)
+    Console.WriteLine((asynchronous ? &quot;async&quot;: &quot;sync&quot;) + &quot; submit-us/op=&quot; + (elapsed / 6.0).ToString(&quot;F1&quot;) + &quot; submit-B/op=&quot; + (allocated / 6).ToString() + &quot; gen0=&quot; + gen0.ToString() + &quot; bytes/op=&quot; + (bytes / 6).ToString() + &quot; retained=&quot; + retained.ToString())
+  }
+  return 0
+}
+
+&lt;Project Sdk=&quot;Gsharp.NET.Sdk/0.4.591&quot;&gt;&lt;PropertyGroup&gt;&lt;OutputType&gt;Exe&lt;/OutputType&gt;&lt;EnableDefaultCompileItems&gt;false&lt;/EnableDefaultCompileItems&gt;&lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;&lt;AllowUnsafeBlocks&gt;true&lt;/AllowUnsafeBlocks&gt;&lt;InvariantGlobalization&gt;true&lt;/InvariantGlobalization&gt;&lt;/PropertyGroup&gt;&lt;ItemGroup&gt;&lt;Compile Include=&quot;Main.gs&quot;/&gt;&lt;Compile Include=&quot;/home/xaz/Projects/sharptui/src/**/*.gs&quot; Exclude=&quot;/home/xaz/Projects/sharptui/src/Main.gs;/home/xaz/Projects/sharptui/src/Checks/**/*.gs&quot; /&gt;&lt;ProjectReference Include=&quot;/home/xaz/Projects/sharptui/vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj&quot;/&gt;&lt;PackageReference Include=&quot;StbImageSharp&quot; Version=&quot;2.30.16&quot;/&gt;&lt;/ItemGroup&gt;&lt;/Project&gt;
+</pre></details><details><summary>Follow-up source fingerprints</summary><pre>src/Media/Graphics.gs: 4a490d603535f303c927842847c8ee5d2edb74ee83ebf3adfe94ab1653e1836f
+src/Media/KittyUpload.gs: e1cfc6737b347e3176e1db641f9b2992e6415febbe3ec9cfd75a84c25a77dabe
+src/Media/Player.gs: fa9b42c89bb7ce5ce2e57e817dd3e1a8ea95512c2f06ca13bb74084fe4ca627f
+src/Terminal/Output.gs: 7d394473046a200d8063d2e314700c123218fe36dff7583cfedcf6432e0f6407</pre></details></html>

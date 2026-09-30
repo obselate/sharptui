@@ -2,6 +2,7 @@ package SharpTui
 
 import System
 import System.Collections.Generic
+import System.Threading
 
 internal class GraphicsPlane {
     private var back List[ImageDraw]
@@ -11,13 +12,20 @@ internal class GraphicsPlane {
     private var width int32
     private var height int32
     private var nextId int32
-    private var rasterPixels int32
     private var invalid bool
     private var changed bool
     private var protocol GraphicsProtocol
     private var sixel SixelEncoder?
     private let uploads List[ImageDraw] = List[ImageDraw](64)
     private var uploadPixels int32
+    private let visible[]bool = [64]bool
+    private var encoder KittyUploads?
+
+    internal prop Pending bool -> encoder?.Pending ?? false
+
+    internal func EnableAsync(wake AutoResetEvent) {
+        if encoder == nil { encoder = KittyUploads(wake) }
+    }
 
     internal init(width int32, height int32) {
         back = List[ImageDraw](64)
@@ -44,7 +52,6 @@ internal class GraphicsPlane {
 
     internal func Clear() {
         back.Clear()
-        rasterPixels = 0
         for i in 0 ... claims.Count {
             claims[i] = 0
         }
@@ -59,10 +66,9 @@ internal class GraphicsPlane {
     }
 
     internal func Stage(draw ImageDraw, clip CellRect) bool {
-        if back.Count == 64 || rasterPixels + draw.RasterWidth * draw.RasterHeight > 4194304 {
+        if back.Count == 64 {
             return false
         }
-        rasterPixels += draw.RasterWidth * draw.RasterHeight
         var next = draw
         next.Id = 0
         for oldIndex in 0 ... front.Count {
@@ -110,7 +116,12 @@ internal class GraphicsPlane {
     internal func Prepare(screen Screen, output TerminalBuffer) bool {
         let mode = screen.Graphics
         var repaint = invalid || protocol != mode
-        changed = repaint || back.Count != front.Count
+        for i in 0 ... visible.Length { visible[i] = false }
+        for owner in claims {
+            if owner > 0 { visible[owner - 1] = true }
+        }
+        let completed = encoder?.Pump(back, visible) ?? false
+        changed = completed || repaint || back.Count != front.Count
         if !changed {
             for i in 0 ... back.Count {
                 if !ImageRaster.Same(back[i], front[i]) {
@@ -178,7 +189,18 @@ internal class GraphicsPlane {
         }
         if screen.Graphics == GraphicsProtocol.Kitty {
             for drawIndex in 0 ... back.Count {
-                let draw = back[drawIndex]
+                var draw = back[drawIndex]
+                if !visible[drawIndex] {
+                    for oldIndex in 0 ... front.Count {
+                        let old = front[oldIndex]
+                        if old.Id == draw.Id {
+                            draw.UploadedVersion = old.UploadedVersion
+                            break
+                        }
+                    }
+                    back[drawIndex] = draw
+                    continue
+                }
                 var upload = invalid || protocol != GraphicsProtocol.Kitty
                 if !upload {
                     upload = true
@@ -195,9 +217,46 @@ internal class GraphicsPlane {
                         }
                     }
                 }
-                if upload {
-                    KittyEncoder.Upload(output, draw)
+                if upload && !invalid && protocol == GraphicsProtocol.Kitty {
+                    for oldIndex in 0 ... front.Count {
+                        let old = front[oldIndex]
+                        if old.UploadedVersion == draw.Version && old.Id == draw.Id && Object.ReferenceEquals(old.Source, draw.Source)
+                        && ImageRaster.SameRect(old.Crop, draw.Crop) && old.RasterWidth == draw.RasterWidth && old.RasterHeight == draw.RasterHeight {
+                            upload = false
+                            break
+                        }
+                    }
                 }
+                if encoder?.Ready(draw) ?? false { upload = true }
+                if upload {
+                    if let worker = encoder {
+                        let version = worker.Take(draw, output)
+                        if version == 0 {
+                            worker.Request(draw)
+                            for oldIndex in 0 ... front.Count {
+                                let old = front[oldIndex]
+                                if old.Id == draw.Id && Object.ReferenceEquals(old.Source, draw.Source)
+                                && ImageRaster.SameRect(old.Crop, draw.Crop) && old.RasterWidth == draw.RasterWidth && old.RasterHeight == draw.RasterHeight {
+                                    draw.UploadedVersion = old.UploadedVersion
+                                    break
+                                }
+                            }
+                            if draw.UploadedVersion == 0 {
+                                back[drawIndex] = draw
+                                continue
+                            }
+                        } else {
+                            draw.UploadedVersion = version
+                            if version != draw.Version { worker.Request(draw) }
+                        }
+                    } else {
+                        KittyEncoder.Upload(output, draw)
+                        draw.UploadedVersion = draw.Version
+                    }
+                } else {
+                    draw.UploadedVersion = draw.Version
+                }
+                back[drawIndex] = draw
                 retain(output, draw)
                 KittyEncoder.Place(output, draw)
             }
@@ -225,6 +284,10 @@ internal class GraphicsPlane {
                     }
                     let rect = CellRect{Column: x, Row: y, WidthCells: end - x, HeightRows: bottom - y}
                     let draw = back[owner - 1]
+                    if screen.Graphics == GraphicsProtocol.Kitty && draw.UploadedVersion == 0 {
+                        x = end
+                        continue
+                    }
                     if screen.Graphics == GraphicsProtocol.Kitty {
                         KittyEncoder.Cells(output, draw, rect, screen)
                     } else {
@@ -253,6 +316,8 @@ internal class GraphicsPlane {
     }
 
     internal func Release(output TerminalBuffer) {
+        encoder?.Stop()
+        encoder = nil
         if protocol == GraphicsProtocol.Kitty {
             for uploadIndex in 0 ... uploads.Count {
                 let upload = uploads[uploadIndex]
@@ -324,7 +389,9 @@ internal class GraphicsPlane {
             uploadPixels -= Math.Max(old.Source.Size.Width * old.Source.Size.Height, old.RasterWidth * old.RasterHeight)
             uploads.RemoveAt(victim)
         }
-        uploads.Add(draw)
+        var stored = draw
+        stored.Version = draw.UploadedVersion
+        uploads.Add(stored)
         uploadPixels += pixels
     }
 

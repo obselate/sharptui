@@ -7,6 +7,7 @@ internal struct ImageDraw {
     var Target CellRect
     var Crop CellRect
     var Id int32
+    var UploadedVersion int64
     var Version int64
     var RasterWidth int32
     var RasterHeight int32
