@@ -24,6 +24,12 @@ GITHUB = "https://github.com/obselate/sharptui/blob/main"
 
 DOCUMENTS = (
     {
+        "source": "media.md", "output": "media.html", "code": "STUI-MEDIA",
+        "kind": "Application guide", "summary": "Retained images, Kitty and Sixel graphics, and bounded media playback.",
+        "cycle": (("Decode", "source"), ("Place", "image"), ("Clip", "frame"), ("Release", "resources")),
+        "cycle_caption": "Media lifetime",
+    },
+    {
         "source": "README.md",
         "output": "README.html",
         "code": "STUI-00",
@@ -31,6 +37,12 @@ DOCUMENTS = (
         "summary": "Authority, regeneration, publication register, and project boundaries for the SharpTUI public API.",
         "cycle": (("Choose", "task"), ("Open", "guide"), ("Verify", "member"), ("Build", "app")),
         "cycle_caption": "Documentation lookup route",
+    },
+    {
+        "source": "getting-started.md", "output": "getting-started.html", "code": "STUI-START",
+        "kind": "Application guide", "summary": "Construct and run a retained tree and handle state changes.",
+        "cycle": (("Declare", "tree"), ("Run", "app"), ("Handle", "input"), ("Change", "state")),
+        "cycle_caption": "Application lifecycle",
     },
     {
         "source": "reference.md",
@@ -856,7 +868,7 @@ def stylesheet() -> str:
     html = (DOCS / "getting-started.html").read_text(encoding="utf-8")
     match = re.search(r"<style>\s*(.*?)\s*</style>", html, re.DOTALL)
     if match is None:
-        raise ValueError("getting-started.html has no embedded stylesheet")
+        return (DOCS / "publication.css").read_text(encoding="utf-8")
     return f"{match.group(1).rstrip()}\n{EXTENSION_CSS.strip()}\n"
 
 

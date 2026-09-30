@@ -92,7 +92,7 @@
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#01-authority">Authority</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#02-regenerate">Regenerate</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#03-guides">Guides</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#04-migration">Migration</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#05-boundaries">Boundaries</a></td><td>5-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#01-authority">Authority</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#02-regenerate">Regenerate</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#03-guides">Guides</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#04-migration">Migration</a></td><td>4-1</td></tr><tr><td>5</td><td><a href="#05-boundaries">Boundaries</a></td><td>5-1</td></tr><tr><td>6</td><td><a href="#current-api-migration">Current API migration</a></td><td>6-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
@@ -128,7 +128,7 @@
       </div>
     </div>
     <div class="chapter-copy">
-      <p>Do not edit <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>. The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 94 public types and 599 declared members.</p>
+      <p>Do not edit <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.md</a>. The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 101 public types and 656 declared members.</p>
 <p><code>api/</code> locks the contract. <code>PublicApi.allowlist.txt</code> locks exported type names. <code>PublicApi.snapshot.txt</code> locks type kinds. <code>PublicApi.symbols.sha256</code> locks exported signatures. <code>PublicApi.documentation.xml</code> fills the remaining compiler XML gaps for enum values.</p>
     </div>
   </div>
@@ -225,6 +225,11 @@ python<span class="w"> </span>tools/render_api_html.py
 <td>Canvas, indicators, animation, workers</td>
 </tr>
 <tr>
+<td>Images and playback</td>
+<td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/media.html">Images and media</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/media.html">HTML</a>)</td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimagesource"><code>ImageSource</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimageview"><code>ImageView</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimediaplayer"><code>MediaPlayer</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimediaview"><code>MediaView</code></a>, Kitty and Sixel</td>
+</tr>
+<tr>
 <td>Complete contract</td>
 <td><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">Reference</a> (<a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">HTML</a>)</td>
 <td>All exported types and members</td>
@@ -253,7 +258,7 @@ python<span class="w"> </span>tools/render_api_html.py
     </div>
     <div class="chapter-copy">
       <p>This release replaces polling and user-owned application lifecycle code with a retained <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree and callbacks. Update the consumer project SDK first:</p>
-<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Migration</span></figcaption><pre class="language-xml"><code>&lt;Project Sdk="Gsharp.NET.Sdk/0.4.59"&gt;
+<figure class="listing"><figcaption class="listing-head"><span>Listing 4-1</span><span>Migration</span></figcaption><pre class="language-xml"><code>&lt;Project Sdk="Gsharp.NET.Sdk/0.4.591"&gt;
 </code></pre></figure>
 <p>Then migrate each removed surface:</p>
 <div class="table-scroll"><table class="manual-table">
@@ -266,7 +271,7 @@ python<span class="w"> </span>tools/render_api_html.py
 <tbody>
 <tr>
 <td><code>View</code>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(View)</code></a></td>
-<td>Build a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree and call <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a>. For custom drawing or input, subclass <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> and override <code>Render</code> or <code>Accept</code>. The app owns clearing, drawing, and event routing.</td>
+<td>Build a <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> tree and call <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App{ Root: root }.Run()</code></a>. For custom drawing or input, subclass <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box</code></a> and override <code>Render</code> or <code>Accept</code>. The app owns clearing, drawing, and event routing.</td>
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitestdriver"><code>TestDriver(View, width, height)</code></a></td>
@@ -278,7 +283,7 @@ python<span class="w"> </span>tools/render_api_html.py
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.IsPressed</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.ConsumePress()</code></a></td>
-<td>Assign <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnPress</code></a>.</td>
+<td>Assign <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnClick</code></a>.</td>
 </tr>
 <tr>
 <td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.Result</code></a>, <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuidialog"><code>Dialog.ConsumeResult()</code></a></td>
@@ -298,7 +303,7 @@ python<span class="w"> </span>tools/render_api_html.py
 <figure class="listing"><figcaption class="listing-head"><span>Listing 4-2</span><span>Migration</span></figcaption><pre class="language-gsharp"><code><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
 <span class="k">let</span><span class="w"> </span>state<span class="w"> </span>=<span class="w"> </span><span class="nc">Badge</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"MODIFIED"</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>save<span class="w"> </span>=<span class="w"> </span><span class="nc">Button</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Save"</span><span class="w"> </span>}
-save.<span class="nc">OnPress</span><span class="w"> </span>=<span class="w"> </span>()<span class="w"> </span>-&gt;<span class="w"> </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>
+save.<span class="nc">OnClick</span><span class="w"> </span>=<span class="w"> </span>()<span class="w"> </span>-&gt;<span class="w"> </span>state.<span class="nc">Text</span><span class="w"> </span>=<span class="w"> </span><span class="s2">"SAVED"</span>
 
 <span class="k">let</span><span class="w"> </span>apply<span class="w"> </span>=<span class="w"> </span><span class="nc">DialogAction</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"Apply"</span><span class="w"> </span>}
 <span class="k">let</span><span class="w"> </span>confirm<span class="w"> </span>=<span class="w"> </span><span class="nc">Dialog</span>{<span class="w"> </span><span class="nc">Message</span>:<span class="w"> </span><span class="s2">"Apply changes?"</span>,<span class="w"> </span><span class="nc">Actions</span>:<span class="w"> </span>{<span class="w"> </span>apply<span class="w"> </span>}<span class="w"> </span>}
@@ -353,6 +358,67 @@ app.<span class="nc">Keys</span>.<span class="nf">Add</span>(
   <footer class="folio">
   <span>Boundaries</span>
   <span>5-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="current-api-migration">
+  <header class="running-head">
+  <span>API documentation</span>
+  <span>STUI-00 / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">6</div>
+      <div>
+        <p class="chapter-label">Chapter 6</p>
+        <h2 id="current-api-migration">Current API migration</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <div class="table-scroll"><table class="manual-table">
+<thead>
+<tr>
+<th>Previous signature</th>
+<th>Current signature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root Box)</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Root</code></a> and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run()</code></a></td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.GapCells int32</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.Gap int32</code></a></td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.GrowWeight int32</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.Grow int32</code></a></td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView.ColumnGapCells int32</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitableview"><code>TableView.ColumnGap int32</code></a></td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnPress Action?</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibutton"><code>Button.OnClick Action?</code></a></td>
+</tr>
+<tr>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea.OnChanged Action[string]?</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuitextarea"><code>TextArea.OnChange Action[string]?</code></a></td>
+</tr>
+<tr>
+<td>Collection <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>ConsumeSelectionChange() SelectionChange?</code></a></td>
+<td><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiselectionchange"><code>OnChange Action[SelectionChange]?</code></a></td>
+</tr>
+</tbody>
+</table></div>
+<p>These are source breaks. Update bindings and assign callbacks once. Callbacks run on the app loop after navigation has updated selection identity and scrolling. Programmatic selection, data replacement, caret movement and rendering do not fire change callbacks. Exceptions propagate to the caller. A callback may replace the source or selection. It does not need a consume or draw call.</p>
+<p><code>Width: 24</code>, <code>Height: 3</code> and <code>Padding: 1</code> use checked integer conversions to cell lengths and insets. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicelllength"><code>CellLength.Auto</code></a> and asymmetric <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellinsets"><code>CellInsets</code></a> remain explicit. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column(){ child, other }</code></a> for a collection-only initializer. When setting container properties, use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicolumn"><code>Column{ Gap: 1, Children: { child, other } }</code></a>. The <code>Children</code> collection also supports dynamic trees.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Current API migration</span>
+  <span>6-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="appendix-title">

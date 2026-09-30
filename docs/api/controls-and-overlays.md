@@ -7,7 +7,7 @@ Controls state the current fact. Overlays own the active input scope. The comple
 | Type | State | Use |
 | --- | --- | --- |
 | `Label` | `Text`, `Alignment` | One clipped line of non-interactive text. |
-| `Button` | `OnPress` | Invokes one explicit action. |
+| `Button` | `OnClick` | Invokes one explicit action. |
 | `Toggle` | `IsChecked` | Independent Boolean choice. |
 | `RadioGroup` | `SelectedToggle` | One choice among toggles. |
 | `Select` | `SelectedIndex`, `IsOpen` | One choice from a compact option list. |
@@ -18,14 +18,14 @@ Controls state the current fact. Overlays own the active input scope. The comple
 let autosave = Toggle{ Text: "Autosave", IsChecked: true }
 let mode = Select{ Options: { "Draft", "Review", "Final" }, Placeholder: "choose mode" }
 let state = Badge{ Text: "MODIFIED" }
-let save = Button{ Text: "Save", OnPress: () -> state.Text = "SAVED" }
+let save = Button{ Text: "Save", OnClick: () -> state.Text = "SAVED" }
 
-if mode.ConsumeSelectionChange() != nil {
+mode.OnChange = change -> {
   state.Text = mode.Options[mode.SelectedIndex]
 }
 ```
 
-`Button.OnPress` runs on Enter, space, or click. `Toggle` flips on the same inputs. Set `CheckedGlyph` and `UncheckedGlyph` only when the default bracket glyphs do not convey state.
+`Button.OnClick` runs on Enter, space, or click. `Toggle` flips on the same inputs. Set `CheckedGlyph` and `UncheckedGlyph` only when the default bracket glyphs do not convey state.
 
 `RadioGroup.Add(toggle)` gives its toggles radio behavior. `Select` opens a keyboard- and mouse-navigable option list. Set `Options`, then call `Refresh()` after direct list mutation. Programmatic `SelectedIndex` changes do not produce `SelectionChange`.
 
@@ -104,7 +104,7 @@ dialog.OnResult = (action DialogAction) -> {
 let spinner = Spinner{ Text: "loading" }
 spinner.Advance()
 
-let left = Box{ Width: CellLength.Cells(24) }
+let left = Box{ Width: 24 }
 let splitter = Splitter(left, SplitterAxis.Columns)
 splitter.MinimumCells = 12
 splitter.MaximumCells = 48

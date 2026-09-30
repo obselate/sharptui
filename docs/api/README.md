@@ -2,7 +2,7 @@
 
 ## 01 Authority
 
-Do not edit [reference.md](reference.md). The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 94 public types and 599 declared members.
+Do not edit [reference.md](reference.md). The API-surface tool generates it from the Release framework assembly and its merged XML documentation. The generated reference is the complete contract: 101 public types and 656 declared members.
 
 `api/` locks the contract. `PublicApi.allowlist.txt` locks exported type names. `PublicApi.snapshot.txt` locks type kinds. `PublicApi.symbols.sha256` locks exported signatures. `PublicApi.documentation.xml` fills the remaining compiler XML gaps for enum values.
 
@@ -32,6 +32,7 @@ The reference states signatures. These guides state use, bounds, and interaction
 | Data views | [Collections](collections.md) ([HTML](collections.html)) | List, table, tree, tabs, status bar |
 | Interactive controls | [Controls and overlays](controls-and-overlays.md) ([HTML](controls-and-overlays.html)) | Inputs, selection, dialogs, overlays, splitters |
 | Drawing and runtime work | [Canvas, animation, and work](canvas-animation-and-work.md) ([HTML](canvas-animation-and-work.html)) | Canvas, indicators, animation, workers |
+| Images and playback | [Images and media](media.md) ([HTML](media.html)) | `ImageSource`, `ImageView`, `MediaPlayer`, `MediaView`, Kitty and Sixel |
 | Complete contract | [Reference](reference.md) ([HTML](reference.html)) | All exported types and members |
 
 ## 04 Migration
@@ -39,17 +40,17 @@ The reference states signatures. These guides state use, bounds, and interaction
 This release replaces polling and user-owned application lifecycle code with a retained `Box` tree and callbacks. Update the consumer project SDK first:
 
 ```xml
-<Project Sdk="Gsharp.NET.Sdk/0.4.59">
+<Project Sdk="Gsharp.NET.Sdk/0.4.591">
 ```
 
 Then migrate each removed surface:
 
 | Previous API | Current API |
 | --- | --- |
-| `View`, `App.Run(View)` | Build a `Box` tree and call `App.Run(root)`. For custom drawing or input, subclass `Box` and override `Render` or `Accept`. The app owns clearing, drawing, and event routing. |
+| `View`, `App.Run(View)` | Build a `Box` tree and call `App{ Root: root }.Run()`. For custom drawing or input, subclass `Box` and override `Render` or `Accept`. The app owns clearing, drawing, and event routing. |
 | `TestDriver(View, width, height)` | Pass the retained root to `TestDriver(root, width, height)`. |
 | `Command` and `Bind.Consume()` | Register the action directly with `Keymap.Add(gesture, phase, handler)`. Use the overload with `id` and `label` when a command surface needs metadata. Toggle the returned `Bind.IsEnabled` property when availability changes. |
-| `Button.IsPressed`, `Button.ConsumePress()` | Assign `Button.OnPress`. |
+| `Button.IsPressed`, `Button.ConsumePress()` | Assign `Button.OnClick`. |
 | `Dialog.Result`, `Dialog.ConsumeResult()` | Assign `Dialog.OnResult`. |
 | `Theme`, `ThemeRole`, `ControlState` | Keep application palette entries as ordinary `Style` values and assign them to `Style`, `FocusedStyle`, `SelectedStyle`, `HeaderStyle`, and other control-specific style properties. |
 | `Worker[T]`, `WorkerState`, `ConsumeResult`, `ConsumeError` | Call `App.StartWorker(work, completed, failed, cancelled)`. It returns a non-generic `Worker` with `IsRunning` and `Cancel`; terminal callbacks run on the application loop. |
@@ -60,7 +61,7 @@ Button, dialog, and key binding work now runs at activation time. Remove the pol
 let app = App()
 let state = Badge{ Text: "MODIFIED" }
 let save = Button{ Text: "Save" }
-save.OnPress = () -> state.Text = "SAVED"
+save.OnClick = () -> state.Text = "SAVED"
 
 let apply = DialogAction{ Text: "Apply" }
 let confirm = Dialog{ Message: "Apply changes?", Actions: { apply } }
@@ -96,3 +97,19 @@ The `completed`, `failed`, and `cancelled` callbacks run on the application loop
 ## 05 Boundaries
 
 `SharpTui.Framework.gsproj` is the reusable library. `SharpTui.Examples.gsproj` builds the example executable against that library. `SharpTui.gsproj` is the monolithic verification executable. It includes framework sources, checks, and allocation benchmarks. It excludes examples.
+
+## Current API migration
+
+| Previous signature | Current signature |
+| --- | --- |
+| `App.Run(root Box)` | `App.Root` and `App.Run()` |
+| `Box.GapCells int32` | `Box.Gap int32` |
+| `Box.GrowWeight int32` | `Box.Grow int32` |
+| `TableView.ColumnGapCells int32` | `TableView.ColumnGap int32` |
+| `Button.OnPress Action?` | `Button.OnClick Action?` |
+| `TextArea.OnChanged Action[string]?` | `TextArea.OnChange Action[string]?` |
+| Collection `ConsumeSelectionChange() SelectionChange?` | `OnChange Action[SelectionChange]?` |
+
+These are source breaks. Update bindings and assign callbacks once. Callbacks run on the app loop after navigation has updated selection identity and scrolling. Programmatic selection, data replacement, caret movement and rendering do not fire change callbacks. Exceptions propagate to the caller. A callback may replace the source or selection. It does not need a consume or draw call.
+
+`Width: 24`, `Height: 3` and `Padding: 1` use checked integer conversions to cell lengths and insets. `CellLength.Auto` and asymmetric `CellInsets` remain explicit. Use `Column(){ child, other }` for a collection-only initializer. When setting container properties, use `Column{ Gap: 1, Children: { child, other } }`. The `Children` collection also supports dynamic trees.

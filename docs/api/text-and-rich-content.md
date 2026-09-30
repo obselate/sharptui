@@ -37,7 +37,7 @@ notice.ScrollToLine(0)
 let filter = TextInput{
   Placeholder: "filter files",
   PlaceholderStyle: Style{ Foreground: Color.Rgb("6B7280"), Background: Color.Inherit },
-  GrowWeight: 1,
+  Grow: 1,
 }
 
 filter.Text = "report"
@@ -68,7 +68,7 @@ let editor = TextArea{
 }
 
 editor.OnSubmit = text -> submitted = text
-editor.OnChanged = text -> {
+editor.OnChange = text -> {
   editor.StyleSource = SyntaxHighlighter.CreateLineSource(
     List[string](text.Replace("\r", "").Split('\n')),
     "gs",
@@ -96,11 +96,11 @@ if editor.Find("two", SearchDirection.Forward) {
 | `MaxLines` | Limits physical lines when positive. Zero is unlimited. |
 | `Clipboard` | Supplies copy, cut, and paste text. |
 | `StyleSource` | Supplies styled physical lines whose concatenated run text must match the editable line. Stale lines render as plain text. |
-| `OnChanged` | Receives current text once after each successful user edit, replacement, undo, or redo. Loading `Text` does not invoke it. |
+| `OnChange` | Receives current text once after each successful user edit, replacement, undo, or redo. Loading `Text` does not invoke it. |
 
 `Find` searches from the caret, wraps around the document, and marks the first match. It returns false for an empty or missing needle. `SearchDirection.Forward` and `SearchDirection.Backward` select the direction. `ReplaceSelection`, `Undo`, and `Redo` report whether they changed editor state.
 
-Update `StyleSource` from `OnChanged` or another application-state transition, not during paint. Compose semantic-token colors and diagnostic underline attributes in the source runs. Use `CaretScreenPosition` with `Placement.At` for completion lists, hover panels, and ghost text. Check for nil because a manually scrolled caret can be outside the viewport.
+Update `StyleSource` from `OnChange` or another application-state transition, not during paint. Compose semantic-token colors and diagnostic underline attributes in the source runs. Use `CaretScreenPosition` with `Placement.At` for completion lists, hover panels, and ghost text. Check for nil because a manually scrolled caret can be outside the viewport.
 
 ### Editor rules
 

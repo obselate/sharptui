@@ -29,7 +29,7 @@ open class InputRoot : Box {
 
   public init() {
     status = Label{ Text: "ready" }
-    Padding = CellInsets.All(1)
+    Padding = 1
     Children.Add(status)
   }
 
@@ -57,7 +57,8 @@ func Main(args []string) int32 {
   let app = App()
   let root = InputRoot()
   root.Configure(app)
-  app.Run(root)
+  app.Root = root
+  app.Run()
   return 0
 }
 ```
@@ -104,7 +105,7 @@ The example invokes its save callback after the retained tree declines Ctrl+S. T
 | 3 | `Keymap` offers `AfterWidgets`. A match returns `Handled`. |
 | 4 | `QuitGestures` run. A match returns `Exit`. |
 
-`App.Run(root)` routes the tree directly. A custom root control receives fallback input through its `Accept` override after focused descendants decline it.
+`App{ Root: root }.Run()` routes the tree directly. A custom root control receives fallback input through its `Accept` override after focused descendants decline it.
 
 Use `BeforeWidgets` only for a command that must preempt all controls. Use `AfterWidgets` for application shortcuts that must not interrupt text entry.
 

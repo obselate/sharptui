@@ -1,6 +1,6 @@
 # Collections
 
-A collection owns one current selection. Keep stable identities. Consume user changes once. The complete member list is in [the reference](reference.md).
+A collection owns one current selection. Keep stable identities. Handle user changes with OnChange. The complete member list is in [the reference](reference.md).
 
 ## Choose the view
 
@@ -25,16 +25,15 @@ let list = ListView{
     ListItem{ Id: "test", Text: "test", IsSelectable: true },
   },
   SelectionMarker: "> ",
-  GrowWeight: 1,
+  Grow: 1,
 }
 
-let changed = list.ConsumeSelectionChange()
-if changed != nil {
+list.OnChange = change -> {
   let selected = list.SelectedItem
 }
 ```
 
-`SelectedIndex` is programmatic selection. It does not emit `SelectionChange`. `ConsumeSelectionChange` returns and clears a user-navigation change with `PreviousIndex` and `SelectedIndex`. `SelectedId` and `SelectedItem` report the current item.
+`SelectedIndex` is programmatic selection. It does not emit `SelectionChange`. `OnChange` receives each user-navigation change after selection identity and scrolling settle with `PreviousIndex` and `SelectedIndex`. `SelectedId` and `SelectedItem` report the current item.
 
 Set `Source` to a `KeyedSource[ListItem, string]` for indexed data. It provides `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. Item data and counts are read live. Before selection is observed, routed, or rendered, the list preserves the selected stable Id through `IndexOfKey` or a fallback `Items` scan. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
 
@@ -62,7 +61,7 @@ let table = TableView{
     TableRow{ Id: "api", Cells: { TableCell("api"), TableCell("ready") } },
     TableRow{ Id: "web", Cells: { TableCell("web"), TableCell("queued") } },
   },
-  ColumnGapCells: 1,
+  ColumnGap: 1,
   ColumnSeparator: "│",
 }
 ```
@@ -75,7 +74,7 @@ let table = TableView{
 | `KeyedSource[TableRow, string]` | Provide `Count()`, zero-based `ItemAt(index)`, and `IndexOfKey(id)`. |
 | `TableView` | `Rows` and `Source` are read live. Stable selection reconciles automatically after direct changes. |
 
-`SelectedRowIndex` is programmatic and silent. `ConsumeSelectionChange` is user input. `SelectedRowId` restores identity across replacement when possible. `FirstVisibleRowIndex` and `FirstVisibleColumnIndex` are the explicit viewports. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
+`SelectedRowIndex` is programmatic and silent. `OnChange` reports user input. `SelectedRowId` restores identity across replacement when possible. `FirstVisibleRowIndex` and `FirstVisibleColumnIndex` are the explicit viewports. `Refresh()` is only needed to discover a same-count `IsSelectable` change away from a non-selectable fallback selection.
 
 ## Trees
 
@@ -93,7 +92,7 @@ let tree = TreeView{
       },
     },
   },
-  GrowWeight: 1,
+  Grow: 1,
 }
 
 tree.Refresh()
@@ -111,7 +110,7 @@ let status = StatusBar{
   RightText: "3/12",
 }
 
-if tabs.ConsumeSelectionChange() != nil {
+tabs.OnChange = change -> {
   status.CenterText = tabs.Titles[tabs.SelectedIndex]
 }
 ```
@@ -121,9 +120,11 @@ if tabs.ConsumeSelectionChange() != nil {
 ### Collection rules
 
 - Don't use list index as a durable identity. Use `Id` for list, table, and tree restoration.
-- Don't infer a user action from `SelectedIndex`. Read `ConsumeSelectionChange`.
+- Don't infer a user action from `SelectedIndex`. Handle `OnChange`.
 - Don't make headings selectable. Use `IsSelectable: false`.
 - Call `Refresh()` only where the widget documents explicit cache invalidation. `ListView` and `TableView` reconcile live data automatically.
 - Don't let a selected row be color-only. Keep `SelectionMarker`, hierarchy markers, or focus state visible.
 
 For exhaustive signatures, see [list types](reference.md#sharptuilistitem), [variable lists](reference.md#sharptuivirtuallistview), [table types](reference.md#sharptuitablecell), and [tree types](reference.md#sharptuitreenode).
+
+Select a visible tree node by stable ID with `tree.SelectedKey = channel.Id`. Unknown IDs preserve the current selection. Programmatic changes do not invoke `OnChange`. Expansion remains explicit.

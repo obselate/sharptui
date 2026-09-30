@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Retained images, Kitty and Sixel graphics, and bounded media playback.">
+<link rel="canonical" href="https://github.com/obselate/sharptui/blob/main/docs/api/media.html">
+<link rel="stylesheet" href="publication.css">
+<title>Images and media / STUI-MEDIA</title>
+</head>
+<body>
+<a class="skip-link" href="#manual-control">Skip to manual control</a>
+<main class="manual manual--generated">
+  <section class="sheet sheet--cover" aria-labelledby="manual-title">
+  <div class="registration">
+    <span class="registration-mark" aria-hidden="true"></span>
+    <span>SharpTUI Technical Publications</span>
+  </div>
+  <div class="cover-rule" aria-hidden="true"></div>
+  <div class="cover-register">
+    <div>Manual no. STUI-MEDIA<br>Supersedes: initial issue</div>
+    <div>Revision A<br>August 2026</div>
+  </div>
+  <div class="cover-main">
+    <div>
+      <p class="cover-class">Application guide</p>
+      <h1 id="manual-title">Images and media</h1>
+      <p class="cover-subtitle">Retained images, Kitty and Sixel graphics, and bounded media playback.</p>
+      <table class="system-figure" aria-label="Media lifetime">
+        <tbody><tr>
+          <td class="active">Decode<br>source</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Place<br>image</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Clip<br>frame</td>
+          <td class="signal" aria-hidden="true">&#8594;</td>
+          <td>Release<br>resources</td>
+        </tr></tbody>
+      </table>
+      <p class="figure-caption">Figure 0-1. Media lifetime</p>
+    </div>
+    <div>
+      <div class="cover-data">
+        <div><b>Subject</b><span>Public API</span></div>
+        <div><b>Applies to</b><span>Application authors</span></div>
+        <div><b>Language</b><span>G# / .NET 10</span></div>
+      </div>
+      <div class="distribution">
+        <b>Distribution</b>
+        <span>For application authors, maintainers, and test operators. Keep with the current API reference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sheet" aria-labelledby="manual-control">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">0</div>
+      <div>
+        <p class="chapter-label">Front matter</p>
+        <h2 id="manual-control">Manual control</h2>
+      </div>
+    </div>
+    <div class="front-grid">
+  <div>
+    <section class="manual-block" aria-labelledby="scope-title">
+      <h3 class="block-title" id="scope-title">Scope</h3>
+      <div class="front-note"><p>SharpTUI paints images through the retained screen compositor. Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimageview"><code>ImageView</code></a> for an ordinary tree and <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuibox"><code>Box.Draw(screen, bounds, clip)</code></a> for a retained virtual row, or <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen.DrawImage</code></a> for custom drawing. Images follow clipping and paint order. An overlay covers the image cells beneath it. Closing the overlay restores them.</p>
+<pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>image<span class="w"> </span>=<span class="w"> </span><span class="nc">ImageSource</span>.<span class="nf">Load</span>(<span class="s2">"photo.png"</span>)
+<span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nc">App</span>{
+<span class="w">  </span><span class="nc">Root</span>:<span class="w"> </span><span class="nf">Column</span>(){
+<span class="w">    </span><span class="nc">Label</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"photo"</span><span class="w"> </span>},
+<span class="w">    </span><span class="nc">ImageView</span>{<span class="w"> </span><span class="nc">Source</span>:<span class="w"> </span>image,<span class="w"> </span><span class="nc">Grow</span>:<span class="w"> </span><span class="m">1</span><span class="w"> </span>},
+<span class="w">  </span>},
+}
+app.<span class="nf">Run</span>()
+</code></pre>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Graphics</code></a> defaults to <code>Auto</code>. Startup probes Kitty graphics, Sixel device attributes and cell pixel dimensions. Unsupported terminals use colored half blocks. The probes expire after 250 ms and consume their replies before text input. Explicit <code>Kitty</code>, <code>Sixel</code> and <code>HalfBlock</code> modes are available. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.CellPixels</code></a> can override detection. A standalone <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen</code></a> uses half blocks and an 8 by 16 pixel cell by default.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimagefit"><code>ImageFit.Contain</code></a> keeps the complete image, <code>Cover</code> crops to fill, and <code>Stretch</code> fills without preserving aspect ratio. For a partially scrolled row, pass its full destination rectangle and its visible clipping rectangle to <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiscreen"><code>Screen.DrawImage(source, bounds, clip, fit)</code></a>.</p>
+<p>Decode files or bytes off the UI thread, then publish the resulting source to the tree. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimagesource"><code>ImageSource</code></a> owns its pixels. <code>FromRgba</code> copies the supplied raster. <code>Update</code> copies a replacement frame into the existing source and changes its version without allocating. Update and drawing must run on the UI thread. Source dimensions remain fixed.</p>
+<p>Encoded images are limited to 16 MiB. Decoded RGBA is limited to 64 MiB and 8192 pixels per dimension. PNG decompression is checked before decoding. PNG, JPEG, GIF's first frame, BMP, TGA and PSD use the managed StbImageSharp decoder. Use playback for animated images.</p></div>
+    </section>
+    <section class="manual-block" aria-labelledby="revision-title">
+      <h3 class="block-title" id="revision-title">Revision record</h3>
+      <table class="revision-table">
+        <thead><tr><th>Rev.</th><th>Date</th><th>Description</th></tr></thead>
+        <tbody><tr><td>A</td><td>2026-08</td><td>Initial issue</td></tr></tbody>
+      </table>
+    </section>
+    <section class="manual-block" aria-labelledby="notation-title">
+      <h3 class="block-title" id="notation-title">Reading notation</h3>
+      <dl class="symbol-key">
+        <dt>LISTING</dt><dd>Executable or illustrative source code.</dd>
+        <dt>FIGURE</dt><dd>Operating or publication sequence.</dd>
+        <dt><code>API</code></dt><dd>Public symbol from the current Release assembly.</dd>
+      </dl>
+    </section>
+  </div>
+  <div>
+    <section class="manual-block" aria-labelledby="contents-title">
+      <h3 class="block-title" id="contents-title">Table of contents</h3>
+      <table class="contents-table" aria-label="Table of contents">
+  <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
+  <tbody><tr><td>1</td><td><a href="#playback">Playback</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#transport-and-resource-ownership">Transport and resource ownership</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#application-updates">Application updates</a></td><td>3-1</td></tr></tbody>
+</table>
+    </section>
+    <section class="manual-block" aria-labelledby="register-title">
+      <h3 class="block-title" id="register-title">Illustration and listing register</h3>
+      <table class="contents-table register-table" aria-label="Illustration and listing register">
+  <thead><tr><th>Kind</th><th>No.</th><th>Title</th><th>Page</th></tr></thead>
+  <tbody><tr><td>Figure</td><td>0-1</td><td>Media lifetime</td><td>Cover</td></tr><tr><td>Listing</td><td>1-1</td><td>Playback</td><td>1-1</td></tr></tbody>
+</table>
+    </section>
+    <div class="instruction">
+      <strong>Reference</strong>
+      <p>For every public member, use the current <a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">API reference</a>.</p>
+    </div>
+  </div>
+</div>
+  </div>
+  <footer class="folio">
+  <span>Front matter</span>
+  <span>ii</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="playback">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">1</div>
+      <div>
+        <p class="chapter-label">Chapter 1</p>
+        <h2 id="playback">Playback</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Install <code>ffmpeg</code> and <code>ffprobe</code>, plus <code>mpv</code> for files with audio. The player uses a G# worker, three reusable frame buffers and a two-frame queue. A slow UI receives newer complete frames instead of building an unbounded backlog.</p>
+<figure class="listing"><figcaption class="listing-head"><span>Listing 1-1</span><span>Playback</span></figcaption><pre class="language-gs"><code>using<span class="w"> </span><span class="k">let</span><span class="w"> </span>player<span class="w"> </span>=<span class="w"> </span><span class="nf">MediaPlayer</span>(<span class="s2">"clip.mp4"</span>)
+<span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nc">App</span>{<span class="w"> </span><span class="nc">Root</span>:<span class="w"> </span><span class="nc">MediaView</span>{<span class="w"> </span><span class="nc">Player</span>:<span class="w"> </span>player,<span class="w"> </span><span class="nc">Grow</span>:<span class="w"> </span><span class="m">1</span><span class="w"> </span>}<span class="w"> </span>}
+app.<span class="nf">Run</span>()
+</code></pre></figure>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimediaview"><code>MediaView</code></a> requests frames while the player is active, so an application does not need a tick interval or a refresh loop. <code>Pause</code>, <code>Resume</code> and <code>Seek</code> control playback. A paused seek decodes one preview frame and remains paused. <code>Advance</code> is available for custom rendering. It publishes a complete frame without blocking or allocating on the UI thread. Audio-only files have no image source. <code>Dispose</code> stops only the player's processes and joins its frame reader.</p>
+<p>The default video raster is bounded to 640 by 360 pixels at 15 FPS. The constructor overload accepts a maximum size up to 1024 by 1024. Decoder buffers remain owned by the player across pause and resume. Restarting or seeking starts a new decoder process. Construction and restart are phase-boundary work. Create players outside the UI event loop when opening large media.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Playback</span>
+  <span>1-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="transport-and-resource-ownership">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">2</div>
+      <div>
+        <p class="chapter-label">Chapter 2</p>
+        <h2 id="transport-and-resource-ownership">Transport and resource ownership</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Kitty transfers bounded RGBA data in protocol-sized base64 chunks and uses Unicode image placeholders, supported by Kitty 0.28 and later. Each visible cell identifies its image row and column. Text and overlays replace those cells directly. Unchanged images emit no transport data. A fully covered image retains its bounded raster cache. Image data is removed when its draw leaves the retained frame, the screen changes backend or the terminal closes. Image rectangles above the protocol's 297-cell coordinate range use half blocks.</p>
+<p>Sixel uses an adaptive 256-color palette, error diffusion and run-length encoding. It clears and repaints the retained text and image frame when a native image changes, so removed or covered pixels cannot remain on screen. Its palette and column masks are reused. The image backend retains at most 64 native draws and four million upload pixels per frame. Additional or oversized draws use half blocks. Sixel regions are also bounded to four million physical pixels.</p>
+<p>Native image metadata and scratch buffers are created at the first image or a size increase. They live with the screen and have bounded capacity. Raster decode and video buffers live with their source or player. Clean rendering and warmed frame emission retain the text renderer's zero-allocation requirement.</p>
+<p>The native protocols are tested in Kitty and xterm with Sixel enabled. A terminal multiplexer must pass through its graphics protocol. Use <code>HalfBlock</code> where passthrough is unavailable. A TUI inherits the font of its terminal.</p>
+<p>Run <code>dotnet run --project SharpTui.Examples.gsproj -c Release -- --media [file]</code> for the image, overlay and playback example.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Transport and resource ownership</span>
+  <span>2-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="application-updates">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">3</div>
+      <div>
+        <p class="chapter-label">Chapter 3</p>
+        <h2 id="application-updates">Application updates</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Use <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.OnTick</code></a> for UI updates that must continue while an overlay owns input. Set <code>TickInterval</code> to the required interval. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.OnFocus</code></a> reports terminal focus changes through <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiuieventkind"><code>UiEventKind.Focus</code></a>. Focus reporting is saved on entry and restored on exit. Callbacks are retained once and dispatched without event wrappers.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Application updates</span>
+  <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="appendix-title">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">A</div>
+      <div>
+        <p class="chapter-label">Appendix A</p>
+        <h2 id="appendix-title">Publication register</h2>
+      </div>
+    </div>
+    <section class="manual-block" aria-labelledby="related-title">
+      <h3 class="block-title" id="related-title">Related publications</h3>
+      <dl class="related-list"><dt>API index</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/README.html">README.html</a></dd><dt>Getting started</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/getting-started.html">getting-started.html</a></dd><dt>Layout and styling</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/layout-and-styling.html">layout-and-styling.html</a></dd><dt>Input and commands</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/input-and-commands.html">input-and-commands.html</a></dd><dt>Text and rich content</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/text-and-rich-content.html">text-and-rich-content.html</a></dd><dt>Collections</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/collections.html">collections.html</a></dd><dt>Controls and overlays</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/controls-and-overlays.html">controls-and-overlays.html</a></dd><dt>Canvas, animation, and work</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/canvas-animation-and-work.html">canvas-animation-and-work.html</a></dd><dt>API reference</dt><dd><a href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html">reference.html</a></dd></dl>
+    </section>
+    <section class="manual-block" aria-labelledby="source-title">
+      <h3 class="block-title" id="source-title">Source issue</h3>
+      <p class="small-print">The editable source for this publication is <a href="https://github.com/obselate/sharptui/blob/main/docs/api/media.md">media.md</a>. When code or behavior changes, update the source guide, this manual issue, and the API reference in the same review.</p>
+    </section>
+    <div class="distribution">
+      <b>End of manual</b>
+      <span>SharpTUI Technical Publications / STUI-MEDIA / Revision A</span>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Publication register</span>
+  <span>A-1</span>
+</footer>
+</section>
+</main>
+
+</body>
+</html>

@@ -10,7 +10,7 @@ For every member, see [reference.md](reference.md).
 
 ## 01 / Run a tree
 
-`App.Run(root Box)` owns the terminal session. It runs until a handler returns `EventResult.Exit` or a fallback quit gesture matches. New apps use Escape and Ctrl+C as fallback quit gestures.
+`App{ Root: root }.Run()` owns the terminal session. It runs until a handler returns `EventResult.Exit` or a fallback quit gesture matches. New apps use Escape and Ctrl+C as fallback quit gestures.
 
 | Type | Role | Fact |
 | --- | --- | --- |
@@ -27,27 +27,28 @@ import SharpTui
 
 func Main(args []string) int32 {
   let root = Column{
-    Padding: CellInsets.All(1),
-    GapCells: 1,
+    Padding: 1,
+    Gap: 1,
     Children: {
       Label{ Text: "SharpTUI" },
       Row{
-        GrowWeight: 1,
+        Grow: 1,
         Children: {
-          Box{ Width: CellLength.Cells(20), ShowBorder: true, Title: "left" },
-          Box{ GrowWeight: 1, ShowBorder: true, Title: "right" },
+          Box{ Width: 20, ShowBorder: true, Title: "left" },
+          Box{ Grow: 1, ShowBorder: true, Title: "right" },
         },
       },
     },
   }
 
   let app = App()
-  app.Run(root)
+  app.Root = root
+  app.Run()
   return 0
 }
 ```
 
-`CellLength.Cells(20)` uses a fixed 20-cell width. Its count must be 0 or more. `GrowWeight` distributes spare space only within its immediate in-flow parent.
+`CellLength.Cells(20)` uses a fixed 20-cell width. Its count must be 0 or more. `Grow` distributes spare space only within its immediate in-flow parent.
 
 ## 02 / Change retained state
 
@@ -62,17 +63,18 @@ func Main(args []string) int32 {
   var count = 0
   let value = Label{ Text: "0" }
   let increment = Button{ Text: "+" }
-  increment.OnPress = () -> {
+  increment.OnClick = () -> {
     count = count + 1
     value.Text = count.ToString()
   }
   let root = Column{
-    Padding: CellInsets.All(1),
-    GapCells: 1,
+    Padding: 1,
+    Gap: 1,
     Children: { value, increment },
   }
   let app = App()
-  app.Run(root)
+  app.Root = root
+  app.Run()
   return 0
 }
 ```
