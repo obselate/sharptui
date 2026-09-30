@@ -8,7 +8,7 @@ internal open class MouseCaptureProbe : Box {
   internal prop MoveCount int32 { get; set; }
   internal prop ReleaseCount int32 { get; set; }
   internal prop LostCount int32 { get; set; }
-  internal prop CaptureOnPress bool { get; set; }
+  internal prop CaptureOnClick bool { get; set; }
   internal prop ConsumeMouse bool { get; set; }
   internal prop ReleaseExplicitly bool { get; set; }
   internal prop ReleaseSawCapture bool { get; set; }
@@ -19,7 +19,7 @@ internal open class MouseCaptureProbe : Box {
     MoveCount = 0
     ReleaseCount = 0
     LostCount = 0
-    CaptureOnPress = false
+    CaptureOnClick = false
     ConsumeMouse = false
     ReleaseExplicitly = false
     ReleaseSawCapture = false
@@ -39,7 +39,7 @@ internal open class MouseCaptureProbe : Box {
     if ev.Kind != UiEventKind.Mouse { return EventResult.Continue }
     if ev.Mouse == MouseKind.Press {
       PressCount = PressCount + 1
-      if CaptureOnPress { CaptureResult = CaptureMouse() }
+      if CaptureOnClick { CaptureResult = CaptureMouse() }
     }
     if ev.Mouse == MouseKind.Move { MoveCount = MoveCount + 1 }
     if ev.Mouse == MouseKind.Release {
@@ -88,7 +88,7 @@ internal class MouseCaptureCheck {
       let captured = MouseCaptureProbe{
         Width: CellLength.Cells(4),
         Height: CellLength.Cells(1),
-        CaptureOnPress: true,
+        CaptureOnClick: true,
       }
       let ancestor = MouseCaptureAncestor{ Children: { captured } }
       let other = MouseCaptureProbe{ Width: CellLength.Cells(4), Height: CellLength.Cells(1) }
@@ -128,10 +128,10 @@ internal class MouseCaptureCheck {
         "uncaptured press focuses a focus-capable target")
 
       let transferA = MouseCaptureProbe{
-        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       let transferB = MouseCaptureProbe{
-        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       let transferRoot = Row{ Children: { transferA, transferB } }
       transferRoot.Draw(Screen(12, 2))
@@ -145,7 +145,7 @@ internal class MouseCaptureCheck {
         "owner release clears capture without a lost hook")
 
       let hidden = MouseCaptureProbe{
-        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       let hiddenRoot = Box{ Children: { hidden } }
       hiddenRoot.Draw(Screen(8, 2))
@@ -155,7 +155,7 @@ internal class MouseCaptureCheck {
         "hiding a capture owner clears capture and calls the lost hook")
 
       let detached = MouseCaptureProbe{
-        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       detached.MakeFocusable()
       let detachedRoot = Box{ Children: { detached } }
@@ -169,7 +169,7 @@ internal class MouseCaptureCheck {
         "detaching a capture owner clears capture, focus, and stale parent state")
 
       let replaced = MouseCaptureProbe{
-        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(4), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       replaced.MakeFocusable()
       let replacementRoot = Box{ Children: { replaced } }
@@ -182,7 +182,7 @@ internal class MouseCaptureCheck {
         "children replacement immediately clears capture, focus, and parent state")
 
       let background = MouseCaptureProbe{
-        Width: CellLength.Cells(5), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(5), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       let scopeContent = MouseCaptureProbe{ Width: CellLength.Cells(5), Height: CellLength.Cells(1) }
       let overlay = Overlay{ Content: scopeContent }
@@ -209,7 +209,7 @@ internal class MouseCaptureCheck {
         "an inactive box cannot capture the mouse")
 
       let allocationProbe = MouseCaptureProbe{
-        Width: CellLength.Cells(5), Height: CellLength.Cells(1), CaptureOnPress: true,
+        Width: CellLength.Cells(5), Height: CellLength.Cells(1), CaptureOnClick: true,
       }
       let allocationRoot = Box{ Children: { allocationProbe } }
       allocationRoot.Draw(Screen(8, 2))

@@ -9,6 +9,12 @@ public open class ListView : Box {
   private var items List[ListItem]
   private var source KeyedSource[ListItem, string]?
   private var selection SelectionState
+
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
   private var selectedId string
   private var selectedSelectable bool
   private var observedCount int32
@@ -84,7 +90,7 @@ public open class ListView : Box {
     SelectedStyle = Style()
     SelectionMarker = "> "
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// Appends a new item with the given text and returns it.
@@ -102,12 +108,6 @@ public open class ListView : Box {
     reconcileSelection(true)
   }
 
-  /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  /// @returns The pending selection change, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? {
-    reconcileSelection()
-    return selection.Consume()
-  }
 
   /// Paints each visible item's selection marker and text, highlighting the selected row.
   /// @param screen The screen to paint into.
@@ -156,6 +156,12 @@ public open class ListView : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds

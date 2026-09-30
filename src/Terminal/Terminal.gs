@@ -6,6 +6,9 @@ import System.Text
 import System.Threading
 
 internal class Terminal {
+  internal const GraphicsQuery string = "\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[c\x1b[16t\x1b[?80;1004s\x1b[?1004h"
+  internal const GraphicsRestore string = "\x1b[?80;1004r"
+
   private var entered bool
   private var wake AutoResetEvent
   private var host TerminalHost
@@ -26,6 +29,12 @@ internal class Terminal {
   private var savedBackground string
   private var backgroundSet bool
   internal var DesiredBackground int32
+  internal var DesiredGraphics GraphicsProtocol
+  internal var DesiredCellPixels PixelSize
+  private var activeGraphics GraphicsProtocol
+  private var activeCellPixels PixelSize
+  private var graphicsChanged int32
+  private var presentedScreen Screen?
 
   /// Creates a terminal bound to the platform's native host, setting wakeup so
   /// App.Run's poll loop wakes when a background read or fault needs handling.
@@ -62,6 +71,11 @@ internal class Terminal {
     savedBackground = ""
     backgroundSet = false
     DesiredBackground = -2
+    DesiredGraphics = GraphicsProtocol.Auto
+    DesiredCellPixels = PixelSize{}
+    activeGraphics = GraphicsProtocol.HalfBlock
+    activeCellPixels = PixelSize{ Width: 8, Height: 16 }
+    presentedScreen = nil
   }
 
   /// Enters raw mode with MouseTracking.Drag; equivalent to calling the
@@ -84,7 +98,10 @@ internal class Terminal {
         input = inputSource
         kittyEnabled = false
         writeText(Ansi.AltScreenOn + Ansi.CursorHide + Ansi.MouseOn(mouseTracking) + Ansi.BracketedPasteOn)
-        negotiation.Begin(DesiredBackground >= 0)
+        negotiation.Begin(DesiredBackground >= 0, true)
+        activeGraphics = DesiredGraphics == GraphicsProtocol.Auto ? GraphicsProtocol.HalfBlock : DesiredGraphics
+        activeCellPixels = DesiredCellPixels.Width > 0 && DesiredCellPixels.Height > 0
+          ? DesiredCellPixels : PixelSize{ Width: 8, Height: 16 }
         queryStarted = Environment.TickCount64
         backgroundStarted = queryStarted
         backgroundPending = DesiredBackground >= 0
@@ -93,7 +110,8 @@ internal class Terminal {
         flushStarted = 0
         fallbackConfigured = false
         Interlocked.Exchange(ref readerFault, 0)
-        writeText(Ansi.KittyKeyboardQuery + (backgroundPending ? Ansi.DefaultBackgroundQuery : ""))
+        writeText(Ansi.KittyKeyboardQuery + (backgroundPending ? Ansi.DefaultBackgroundQuery : "")
+          + GraphicsQuery)
         Interlocked.Exchange(ref reading, 1)
         let nextReader = Thread(readLoop)
         nextReader.IsBackground = true
@@ -134,6 +152,13 @@ internal class Terminal {
     }
     lock outputGate {
       try {
+        if let screen = presentedScreen {
+          frame.Reset()
+          screen.ReleaseGraphics(frame)
+          frame.WriteTo(host.Output())
+          presentedScreen = nil
+        }
+        writeText(GraphicsRestore)
         if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
         writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
           + Ansi.AltScreenOff + Ansi.Reset)
@@ -203,6 +228,7 @@ internal class Terminal {
     lock outputGate {
       var sent = false
       try {
+        presentedScreen = screen
         let count = screen.Emit(frame)
         if count == 0 {
           sent = true
@@ -232,12 +258,41 @@ internal class Terminal {
 
   /// Reports whether a resize was observed since the last call, clearing the
   /// flag as it does.
-  public func ConsumeResize() bool -> host.ConsumeResize()
+  public func ConsumeResize() bool {
+    if !host.ConsumeResize() { return false }
+    if DesiredCellPixels.Width == 0 {
+      lock outputGate { if entered { writeText("\x1b[16t") } }
+    }
+    return true
+  }
 
   /// Reports whether the host requested exit or the background reader thread
   /// faulted, clearing both flags as it does.
   public func ConsumeExit() bool -> host.ConsumeExit()
     || Interlocked.Exchange(ref readerFault, 0) != 0
+
+  internal func ConfigureGraphics(screen Screen) {
+    lock outputGate {
+      screen.Graphics = activeGraphics
+      screen.CellPixels = activeCellPixels
+    }
+  }
+
+  internal func ConsumeGraphicsChange() bool -> Interlocked.Exchange(ref graphicsChanged, 0) != 0
+
+  private func resolveGraphics() {
+    lock outputGate {
+      let mode = DesiredGraphics == GraphicsProtocol.Auto ? negotiation.Graphics : DesiredGraphics
+      let detected = negotiation.CellPixels
+      let pixels = DesiredCellPixels.Width > 0 && DesiredCellPixels.Height > 0 ? DesiredCellPixels
+        : detected.Width > 0 && detected.Height > 0 ? detected : activeCellPixels
+      if mode == activeGraphics && pixels.Width == activeCellPixels.Width && pixels.Height == activeCellPixels.Height { return }
+      activeGraphics = mode
+      activeCellPixels = pixels
+      Interlocked.Exchange(ref graphicsChanged, 1)
+      wake.Set()
+    }
+  }
 
   private func readLoop() {
     try {
@@ -280,6 +335,10 @@ internal class Terminal {
       let left = 250 - (now - queryStarted)
       timeout = left > 0 ? left : 0
     }
+    if negotiation.IsGraphicsQuerying() {
+      let left = 250 - (now - queryStarted)
+      if timeout < 0 || left < timeout { timeout = left > 0 ? left : 0 }
+    }
     if backgroundPending {
       let left = 250 - (now - backgroundStarted)
       if timeout < 0 || left < timeout { timeout = left > 0 ? left : 0 }
@@ -302,6 +361,10 @@ internal class Terminal {
         if TerminfoCapabilities.TryLoad(out sequences) { input.ConfigureTerminfo(sequences) }
       }
     }
+    if negotiation.IsGraphicsQuerying() && now - queryStarted >= 250 {
+      negotiation.ExpireGraphics()
+      resolveGraphics()
+    }
     drainNegotiation(input)
     if flushStarted == 0 && (input.HasPendingPrefix() || negotiation.HasPendingPrefix()) {
       flushStarted = now
@@ -315,12 +378,13 @@ internal class Terminal {
 
   private func resolveNegotiation(input Input) {
     resolveBackground()
+    resolveGraphics()
     if negotiation.TakeSupportChange() && negotiation.IsSupported() { enableKittyIfSupported() }
     drainNegotiation(input)
   }
 
   private func drainNegotiation(input Input) {
-    if backgroundPending || negotiation.IsQuerying() { return }
+    if backgroundPending || negotiation.IsQuerying() || negotiation.IsGraphicsQuerying() { return }
     negotiation.Drain(input)
   }
 

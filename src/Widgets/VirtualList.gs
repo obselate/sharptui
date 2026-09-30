@@ -53,6 +53,12 @@ public interface VirtualListSource {
 public open class VirtualListView : Box {
   private var source VirtualListSource?
   private var selection SelectionState
+
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
   private var selectedKey string
   private var selectedSelectable bool
   private var observedCount int32
@@ -110,7 +116,7 @@ public open class VirtualListView : Box {
     FollowTail = false
     SelectedStyle = Style()
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// Invalidates cached heights and reconciles source selection state.
@@ -119,12 +125,6 @@ public open class VirtualListView : Box {
     reconcileSelection(true)
   }
 
-  /// Returns and clears the pending user selection change.
-  /// @returns The pending change, or nil.
-  public func ConsumeSelectionChange() SelectionChange? {
-    reconcileSelection(false)
-    return selection.Consume()
-  }
 
   protected override func Render(screen Screen, bounds CellRect, ink Style) {
     ensureMetrics(bounds.WidthCells)
@@ -172,7 +172,13 @@ public open class VirtualListView : Box {
 
   protected override func ScrollOffsetRows() int32 -> FirstVisibleRowOffset
 
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds

@@ -1,4 +1,4 @@
-<Project Sdk="Gsharp.NET.Sdk/0.4.59">
+<Project Sdk="Gsharp.NET.Sdk/0.4.591">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -17,8 +17,10 @@
     <Compile Remove="tools/**/*.gs" />
     <Compile Remove="agent-testing/**/*.gs" />
     <Compile Remove="showcases/**/*.gs" />
+    <Compile Remove="bonsai-apps/**/*.gs" />
     <Compile Remove="archive/**/*.gs" />
     <ProjectReference Include="vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj" />
+    <PackageReference Include="StbImageSharp" Version="2.30.16" />
   </ItemGroup>
 
 </Project>

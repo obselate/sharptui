@@ -53,7 +53,7 @@ public enum KeyModifiers {
 public enum KeyPhase { Press; Repeat; Release }
 
 /// Which variant of input an UiEvent carries; determines which of its other fields are meaningful.
-public enum UiEventKind { Key; TextInput; Paste; Mouse; Tick; Unknown }
+public enum UiEventKind { Key; TextInput; Paste; Mouse; Tick; Unknown; Focus }
 
 /// Terminal mouse reporting selected when an App enters the terminal.
 public enum MouseTracking { Disabled; Click; Drag; AllMotion }
@@ -63,6 +63,7 @@ public enum MouseButton { None; Left; Middle; Right }
 
 /// A single decoded input event: a keystroke, pasted text, a mouse action, or a timer tick. Fields that do not apply to Kind are left at their default.
 public struct UiEvent {
+  private var isFocused bool
   private var kind UiEventKind
   private var key Key
   private var keyCode int32
@@ -74,6 +75,9 @@ public struct UiEvent {
   private var mouse MouseKind
   private var button MouseButton
   private var position CellPoint
+
+  /// Whether a Focus event reports the terminal gaining focus.
+  public prop IsFocused bool { get -> isFocused init -> isFocused = value }
 
   /// Which variant of input this event represents.
   public prop Kind UiEventKind { get -> kind init -> kind = value }

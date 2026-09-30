@@ -434,7 +434,7 @@ public class DataCheck {
       let changes = List[string]()
       let observed = TextArea{
         ShowLineNumbers: false,
-        OnChanged: (text string) -> changes.Add(text),
+        OnChange: (text string) -> changes.Add(text),
       }
       let observedRoot = editorRoot(observed, 20, 4)
       observedRoot.Handle(charEv("x"))

@@ -47,7 +47,7 @@ public open class Label : Box {
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     var width = Width.IsAuto ? textWidth : Width.CellCount
     if Width.IsAuto && availableWidth != nil && width > availableWidth!! {
-      width = availableWidth!!
+      width = availableWidth
     }
     return CellSize{ WidthCells: width, HeightRows: 1 }
   }

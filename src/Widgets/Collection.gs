@@ -3,7 +3,7 @@ package SharpTui
 import System
 import System.Collections.Generic
 
-/// A snapshot of a selection transition, produced by user navigation and retrieved with ConsumeSelectionChange.
+/// A snapshot of a selection transition, delivered to OnChange after user navigation.
 public struct SelectionChange {
   private var previousIndex int32
   private var selectedIndex int32

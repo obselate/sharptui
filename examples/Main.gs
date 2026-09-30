@@ -126,7 +126,7 @@ open class Pick : Column {
     mode = 0
     t = 0.0
     logo = sharpLogo()
-    list = ListView{ GrowWeight: 1, Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
+    list = ListView{ Grow: 1, Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent } }
     list.Add("git     beginner-friendly git workbench & diff visualizer")
     list.Add("grep    search a tree with match highlighting")
@@ -142,13 +142,13 @@ open class Pick : Column {
 
     let ink = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
     let dim = Style{ Foreground: Ink.Dim, Background: Color.Inherit }
-    Children.Add(Label{ Text: "", Height: CellLength.Cells(1) })
+    Children.Add(Label{ Text: "", Height: 1 })
     Children.Add(Label{ Text: logo[0], Alignment: HorizontalAlignment.Center, Style: ink })
     Children.Add(Label{ Text: logo[1], Alignment: HorizontalAlignment.Center, Style: ink })
     Children.Add(Label{ Text: logo[2], Alignment: HorizontalAlignment.Center, Style: ink })
     Children.Add(Label{ Text: "a retained-tree TUI for G#", Alignment: HorizontalAlignment.Center, Style: dim })
-    Children.Add(Label{ Text: "", Height: CellLength.Cells(1) })
-    Children.Add(Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
+    Children.Add(Label{ Text: "", Height: 1 })
+    Children.Add(Box{ Grow: 1, ShowBorder: true, ShowScrollbar: true, Title: "pick an app",
       Style: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } })
     Children.Add(bar)
     Children.Add(LogoLayer((screen Screen) -> paintLogo(screen)))
@@ -246,6 +246,7 @@ func Main(args []string) int32 {
     if arg == "--watch" { return run(Watcher(next)) }
     if arg == "--edit" { return run(Edit(next)) }
     if arg == "--julia" { return golf() }
+    if arg == "--media" { return mediaDemo(next) }
     if arg == "--canvas" { return canvas() }
     if arg == "--animation" { return animationGallery() }
     if arg == "--git" { return run(Git(next == "" ? "." : next)) }
@@ -278,7 +279,8 @@ func pick(sweep bool) Pick {
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
   app.TickInterval = TimeSpan.FromMilliseconds(33.0)
   let picker = Pick(app, sweep)
-  app.Run(picker)
+  app.Root = picker
+  app.Run()
   return picker
 }
 
@@ -287,7 +289,8 @@ func banner() int32 {
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
   app.TickInterval = TimeSpan.FromMilliseconds(33.0)
-  app.Run(Banner(app))
+  app.Root = Banner(app)
+  app.Run()
   return 0
 }
 
@@ -295,7 +298,8 @@ func banner() int32 {
 func golf() int32 {
   let app = App()
   app.TickInterval = TimeSpan.FromMilliseconds(16.0)
-  app.Run(Julia())
+  app.Root = Julia()
+  app.Run()
   return 0
 }
 
@@ -305,6 +309,7 @@ func run(view Box) int32 {
     Foreground: Ink.Text,
     Background: Ink.Back,
   }
-  app.Run(view)
+  app.Root = view
+  app.Run()
   return 0
 }

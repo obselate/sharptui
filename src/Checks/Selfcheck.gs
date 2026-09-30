@@ -64,9 +64,9 @@ public class Selfcheck {
       failed = failed + Checks.Expect(second < first / 2, "dirty cell repaints only itself")
 
       let side = Box{ Width: CellLength.Cells(20) }
-      let mid = Box{ GrowWeight: 1 }
-      let right = Box{ GrowWeight: 1 }
-      let root = Row{ GapCells: 1, Children: { side, mid, right } }
+      let mid = Box{ Grow: 1 }
+      let right = Box{ Grow: 1 }
+      let root = Row{ Gap: 1, Children: { side, mid, right } }
       root.Compute(80, 24)
 
       failed = failed + Checks.Expect(side.Bounds.WidthCells == 20, "fixed width honored")

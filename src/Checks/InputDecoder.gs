@@ -10,6 +10,13 @@ internal class InputDecoderCheck {
     internal func Run() int32 {
       var failed = 0
 
+      let focus = InputDecoder()
+      focus.Feed(csi("I"))
+      focus.Feed(csi("O"))
+      let focusEvents = inputEvents(focus)
+      failed += Checks.Expect(focusEvents.Count == 2 && focusEvents[0].Kind == UiEventKind.Focus
+        && focusEvents[0].IsFocused && !focusEvents[1].IsFocused, "terminal focus reports do not become keystrokes")
+
       let split = InputDecoder()
       split.Feed(csi("97:65:99;6:2;65"))
       failed = failed + Checks.Expect(inputEvents(split).Count == 0, "Kitty CSI-u retains split frames")

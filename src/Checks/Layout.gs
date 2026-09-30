@@ -131,7 +131,7 @@ internal class LayoutCheck {
         Text: "hello world foo",
         Wrapping: TextWrapping.Word,
         Width: CellLength.Cells(10),
-        GrowWeight: 0,
+        Grow: 0,
       }
       Column{ Children: { textBlock } }.Compute(20, 5)
       failed = failed + Checks.Expect(textBlock.Bounds.WidthCells == 10 && textBlock.Bounds.HeightRows == 2,
@@ -175,7 +175,7 @@ internal class LayoutCheck {
         && menu.Bounds.WidthCells == 6,
         "one-row widgets measure terminal-cell content widths")
 
-      let longInput = TextInput{ Text: "this text must shrink inside a narrow row", GrowWeight: 1 }
+      let longInput = TextInput{ Text: "this text must shrink inside a narrow row", Grow: 1 }
       let trailingButton = Button{ Text: "Send", Width: CellLength.Cells(6) }
       let shrinkRow = Row{ Children: { longInput, trailingButton } }
       shrinkRow.Compute(18, 1)
@@ -214,9 +214,9 @@ internal class LayoutCheck {
         "one-row widgets measure one terminal row")
 
       let nestedStatus = Box{ Height: CellLength.Cells(1) }
-      let nestedConversation = Box{ GrowWeight: 1 }
+      let nestedConversation = Box{ Grow: 1 }
       let nestedChat = Column{
-        GrowWeight: 1,
+        Grow: 1,
         ShowBorder: true,
         Children: {
           Box{ Height: CellLength.Cells(1) },
@@ -225,7 +225,7 @@ internal class LayoutCheck {
         },
       }
       let nestedBody = Row{
-        GrowWeight: 1,
+        Grow: 1,
         Children: {
           Box{ Width: CellLength.Cells(34) },
           Box{ Width: CellLength.Cells(1) },
@@ -234,7 +234,7 @@ internal class LayoutCheck {
       }
       let nestedFooter = Box{ Height: CellLength.Cells(1) }
       let nestedView = Column{
-        GrowWeight: 1,
+        Grow: 1,
         Children: {
           nestedStatus,
           nestedBody,

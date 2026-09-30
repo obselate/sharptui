@@ -61,7 +61,7 @@ private func checkColumns() int32 {
 
   let autoTarget = Column{ Children: { Label{ Text: "auto" } } }
   let autoSplitter = Splitter(autoTarget, SplitterAxis.Columns)
-  let autoRoot = Row{ Children: { autoTarget, autoSplitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let autoRoot = Row{ Children: { autoTarget, autoSplitter, Label{ Text: "tail", Grow: 1 } } }
   autoRoot.Draw(Screen(24, 4))
   let autoStart = autoTarget.Bounds.WidthCells
   autoRoot.Handle(splitterMouse(MouseKind.Press, MouseButton.Left, autoSplitter.Bounds.Column, autoSplitter.Bounds.Row))
@@ -82,7 +82,7 @@ private func checkRows() int32 {
   let splitter = Splitter(target, SplitterAxis.Rows)
   splitter.MinimumCells = 3
   splitter.MaximumCells = 8
-  let root = Column{ Children: { target, splitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let root = Column{ Children: { target, splitter, Label{ Text: "tail", Grow: 1 } } }
   let screen = Screen(12, 14)
   root.Draw(screen)
 
@@ -100,7 +100,7 @@ private func checkRows() int32 {
 
   let autoTarget = Column{ Children: { Label{ Text: "one" }, Label{ Text: "two" } } }
   let autoSplitter = Splitter(autoTarget, SplitterAxis.Rows)
-  let autoRoot = Column{ Children: { autoTarget, autoSplitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let autoRoot = Column{ Children: { autoTarget, autoSplitter, Label{ Text: "tail", Grow: 1 } } }
   autoRoot.Draw(Screen(12, 10))
   let autoStart = autoTarget.Bounds.HeightRows
   autoRoot.Handle(splitterMouse(MouseKind.Press, MouseButton.Left, autoSplitter.Bounds.Column, autoSplitter.Bounds.Row))
@@ -110,7 +110,7 @@ private func checkRows() int32 {
 
   let lostTarget = Box{ Width: CellLength.Cells(6), Height: CellLength.Cells(2) }
   let lostSplitter = Splitter(lostTarget, SplitterAxis.Columns)
-  let lostRoot = Row{ Children: { lostTarget, lostSplitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let lostRoot = Row{ Children: { lostTarget, lostSplitter, Label{ Text: "tail", Grow: 1 } } }
   lostRoot.Draw(Screen(20, 4))
   let lostColumn = lostSplitter.Bounds.Column
   lostRoot.Handle(splitterMouse(MouseKind.Press, MouseButton.Left, lostColumn, 0))
@@ -153,7 +153,7 @@ private func checkValidation() int32 {
 private func checkUnchangedMotion() int32 {
   let target = Box{ Width: CellLength.Cells(8), Height: CellLength.Cells(2) }
   let splitter = Splitter(target, SplitterAxis.Columns)
-  let root = Row{ Children: { target, splitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let root = Row{ Children: { target, splitter, Label{ Text: "tail", Grow: 1 } } }
   root.Draw(Screen(24, 4))
   let column = splitter.Bounds.Column
   root.Handle(splitterMouse(MouseKind.Press, MouseButton.Left, column, splitter.Bounds.Row))
@@ -180,7 +180,7 @@ private func checkUnchangedMotion() int32 {
 private func checkUnchangedRedraw() int32 {
   let target = Box{ Width: CellLength.Cells(8), Height: CellLength.Cells(2) }
   let splitter = Splitter(target, SplitterAxis.Columns)
-  let root = Row{ Children: { target, splitter, Label{ Text: "tail", GrowWeight: 1 } } }
+  let root = Row{ Children: { target, splitter, Label{ Text: "tail", Grow: 1 } } }
   let screen = Screen(24, 4)
   root.Draw(screen)
   screen.Flush()

@@ -100,23 +100,23 @@ open class Hunt : Column {
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent }, SelectionMarker: "" }
     preview = ListView{ Style: Style{ Foreground: Color.Rgb("8B93A3"), Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Color.Rgb("F0F3F8"), Background: Color.Rgb("3A2F1A") }, SelectionMarker: "" }
-    entry = TextInput{ GrowWeight: 1, Placeholder: "text to look for",
+    entry = TextInput{ Grow: 1, Placeholder: "text to look for",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     entry.Text = pattern
-    glob = TextInput{ Width: CellLength.Cells(18), Placeholder: "-g glob",
+    glob = TextInput{ Width: 18, Placeholder: "-g glob",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     bar = dimStatusBar()
 
-    pane = Box{ GrowWeight: 1, ShowBorder: true, Title: "preview", ShowScrollbar: true,
+    pane = Box{ Grow: 1, ShowBorder: true, Title: "preview", ShowScrollbar: true,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { preview } }
 
-    Children.Add(Row{ GrowWeight: 1, GapCells: 1, Children: {
-      Box{ GrowWeight: 1, ShowBorder: true, Title: "matches", ShowScrollbar: true,
+    Children.Add(Row{ Grow: 1, Gap: 1, Children: {
+      Box{ Grow: 1, ShowBorder: true, Title: "matches", ShowScrollbar: true,
         Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } },
       pane,
     }})
-    Children.Add(Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "pattern", Children: {
-      Row{ GapCells: 1, Children: { entry, glob } },
+    Children.Add(Box{ Height: 3, ShowBorder: true, Title: "pattern", Children: {
+      Row{ Gap: 1, Children: { entry, glob } },
     }})
     Children.Add(bar)
 

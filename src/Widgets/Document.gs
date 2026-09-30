@@ -73,7 +73,7 @@ public open class MarkdownView : Box {
     cachedThemeLink = Style()
     cachedThemeMarker = Style()
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// Wrapped line count at the last painted width.

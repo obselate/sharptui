@@ -282,7 +282,7 @@ public open class RichTextBlock : Box {
     cachedPrefixRunCount = 0
     cachedPrefixLineCount = 0
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// Returns the number of active wrapped or physical lines.

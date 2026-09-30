@@ -248,3 +248,13 @@ public struct Placement {
     public func At(point CellPoint) Placement -> Placement{ kind: PlacementKind.Point, point: point }
   }
 }
+
+/// Converts a non-negative cell count to a fixed length.
+/// @param value The cell count.
+/// @returns A fixed length in terminal cells.
+public func operator implicit(value int32) CellLength -> CellLength.Cells(value)
+
+/// Converts a non-negative cell count to equal padding on all sides.
+/// @param value The padding in cells.
+/// @returns Equal cell insets.
+public func operator implicit(value int32) CellInsets -> CellInsets.All(value)

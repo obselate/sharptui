@@ -6,7 +6,7 @@ import System.Collections.Generic
 /// A push button: " Text " centred, flips ink when focused.
 public open class Button : Box {
   private var text string
-  private var onPress Action?
+  private var onClick Action?
 
   /// The label centred within the button.
   public prop Text string {
@@ -15,15 +15,15 @@ public open class Button : Box {
   }
 
   /// Work invoked when the button is activated.
-  public prop OnPress Action? {
-    get -> onPress
-    set -> onPress = value
+  public prop OnClick Action? {
+    get -> onClick
+    set -> onClick = value
   }
 
   /// Creates an empty, focusable button.
   public init() {
     text = ""
-    onPress = nil
+    onClick = nil
     CanFocus = true
   }
 
@@ -53,7 +53,7 @@ public open class Button : Box {
     screen.WriteClipped(r, x + textWidth + 1, 0, " ", style)
   }
 
-  /// Invokes OnPress on Enter, space, or a click within its bounds.
+  /// Invokes OnClick on Enter, space, or a click within its bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the button was pressed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
@@ -75,7 +75,7 @@ public open class Button : Box {
   }
 
   private func press() {
-    if onPress != nil { onPress!!() }
+    if onClick != nil { onClick!!() }
   }
 }
 
@@ -150,10 +150,10 @@ public open class Dialog : Overlay {
     for line in CellText.Wrap(Message, 40) {
       Children.Add(Label{ Text: line })
     }
-    let row = Row{ GapCells: 2 }
+    let row = Row{ Gap: 2 }
     for action in Actions {
       let button = Button{ Text: action.Text }
-      button.OnPress = () -> choose(action)
+      button.OnClick = () -> choose(action)
       actionButtons.Add(button)
       row.Children.Add(button)
     }

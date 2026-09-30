@@ -129,12 +129,18 @@ public class TableRow {
 
 /// A scrolling table with a header row and selectable data rows.
 public open class TableView : Box {
-  private var columnGapCells int32
+  private var columnGap int32
   private var columnSeparator string
   private var widthScratch List[int32]
   private var rows List[TableRow]
   private var source KeyedSource[TableRow, string]?
   private var selection SelectionState
+
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
   private var selectedRowId string
   private var selectedRowSelectable bool
   private var observedRowCount int32
@@ -178,11 +184,11 @@ public open class TableView : Box {
   /// Index of the first visible column in the horizontal viewport.
   public prop FirstVisibleColumnIndex int32 { get; set; }
   /// Cells inserted between displayed columns.
-  public prop ColumnGapCells int32 {
-    get -> columnGapCells
+  public prop ColumnGap int32 {
+    get -> columnGap
     set {
-      if value < 0 { throw ArgumentOutOfRangeException("ColumnGapCells") }
-      columnGapCells = value
+      if value < 0 { throw ArgumentOutOfRangeException("ColumnGap") }
+      columnGap = value
     }
   }
   /// Text drawn at the start of each inter-column gap; empty leaves the gap blank.
@@ -199,7 +205,7 @@ public open class TableView : Box {
 
   /// Creates an empty table with a one-cell column gap and CanFocus enabled.
   public init() {
-    columnGapCells = 1
+    columnGap = 1
     columnSeparator = ""
     widthScratch = List[int32]()
     Columns = List[TableColumn]()
@@ -215,15 +221,9 @@ public open class TableView : Box {
     SelectedRowStyle = Style()
     ColumnSeparatorStyle = Style()
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
-  /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedRowIndex does not produce one.
-  /// @returns The pending SelectionChange, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? {
-    reconcileSelection()
-    return selection.Consume()
-  }
 
   /// Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
   public func Refresh() {
@@ -268,6 +268,12 @@ public open class TableView : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event changed the selection or scroll position, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
@@ -315,7 +321,7 @@ public open class TableView : Box {
       }
       i = i + 1
     }
-    let gutters = ColumnGapCells * (Columns.Count - 1)
+    let gutters = ColumnGap * (Columns.Count - 1)
     var remaining = total - fixedTotal - gutters
     if remaining < 0 { remaining = 0 }
 
@@ -353,7 +359,7 @@ public open class TableView : Box {
       x = x + widths[i]
       if i + 1 < Columns.Count {
         drawSeparator(screen, r, x, 0, ink)
-        x = x + ColumnGapCells
+        x = x + ColumnGap
       }
       if x >= r.WidthCells { break }
       i = i + 1
@@ -371,7 +377,7 @@ public open class TableView : Box {
       x = x + w
       if i + 1 < count {
         drawSeparator(screen, r, x, row, ink)
-        x = x + ColumnGapCells
+        x = x + ColumnGap
       }
       if x >= r.WidthCells { break }
       i = i + 1
@@ -436,8 +442,8 @@ public open class TableView : Box {
   }
 
   private func drawSeparator(screen Screen, r CellRect, x int32, row int32, inherited Style) {
-    if ColumnGapCells <= 0 || ColumnSeparator == "" || x >= r.WidthCells { return }
-    var width = ColumnGapCells
+    if ColumnGap <= 0 || ColumnSeparator == "" || x >= r.WidthCells { return }
+    var width = ColumnGap
     if x + width > r.WidthCells { width = r.WidthCells - x }
     screen.WriteClipped(CellRect{
       Column: r.Column + x,
@@ -481,7 +487,7 @@ public open class TableView : Box {
   }
 
   private func panTo(want int32, total int32) bool {
-    var fixedTotal = ColumnGapCells * (Columns.Count - 1)
+    var fixedTotal = ColumnGap * (Columns.Count - 1)
     var column = 0
     while column < Columns.Count {
       let c = Columns[column]

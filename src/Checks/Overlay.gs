@@ -48,8 +48,8 @@ internal class OverlayCheck {
       let cancel = Button{ Text: "cancel" }
       var confirms = 0
       var cancels = 0
-      confirm.OnPress = () -> confirms = confirms + 1
-      cancel.OnPress = () -> cancels = cancels + 1
+      confirm.OnClick = () -> confirms = confirms + 1
+      cancel.OnClick = () -> cancels = cancels + 1
       let panel = Column{ Children: { field, confirm, cancel } }
       let overlay = Overlay{
         Content: panel,
@@ -123,7 +123,7 @@ internal class OverlayCheck {
       let first = OverlayProbe{ Marker: "1" }
       let hidden = OverlayProbe{ Marker: "2" }
       let last = OverlayProbe{ Marker: "3" }
-      let row = Row{ GapCells: 1, Children: { first, hidden, last } }
+      let row = Row{ Gap: 1, Children: { first, hidden, last } }
       let visibilityScreen = Screen(20, 3)
       row.Draw(visibilityScreen)
       let lastBefore = last.Bounds.Column

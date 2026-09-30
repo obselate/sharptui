@@ -528,7 +528,10 @@ static string XmlDocId(MethodBase method)
         : method.Name + (method.IsGenericMethod ? $"``{method.GetGenericArguments().Length}" : "");
     var parameters = method.GetParameters();
     var suffix = parameters.Length == 0 ? "" : $"({string.Join(",", parameters.Select(parameter => XmlTypeName(parameter.ParameterType)))})";
-    return $"M:{owner}.{name}{suffix}";
+    var conversion = method is MethodInfo info && info.Name is "op_Implicit" or "op_Explicit"
+        ? $"~{XmlTypeName(info.ReturnType)}"
+        : "";
+    return $"M:{owner}.{name}{suffix}{conversion}";
 }
 
 static string XmlOwnerName(Type type) => (type.FullName ?? type.Name).Replace('+', '.');

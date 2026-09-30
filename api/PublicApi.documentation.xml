@@ -4,7 +4,7 @@
     <name>SharpTui.Framework</name>
   </assembly>
   <members>
-    <!-- G# SDK 0.4.59 emits enum and interface declarations, but not enum values
+    <!-- G# SDK 0.4.591 emits enum and interface declarations, but not enum values
          without attached source comments. Keep only those value records here. The
          API-surface gate rejects missing and duplicate documentation across both inputs. -->
     <member name="F:SharpTui.EventResult.Continue">
@@ -331,6 +331,7 @@
       <summary>Signals an application timer tick.</summary>
     </member>
 
+    <member name="F:SharpTui.UiEventKind.Focus"><summary>A terminal focus change. IsFocused reports whether focus was gained.</summary></member>
     <member name="F:SharpTui.UiEventKind.Unknown">
       <summary>Indicates that no recognized event variant is present.</summary>
     </member>
@@ -360,11 +361,18 @@
     <member name="F:SharpTui.TextAreaEnterBehavior.Submit"><summary>Submits for Enter with any non-window modifier combination.</summary></member>
     <member name="F:SharpTui.TextAreaEnterBehavior.SubmitOnPlainEnter"><summary>Submits for plain Enter and inserts a line break for modified Enter.</summary></member>
     <member name="P:SharpTui.TextArea.CaretScreenPosition"><summary>The caret's absolute terminal cell while it is visible, or nil when it is outside the current viewport.</summary></member>
-    <member name="P:SharpTui.TextArea.OnChanged"><summary>Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.</summary></member>
+    <member name="P:SharpTui.TextArea.OnChange"><summary>Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.</summary></member>
     <member name="P:SharpTui.TextArea.StyleSource"><summary>Supplies styled physical lines for display. A line renders without source styles until its concatenated run text exactly matches the editable line.</summary></member>
 
     <member name="F:SharpTui.VirtualListItemState.None"><summary>Indicates a visible item with no active state.</summary></member>
     <member name="F:SharpTui.VirtualListItemState.Selected"><summary>Indicates the selected item.</summary></member>
     <member name="F:SharpTui.VirtualListItemState.Focused"><summary>Indicates the selected item while its list has focus.</summary></member>
+    <member name="F:SharpTui.GraphicsProtocol.Auto"><summary>Probe Kitty and Sixel, then use colored half blocks.</summary></member>
+    <member name="F:SharpTui.GraphicsProtocol.Kitty"><summary>Use the Kitty image protocol.</summary></member>
+    <member name="F:SharpTui.GraphicsProtocol.Sixel"><summary>Use DEC Sixel images with an adaptive palette.</summary></member>
+    <member name="F:SharpTui.GraphicsProtocol.HalfBlock"><summary>Use colored half blocks on terminals without native graphics.</summary></member>
+    <member name="F:SharpTui.ImageFit.Contain"><summary>Fit the full image inside the bounds, preserving its proportions.</summary></member>
+    <member name="F:SharpTui.ImageFit.Cover"><summary>Fill the bounds with a cropped image, preserving its proportions.</summary></member>
+    <member name="F:SharpTui.ImageFit.Stretch"><summary>Fill the bounds without preserving image proportions.</summary></member>
   </members>
 </doc>

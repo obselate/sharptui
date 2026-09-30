@@ -1,12 +1,13 @@
 package SharpTui
 
+import System
 import System.Collections.Generic
 
 internal enum KeyboardProtocolState { Idle; Querying; Supported; Unsupported }
 
 internal class TerminalNegotiation {
   private var state KeyboardProtocolState
-  private var held [128]uint8
+  private var held []uint8
   private var heldCount int32
   private var candidateKind int32
   private var oscEscape bool
@@ -17,10 +18,14 @@ internal class TerminalNegotiation {
   private var backgroundAvailable bool
   private var backgroundColor string
   private var backgroundDone bool
+  private var graphicsDone bool
+  private var kittyGraphics bool
+  private var sixelGraphics bool
+  private var cellPixels PixelSize
 
   internal init() {
     state = KeyboardProtocolState.Idle
-    held = [128]uint8{}
+    held = [128]uint8
     heldCount = 0
     candidateKind = 0
     oscEscape = false
@@ -31,6 +36,7 @@ internal class TerminalNegotiation {
     backgroundAvailable = false
     backgroundColor = ""
     backgroundDone = true
+    graphicsDone = true
   }
 
   internal func Begin() {
@@ -38,6 +44,10 @@ internal class TerminalNegotiation {
   }
 
   internal func Begin(backgroundQuery bool) {
+    Begin(backgroundQuery, false)
+  }
+
+  internal func Begin(backgroundQuery bool, graphicsQuery bool) {
     state = KeyboardProtocolState.Querying
     resetCandidate()
     pending.Clear()
@@ -45,6 +55,10 @@ internal class TerminalNegotiation {
     backgroundAvailable = false
     backgroundColor = ""
     backgroundDone = !backgroundQuery
+    graphicsDone = !graphicsQuery
+    kittyGraphics = false
+    sixelGraphics = false
+    cellPixels = PixelSize{}
   }
 
   internal func Expire() {
@@ -54,10 +68,18 @@ internal class TerminalNegotiation {
   }
 
   internal func IsQuerying() bool -> state == KeyboardProtocolState.Querying
+  internal func IsGraphicsQuerying() bool -> !graphicsDone
+  internal func ExpireGraphics() {
+    if candidateKind == 3 { resetCandidate() }
+    graphicsDone = true
+  }
+  internal prop Graphics GraphicsProtocol -> kittyGraphics ? GraphicsProtocol.Kitty
+    : sixelGraphics ? GraphicsProtocol.Sixel : GraphicsProtocol.HalfBlock
+  internal prop CellPixels PixelSize -> cellPixels
 
   internal func IsSupported() bool -> state == KeyboardProtocolState.Supported
 
-  internal func HasPendingPrefix() bool -> state != KeyboardProtocolState.Querying && backgroundDone && heldCount > 0
+  internal func HasPendingPrefix() bool -> state != KeyboardProtocolState.Querying && backgroundDone && graphicsDone && heldCount > 0
 
   internal func FlushPending(input Input) {
     if !HasPendingPrefix() { return }
@@ -89,14 +111,14 @@ internal class TerminalNegotiation {
   }
 
   internal func Drain(input Input) {
-    if state == KeyboardProtocolState.Querying || !backgroundDone || pending.Count == 0 { return }
+    if state == KeyboardProtocolState.Querying || !backgroundDone || !graphicsDone || pending.Count == 0 { return }
     let buffered = pending.ToArray()
     pending.Clear()
     input.Feed(buffered, 0, buffered.Length)
   }
 
   internal func Feed(input Input, bytes []uint8, offset int32, length int32) {
-    if state == KeyboardProtocolState.Querying || !backgroundDone {
+    if state == KeyboardProtocolState.Querying || !backgroundDone || !graphicsDone {
       filter(input, bytes, offset, length, true)
       return
     }
@@ -150,34 +172,69 @@ internal class TerminalNegotiation {
   private func consumeHeld(value uint8) bool {
     if candidateKind == 0 {
       if heldCount != 1 { return false }
-      if value != 91 && value != 93 { return false }
+      if value != 91 && value != 93 && value != 95 { return false }
       held[heldCount] = value
       heldCount = heldCount + 1
-      candidateKind = value == 91 ? 1 : 2
+      candidateKind = value == 91 ? 1 : value == 93 ? 2 : 3
       return true
     }
     if candidateKind == 2 { return consumeOsc(value) }
-    if heldCount == 2 {
-      if value != 63 { return false }
+    if candidateKind == 3 { return consumeApc(value) }
+    if heldCount == 2 && value == 63 {
       held[heldCount] = value
-      heldCount = heldCount + 1
+      heldCount++
       return true
     }
     if (value >= 48 && value <= 57) || value == 59 {
-      if heldCount == 128 { return false }
+      if heldCount == held.Length { return false }
       held[heldCount] = value
-      heldCount = heldCount + 1
+      heldCount++
       return true
     }
-    if value != 117 { return false }
-    held[heldCount] = value
-    heldCount = heldCount + 1
-    candidateComplete = true
-    discardCandidate = true
-    if state == KeyboardProtocolState.Querying {
-      state = KeyboardProtocolState.Supported
-      supportChanged = true
+    if value == 117 && heldCount >= 3 && held[2] == 63 {
+      held[heldCount] = value
+      heldCount++
+      candidateComplete = true
+      discardCandidate = true
+      if state == KeyboardProtocolState.Querying {
+        state = KeyboardProtocolState.Supported
+        supportChanged = true
+      }
+      return true
     }
+    if value == 99 && heldCount >= 3 && held[2] == 63 {
+      let fields = payloadText(3, heldCount).Split(char(59))
+      for field in fields { if field == "4" { sixelGraphics = true } }
+      candidateComplete = true
+      discardCandidate = true
+      return true
+    }
+    if value == 116 && heldCount >= 3 && held[2] == 54 {
+      let fields = payloadText(2, heldCount).Split(char(59))
+      if fields.Length != 3 || fields[0] != "6" { return false }
+      var h int32
+      var w int32
+      if Int32.TryParse(fields[1], out h) && Int32.TryParse(fields[2], out w)
+        && w > 0 && h > 0 && w <= 256 && h <= 256 {
+        cellPixels = PixelSize{ Width: w, Height: h }
+      }
+      candidateComplete = true
+      discardCandidate = true
+      return true
+    }
+    return false
+  }
+
+  private func consumeApc(value uint8) bool {
+    if heldCount == 2 && value != 71 { return false }
+    if heldCount < held.Length { held[heldCount] = value
+      heldCount++ }
+    if oscEscape && value == 92 {
+      if payloadText(3, heldCount - 2) == "i=31;OK" { kittyGraphics = true }
+      candidateComplete = true
+      discardCandidate = true
+    }
+    oscEscape = value == 27
     return true
   }
 

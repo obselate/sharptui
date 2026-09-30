@@ -1,10 +1,12 @@
 package SharpTui
 
-/// The selected index and pending SelectionChange plumbing shared by the
-/// selection widgets (ListView, TableView, TreeView, Select, Tabs).
+import System
+
+/// Selection state shared by the selection widgets.
 internal class SelectionState {
   internal var Index int32
   internal var Change SelectionChange?
+  internal var OnChange Action[SelectionChange]?
 
   public init() {
     Index = 0
@@ -24,10 +26,11 @@ internal class SelectionState {
     return true
   }
 
-  /// Returns and clears the pending change.
-  internal func Consume() SelectionChange? {
+  internal func Notify() {
     let pending = Change
     Change = nil
-    return pending
+    if let change = pending {
+      if let callback = OnChange { callback(change) }
+    }
   }
 }

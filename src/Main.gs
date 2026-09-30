@@ -6,6 +6,9 @@ func Main(args []string) int32 {
     let arg = args[i]
     i = i + 1
     if arg == "--selfcheck" { return Selfcheck.Run() }
+    if arg == "--mediabench" { return MediaCheck.Bench() }
+    if arg == "--mediaplaycheck" { return MediaCheck.Play(args[i]) }
+    if arg == "--mediadump" { return MediaCheck.Dump(args[i]) }
     if arg == "--bench" { return Selfcheck.Bench() }
     if arg == "--allocbench" { return AllocBench.Run() }
     if arg == "--uibench" { return AllocBench.RunUi() }

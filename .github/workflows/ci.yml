@@ -23,3 +23,4 @@ jobs:
       - if: runner.os == 'Linux'
         run: python3 tools/LinuxPtyCheck.py
       - run: dotnet run -c Release --project SharpTui.gsproj -- --selfcheck
+      - run: python3 tools/MediaProtocolCheck.py

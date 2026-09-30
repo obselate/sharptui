@@ -1026,7 +1026,7 @@ internal func decodeEntity(text string, at int32, out next int32, out value stri
   if close < 0 || close - at > 32 { return false }
   let encoded = text.Substring(at, close - at + 1)
   let decoded = WebUtility.HtmlDecode(encoded)
-  guard let decodedValue = decoded else { return false }
+  let decodedValue = decoded
   value = decodedValue
   if value == encoded { return false }
   next = close + 1
