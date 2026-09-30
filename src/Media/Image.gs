@@ -40,6 +40,8 @@ public class ImageSource {
     private var width int32
     private var height int32
     private var version int64
+    private var opaque bool
+    internal prop IsOpaque bool -> opaque
 
     /// The raster dimensions in pixels.
     public prop Size PixelSize -> PixelSize{Width: width, Height: height}
@@ -49,6 +51,7 @@ public class ImageSource {
         this.height = height
         this.pixels = pixels
         version = 1
+        findOpacity()
     }
 
     /// Copies a replacement RGBA frame into the existing raster without allocating. Call on the UI thread.
@@ -59,6 +62,19 @@ public class ImageSource {
         }
         Array.Copy(rgba, pixels, pixels.Length)
         version++
+        findOpacity()
+    }
+
+    private func findOpacity() {
+        opaque = true
+        var at = 3
+        while at < pixels.Length {
+            if pixels[at] != uint8(255) {
+                opaque = false
+                return
+            }
+            at += 4
+        }
     }
 
     internal prop Version int64 -> version

@@ -29,8 +29,9 @@ def kitty(data):
             chunks.extend(base64.b64decode(payload, validate=True))
             if fields[b'm'] == b'0':
                 width, height = int(current[b's']), int(current[b'v'])
-                assert len(chunks) == width * height * 4
-                assert chunks[:4] == bytes([255, 0, 0, 255])
+                channels = int(current[b'f']) // 8
+                assert channels in (3, 4) and len(chunks) == width * height * channels
+                assert chunks[:channels] == bytes([255, 0, 0, 255])[:channels]
                 images[int(current[b'i'])] = bytes(chunks)
                 chunks.clear()
         if action == b'p':

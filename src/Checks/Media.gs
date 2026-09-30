@@ -73,9 +73,21 @@ internal class MediaCheck {
                 screen.Clear()
                 screen.Emit(output)
                 failed += Checks.Expect(
-                    mode == GraphicsProtocol.Kitty ? output.Text().Contains("d=I")
+                    mode == GraphicsProtocol.Kitty ? output.Text().Contains("d=i") && !output.Text().Contains("d=I")
                     : output.Text().Contains("\x1b[2J"),
-                    "removing an image releases or clears terminal pixels"
+                    "scrolling an image away clears placements while retaining bounded uploads"
+                )
+                screen.Clear()
+                screen.DrawImage(source, bounds, bounds, ImageFit.Stretch)
+                screen.Emit(output)
+                failed += Checks.Expect(
+                    mode != GraphicsProtocol.Kitty || !output.Text().Contains("a=t"),
+                    "scrolling back reuses the uploaded image"
+                )
+                screen.ReleaseGraphics(output)
+                failed += Checks.Expect(
+                    mode != GraphicsProtocol.Kitty || output.Text().Contains("d=I"),
+                    "terminal exit releases retained image data"
                 )
             }
 

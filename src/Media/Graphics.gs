@@ -16,6 +16,8 @@ internal class GraphicsPlane {
     private var changed bool
     private var protocol GraphicsProtocol
     private var sixel SixelEncoder?
+    private let uploads List[ImageDraw] = List[ImageDraw](64)
+    private var uploadPixels int32
 
     internal init(width int32, height int32) {
         back = List[ImageDraw](64)
@@ -82,6 +84,18 @@ internal class GraphicsPlane {
             }
         }
         if next.Id == 0 {
+            for oldIndex in 0 ... uploads.Count {
+                let old = uploads[oldIndex]
+                if Object.ReferenceEquals(old.Source, draw.Source) && ImageRaster.SameRect(old.Crop, draw.Crop) &&
+                    old.RasterWidth == draw.RasterWidth &&
+                    old.RasterHeight == draw.RasterHeight &&
+                    !staged(old.Id) {
+                    next.Id = old.Id
+                    break
+                }
+            }
+        }
+        if next.Id == 0 {
             next.Id = allocateId()
         }
         back.Add(next)
@@ -121,12 +135,20 @@ internal class GraphicsPlane {
         if !changed {
             return false
         }
-        if back.Count == 0 && front.Count == 0 {
+        if back.Count == 0 && front.Count == 0 && uploads.Count == 0 {
             invalid = false
             protocol = mode
             return false
         }
         Ansi.AppendSyncOn(output)
+        if protocol == GraphicsProtocol.Kitty && mode != GraphicsProtocol.Kitty {
+            for uploadIndex in 0 ... uploads.Count {
+                let upload = uploads[uploadIndex]
+                KittyEncoder.Delete(output, upload.Id, true)
+            }
+            uploads.Clear()
+            uploadPixels = 0
+        }
         for oldIndex in 0 ... front.Count {
             let old = front[oldIndex]
             var retained = false
@@ -138,7 +160,7 @@ internal class GraphicsPlane {
                 }
             }
             if protocol == GraphicsProtocol.Kitty && (!retained || mode != GraphicsProtocol.Kitty) {
-                KittyEncoder.Delete(output, old.Id, true)
+                KittyEncoder.Delete(output, old.Id, !uploaded(old.Id))
             }
         }
         if mode == GraphicsProtocol.Sixel || protocol == GraphicsProtocol.Sixel {
@@ -160,8 +182,8 @@ internal class GraphicsPlane {
                 var upload = invalid || protocol != GraphicsProtocol.Kitty
                 if !upload {
                     upload = true
-                    for oldIndex in 0 ... front.Count {
-                        let old = front[oldIndex]
+                    for oldIndex in 0 ... uploads.Count {
+                        let old = uploads[oldIndex]
                         if old.Id == draw.Id && old.Version == draw.Version && Object.ReferenceEquals(
                             old.Source,
                             draw.Source
@@ -176,6 +198,7 @@ internal class GraphicsPlane {
                 if upload {
                     KittyEncoder.Upload(output, draw)
                 }
+                retain(output, draw)
                 KittyEncoder.Place(output, draw)
             }
         }
@@ -231,14 +254,78 @@ internal class GraphicsPlane {
 
     internal func Release(output TerminalBuffer) {
         if protocol == GraphicsProtocol.Kitty {
+            for uploadIndex in 0 ... uploads.Count {
+                let upload = uploads[uploadIndex]
+                KittyEncoder.Delete(output, upload.Id, true)
+            }
             for drawIndex in 0 ... front.Count {
                 let draw = front[drawIndex]
-                KittyEncoder.Delete(output, draw.Id, true)
+                if !uploaded(draw.Id) {
+                    KittyEncoder.Delete(output, draw.Id, true)
+                }
             }
         }
+        uploads.Clear()
+        uploadPixels = 0
         back.Clear()
         front.Clear()
         invalid = true
+    }
+
+    private func uploaded(id int32) bool {
+        for uploadIndex in 0 ... uploads.Count {
+            let upload = uploads[uploadIndex]
+            if upload.Id == id {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func staged(id int32) bool {
+        for drawIndex in 0 ... back.Count {
+            let draw = back[drawIndex]
+            if draw.Id == id {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func retain(output TerminalBuffer, draw ImageDraw) {
+        for i in 0 ... uploads.Count {
+            if uploads[i].Id == draw.Id {
+                let old = uploads[i]
+                uploadPixels -= Math.Max(
+                    old.Source.Size.Width * old.Source.Size.Height,
+                    old.RasterWidth * old.RasterHeight
+                )
+                uploads.RemoveAt(i)
+                break
+            }
+        }
+        let pixels = Math.Max(draw.Source.Size.Width * draw.Source.Size.Height, draw.RasterWidth * draw.RasterHeight)
+        if pixels > 4194304 {
+            return
+        }
+        while uploads.Count == 64 || uploadPixels + pixels > 4194304 {
+            var victim = -1
+            for i in 0 ... uploads.Count {
+                if !staged(uploads[i].Id) {
+                    victim = i
+                    break
+                }
+            }
+            if victim < 0 {
+                return
+            }
+            let old = uploads[victim]
+            KittyEncoder.Delete(output, old.Id, true)
+            uploadPixels -= Math.Max(old.Source.Size.Width * old.Source.Size.Height, old.RasterWidth * old.RasterHeight)
+            uploads.RemoveAt(victim)
+        }
+        uploads.Add(draw)
+        uploadPixels += pixels
     }
 
     private func sameRun(row int32, start int32, end int32, owner int32) bool {
@@ -272,6 +359,13 @@ internal class GraphicsPlane {
             }
             for i in 0 ... back.Count {
                 if back[i].Id == candidate {
+                    used = true
+                    break
+                }
+            }
+            for uploadIndex in 0 ... uploads.Count {
+                let upload = uploads[uploadIndex]
+                if upload.Id == candidate {
                     used = true
                     break
                 }
@@ -588,11 +682,16 @@ internal class KittyEncoder {
         private const Alphabet string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
         internal func Upload(output TerminalBuffer, draw ImageDraw) {
-            let length = draw.RasterWidth * draw.RasterHeight * 4
+            let channels = draw.Source.IsOpaque ? 3: 4
+            let length = draw.RasterWidth * draw.RasterHeight * channels
             var offset = 0
             while offset < length {
                 let count = Math.Min(3072, length - offset)
-                output.AppendAscii(offset == 0 ? "\x1b_Ga=t,t=d,f=32,q=2,i=": "\x1b_Gq=2")
+                output.AppendAscii(
+                    offset == 0 ? (
+                        channels == 3 ? "\x1b_Ga=t,t=d,f=24,q=2,i=": "\x1b_Ga=t,t=d,f=32,q=2,i="
+                    ): "\x1b_Gq=2"
+                )
                 if offset == 0 {
                     output.AppendInt(draw.Id)
                 }
@@ -610,8 +709,8 @@ internal class KittyEncoder {
                     let n = Math.Min(3, count - i)
                     for j in 0 ... n {
                         let index = offset + i + j
-                        if (index & 3) == 0 {
-                            let p = index / 4
+                        if index % channels == 0 {
+                            let p = index / channels
                             pixel = ImageRaster.Pixel(
                                 draw,
                                 p % draw.RasterWidth,
@@ -620,7 +719,7 @@ internal class KittyEncoder {
                                 draw.RasterHeight
                             )
                         }
-                        bits |= ((pixel >> ((index & 3) * 8)) & 255u) << (16 - j * 8)
+                        bits |= ((pixel >> ((index % channels) * 8)) & 255u) << (16 - j * 8)
                     }
                     output.AppendByte(uint8(Alphabet[int32((bits >> 18) & 63u)]))
                     output.AppendByte(uint8(Alphabet[int32((bits >> 12) & 63u)]))

@@ -75,6 +75,13 @@ internal class ImageRaster {
 
         internal func Pixel(draw ImageDraw, x int32, y int32, width int32, height int32) uint32 {
             let crop = draw.Crop
+            if width == crop.WidthCells && height == crop.HeightRows {
+                let at = ((y + crop.Row) * draw.Source.Size.Width + x + crop.Column) * 4
+                let pixels = draw.Source.Pixels
+                return uint32(pixels[at]) | uint32(pixels[at + 1]) << 8 | uint32(pixels[at + 2]) << 16 | uint32(
+                    pixels[at + 3]
+                ) << 24
+            }
             let fx = Math.Clamp(
                 (float64(x) + 0.5) * float64(crop.WidthCells) / float64(width) - 0.5,
                 0.0,
