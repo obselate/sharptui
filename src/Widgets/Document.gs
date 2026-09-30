@@ -55,6 +55,11 @@ public open class MarkdownView : Box {
     private set -> firstVisibleLine = value < 0 ? 0 : value
   }
 
+  /// Resolves a rendered link span to a borrowed inline raster. Return nil to keep its text.
+  /// Called only for visible spans. Resolve from a cache without blocking or allocating.
+  /// The raster occupies the span's text width and one row. Its owner handles loading and redraws.
+  public prop InlineImages Func[string, ImageSource?]? { get; set; }
+
   /// Creates an empty, focusable markdown view with the default theme.
   public init() {
     source = ""
@@ -115,6 +120,27 @@ public open class MarkdownView : Box {
     let xOffset = (r.WidthCells - textWidth) / 2
 
     paintRunLines(screen, r, cache, FirstVisibleLine, xOffset, ink)
+    guard let resolve = InlineImages else { return }
+    let clip = screen.VisibleClip(r)
+    let first = Math.Max(0, clip.Row - r.Row)
+    let last = Math.Min(r.HeightRows, Math.Min(cache.Count - FirstVisibleLine, clip.Row + clip.HeightRows - r.Row))
+    if clip.WidthCells <= 0 || clip.HeightRows <= 0 || last <= first { return }
+    for y in first ... last {
+      var x = r.Column + xOffset
+      let runs = cache[FirstVisibleLine + y]
+      for i in 0 ... runs.Count {
+        let run = runs[i]
+        let width = Glyph.WidthOf(run.Text)
+        if run.Hyperlink != "" && x < clip.Column + clip.WidthCells && x + width > clip.Column {
+          if let image = resolve(run.Hyperlink) {
+            let span = CellRect{ Column: x, Row: r.Row + y, WidthCells: width, HeightRows: 1 }
+            screen.Fill(span, run.Style.MergedOver(ink))
+            screen.DrawImage(image, span, clip, ImageFit.Contain)
+          }
+        }
+        x += width
+      }
+    }
   }
 
   /// Handles keyboard and mouse-wheel scrolling within the content bounds.

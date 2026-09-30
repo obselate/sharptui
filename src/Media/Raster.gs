@@ -25,8 +25,8 @@ internal class ImageRaster {
             }
             let wide = int64(size.Width) * h > int64(size.Height) * w
             if fit == ImageFit.Contain {
-                let columns = wide ? bounds.WidthCells: int32(Math.Max(1L, h * size.Width / size.Height / cell.Width))
-                let rows = wide ? int32(Math.Max(1L, w * size.Height / size.Width / cell.Height)): bounds.HeightRows
+                let columns = wide ? bounds.WidthCells: Math.Clamp(int32(Math.Round(float64(h * size.Width) / float64(int64(size.Height) * cell.Width))), 1, bounds.WidthCells)
+                let rows = wide ? Math.Clamp(int32(Math.Round(float64(w * size.Height) / float64(int64(size.Width) * cell.Height))), 1, bounds.HeightRows): bounds.HeightRows
                 target = CellRect{
                     Column: bounds.Column + (bounds.WidthCells - columns) / 2,
                     Row: bounds.Row + (bounds.HeightRows - rows) / 2,

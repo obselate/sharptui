@@ -105,7 +105,7 @@ app.<span class="nf">Run</span>()
       <h3 class="block-title" id="contents-title">Table of contents</h3>
       <table class="contents-table" aria-label="Table of contents">
   <thead><tr><th>Chapter</th><th>Subject</th><th>Page</th></tr></thead>
-  <tbody><tr><td>1</td><td><a href="#playback">Playback</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#transport-and-resource-ownership">Transport and resource ownership</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#application-updates">Application updates</a></td><td>3-1</td></tr></tbody>
+  <tbody><tr><td>1</td><td><a href="#playback">Playback</a></td><td>1-1</td></tr><tr><td>2</td><td><a href="#transport-and-resource-ownership">Transport and resource ownership</a></td><td>2-1</td></tr><tr><td>3</td><td><a href="#application-updates">Application updates</a></td><td>3-1</td></tr><tr><td>4</td><td><a href="#inline-markdown-images">Inline Markdown images</a></td><td>4-1</td></tr></tbody>
 </table>
     </section>
     <section class="manual-block" aria-labelledby="register-title">
@@ -171,6 +171,7 @@ app.<span class="nf">Run</span>()
     <div class="chapter-copy">
       <p>Kitty transfers bounded RGB data for opaque sources and RGBA data for sources with transparency in protocol-sized base64 chunks and uses Unicode image placeholders, supported by Kitty 0.28 and later. Each visible cell identifies its image row and column. Text and overlays replace those cells directly. Unchanged images emit no transport data. A fully covered or scrolled-away image retains its upload for reuse. The cache holds at most 64 entries and four million source/raster pixels, evicts the oldest offscreen entries, and checks source identity, version, crop and raster dimensions. Image data is removed on eviction, a backend change or terminal exit. Image rectangles above the protocol's 297-cell coordinate range use half blocks.</p>
 <p>Sixel uses an adaptive 256-color palette, error diffusion and run-length encoding. It clears and repaints the retained text and image frame when a native image changes, so removed or covered pixels cannot remain on screen. Its palette and column masks are reused. The image backend retains at most 64 native draws and four million upload pixels per frame. Additional or oversized draws use half blocks. Sixel regions are also bounded to four million physical pixels.</p>
+<p>Containment rounds to the nearest bounded cell size, so small square icons keep the closest available aspect ratio.</p>
 <p>Native image metadata and scratch buffers are created at the first image or a size increase. They live with the screen and have bounded capacity. Raster decode and video buffers live with their source or player. Clean rendering and warmed frame emission retain the text renderer's zero-allocation requirement.</p>
 <p>The native protocols are tested in Kitty and xterm with Sixel enabled. A terminal multiplexer must pass through its graphics protocol. Use <code>HalfBlock</code> where passthrough is unavailable. A TUI inherits the font of its terminal.</p>
 <p>Run <code>dotnet run --project SharpTui.Examples.gsproj -c Release -- --media [file]</code> for the image, overlay and playback example.</p>
@@ -201,6 +202,29 @@ app.<span class="nf">Run</span>()
   <footer class="folio">
   <span>Application updates</span>
   <span>3-1</span>
+</footer>
+</section>
+<section class="sheet" aria-labelledby="inline-markdown-images">
+  <header class="running-head">
+  <span>Images and media</span>
+  <span>STUI-MEDIA / Revision A</span>
+</header>
+  <div class="page-body">
+    <div class="chapter-mark">
+      <div class="chapter-number">4</div>
+      <div>
+        <p class="chapter-label">Chapter 4</p>
+        <h2 id="inline-markdown-images">Inline Markdown images</h2>
+      </div>
+    </div>
+    <div class="chapter-copy">
+      <p>Set <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuimarkdownview"><code>MarkdownView.InlineImages</code></a> to resolve visible link spans to borrowed <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiimagesource"><code>ImageSource</code></a> instances. The image uses the span's text width and one terminal row. For an inline emoji, use <code>![◇ ](asset-url)</code> to reserve two cells. Return <code>nil</code> to retain the alt text.</p>
+<p>Resolve from a cache. Load assets outside rendering, retain them for their visible lifetime, and request a redraw after loading. The callback runs only inside the active clip. It must not block or allocate. Animated sources may advance during a redraw. Their owner controls playback, cancellation, eviction, and disposal.</p>
+    </div>
+  </div>
+  <footer class="folio">
+  <span>Inline Markdown images</span>
+  <span>4-1</span>
 </footer>
 </section>
 <section class="sheet" aria-labelledby="appendix-title">

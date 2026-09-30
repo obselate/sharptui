@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `79217c91620709a30b9ebee82fc4a71fa2ec1f1b4b67dae818c9845bbc71e9e7`.
+Public-symbol SHA-256: `9d08bf9ffd180d895e73d8d1055bc9e432ba4cb5767d11ca53b6874aa3950554`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1120,6 +1120,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop FirstVisibleLine int32 { get; }` — The index of the topmost visible wrapped line. Negative values clamp to zero.
+- `prop InlineImages Func[string, ImageSource] { get; set; }` — Resolves a rendered link span to a borrowed inline raster. Return nil to keep its text. Called only for visible spans. Resolve from a cache without blocking or allocating. The raster occupies the span's text width and one row. Its owner handles loading and redraws.
 - `prop MaximumLineWidth CellLength { get; set; }` — The maximum width a wrapped line may occupy before centering; Auto uses the full available width.
 - `prop Source string { get; set; }` — The raw markdown text. Setting it invalidates the parsed and laid-out cache.
 - `prop Theme MarkdownTheme { get; set; }` — The styles applied to parsed markdown elements. Setting it invalidates the cache.

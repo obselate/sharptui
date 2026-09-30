@@ -16,6 +16,22 @@ internal class MediaCheck {
             let screen = Screen(8, 4)
             let bounds = CellRect{WidthCells: 8, HeightRows: 4}
             let output = TerminalBuffer(4096)
+            let icon = ImageSource.FromRgba(1, 1, []uint8{255, 190, 40, 255})
+            let placement = ImageRaster.Layout(icon, CellRect{WidthCells: 4, HeightRows: 3}, ImageFit.Contain, PixelSize{Width: 10, Height: 21})
+            failed += Checks.Expect(placement.Target.WidthCells == 4 && placement.Target.HeightRows == 2, "small square icons use the closest cell aspect ratio")
+            var resolved = 0
+            let markdown = MarkdownView{
+                Source: "![icon](visible)\n\n![icon](offscreen)",
+                InlineImages: url -> {
+                    if url != "visible" { throw InvalidOperationException("offscreen inline image was resolved") }
+                    resolved++
+                    return source
+                }
+            }
+            markdown.Draw(screen, CellRect{WidthCells: 8, HeightRows: 8}, CellRect{WidthCells: 8, HeightRows: 1})
+            markdown.Draw(screen, CellRect{Row: 20, WidthCells: 8, HeightRows: 8}, CellRect{WidthCells: 8, HeightRows: 1})
+            failed += Checks.Expect(resolved == 1, "inline markdown resolves only visible clipped spans")
+            screen.Clear()
             screen.DrawImage(source, bounds, bounds, ImageFit.Stretch)
             failed += Checks.Expect(
                 screen.Probe(0, 0) == "▀" && source.Pixels[0] == uint8(255),

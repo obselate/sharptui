@@ -228,6 +228,8 @@ public class Screen {
     return previous
   }
 
+  internal func VisibleClip(bounds CellRect) CellRect -> ImageRaster.Clip(bounds, activeClip.Active ? activeClip.Bounds : CellRect{ WidthCells: width, HeightRows: height })
+
   internal func RestoreClip(previous ScreenClip) { activeClip = previous }
 
   internal func Invalidate() {

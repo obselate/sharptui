@@ -41,6 +41,8 @@ Kitty transfers bounded RGB data for opaque sources and RGBA data for sources wi
 
 Sixel uses an adaptive 256-color palette, error diffusion and run-length encoding. It clears and repaints the retained text and image frame when a native image changes, so removed or covered pixels cannot remain on screen. Its palette and column masks are reused. The image backend retains at most 64 native draws and four million upload pixels per frame. Additional or oversized draws use half blocks. Sixel regions are also bounded to four million physical pixels.
 
+Containment rounds to the nearest bounded cell size, so small square icons keep the closest available aspect ratio.
+
 Native image metadata and scratch buffers are created at the first image or a size increase. They live with the screen and have bounded capacity. Raster decode and video buffers live with their source or player. Clean rendering and warmed frame emission retain the text renderer's zero-allocation requirement.
 
 The native protocols are tested in Kitty and xterm with Sixel enabled. A terminal multiplexer must pass through its graphics protocol. Use `HalfBlock` where passthrough is unavailable. A TUI inherits the font of its terminal.
@@ -50,3 +52,9 @@ Run `dotnet run --project SharpTui.Examples.gsproj -c Release -- --media [file]`
 ## Application updates
 
 Use `App.OnTick` for UI updates that must continue while an overlay owns input. Set `TickInterval` to the required interval. `App.OnFocus` reports terminal focus changes through `UiEventKind.Focus`. Focus reporting is saved on entry and restored on exit. Callbacks are retained once and dispatched without event wrappers.
+
+## Inline Markdown images
+
+Set `MarkdownView.InlineImages` to resolve visible link spans to borrowed `ImageSource` instances. The image uses the span's text width and one terminal row. For an inline emoji, use `![◇ ](asset-url)` to reserve two cells. Return `nil` to retain the alt text.
+
+Resolve from a cache. Load assets outside rendering, retain them for their visible lifetime, and request a redraw after loading. The callback runs only inside the active clip. It must not block or allocate. Animated sources may advance during a redraw. Their owner controls playback, cancellation, eviction, and disposal.

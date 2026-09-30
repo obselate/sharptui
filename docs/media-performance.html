@@ -143,4 +143,48 @@ func GraphicsBench() int32 {
     &lt;Compile Include=&quot;original/*.gs&quot; Condition=&quot;&#x27;$(Baseline)&#x27; == &#x27;true&#x27;&quot; /&gt;
     &lt;Compile Remove=&quot;original/*.gs&quot; Condition=&quot;&#x27;$(Baseline)&#x27; != &#x27;true&#x27;&quot; /&gt;&lt;/ItemGroup&gt;
 &lt;/Project&gt;
-</pre></details></html>
+</pre></details><h2>Inline Markdown capability canary</h2><p>The optional InlineImages resolver retains borrowed image ownership at the application boundary. Loading, regex conversion and row metadata allocation happen on message construction or media arrival. Visible cached resolution, clipping, drawing and warmed terminal emission remain allocation-free. No allocation exemption was accepted. The client reuses its 64 MiB image cache, 64 wanted assets, two fetch workers, four animation players and one-second offscreen retirement guard.</p><p>Three independent managed Release processes, 120×40 cells, 80 Markdown paragraphs, a shared one-pixel opaque image, Kitty output, 64 warmups and 500 draws per case. Both cases redraw the same cached document. The image case resolves its visible two-cell link spans. These are capability canaries with different output behavior, not an optimization comparison. The additional image placement and renderer work is explicit.</p><table><thead><tr><th>Case</th><th>Median us/op</th><th>B/op in all processes</th><th>Gen0 in all processes</th><th>Retained managed heap, B</th></tr></thead><tbody><tr><td>Plain cached Markdown</td><td>246.68</td><td>0</td><td>0</td><td>596,288</td></tr><tr><td>Cached inline image resolver</td><td>338.85</td><td>0</td><td>0</td><td>682,344</td></tr></tbody></table><p>The 86,056 B warm-boundary increase includes bounded native image metadata and reusable raster/emission buffers. It does not occur per frame. The callback must return a cached raster or nil, avoid blocking and allocation, and leave lifetime and invalidation with the source owner. The framework resolves only spans inside the active clip. A regression drives both a partially clipped document and a completely offscreen document. Small-image containment now rounds to the nearest bounded cell size, which avoids flattening square server icons without adding allocation.</p><details><summary>Independent inline canary measurements</summary><pre>process 1
+text 246.68 us/op 0 B/op gen0 0 retained 596288
+inline 343.88 us/op 0 B/op gen0 0 retained 682344
+process 2
+text 245.16 us/op 0 B/op gen0 0 retained 596288
+inline 334.91 us/op 0 B/op gen0 0 retained 682344
+process 3
+text 249.80 us/op 0 B/op gen0 0 retained 596288
+inline 338.85 us/op 0 B/op gen0 0 retained 682344
+</pre></details><details><summary>Inline canary source and project</summary><pre>package InlineBench
+import SharpTui
+import System
+import System.Diagnostics
+
+let screen = Screen(120, 40)
+screen.Graphics = GraphicsProtocol.Kitty
+let image = ImageSource.FromRgba(1, 1, []uint8{240, 150, 40, 255})
+let output = TerminalBuffer(65536)
+let markdown = MarkdownView{Source: String.Concat(System.Linq.Enumerable.Repeat(&quot;Hello ![◇ ](emoji)\n\n&quot;, 80))}
+for enabled in []bool{false, true} {
+    markdown.InlineImages = enabled ? (url -&gt; image): nil
+    for i in 0 ... 64 {
+        screen.Clear()
+        markdown.Draw(screen)
+        screen.Emit(output)
+    }
+    let clock = Stopwatch()
+    let heap = GC.GetTotalMemory(true)
+    let allocated = GC.GetAllocatedBytesForCurrentThread()
+    let collections = GC.CollectionCount(0)
+    clock.Start()
+    for i in 0 ... 500 {
+        screen.Clear()
+        markdown.Draw(screen)
+        screen.Emit(output)
+    }
+    clock.Stop()
+    let bytes = GC.GetAllocatedBytesForCurrentThread() - allocated
+    Console.WriteLine((enabled ? &quot;inline&quot;: &quot;text&quot;) + &quot; &quot; + (clock.Elapsed.TotalMicroseconds / 500.0).ToString(&quot;F2&quot;) + &quot; us/op &quot; + (bytes / 500).ToString() + &quot; B/op gen0 &quot; + (GC.CollectionCount(0) - collections).ToString() + &quot; retained &quot; + heap.ToString())
+}
+
+&lt;Project Sdk=&quot;Gsharp.NET.Sdk/0.4.591&quot;&gt;&lt;PropertyGroup&gt;&lt;OutputType&gt;Exe&lt;/OutputType&gt;&lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;&lt;AllowUnsafeBlocks&gt;true&lt;/AllowUnsafeBlocks&gt;&lt;InvariantGlobalization&gt;true&lt;/InvariantGlobalization&gt;&lt;/PropertyGroup&gt;&lt;ItemGroup&gt;&lt;Compile Include=&quot;/home/xaz/Projects/sharptui/src/**/*.gs&quot; Exclude=&quot;/home/xaz/Projects/sharptui/src/Main.gs;/home/xaz/Projects/sharptui/src/Checks/**/*.gs&quot; /&gt;&lt;ProjectReference Include=&quot;/home/xaz/Projects/sharptui/vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj&quot;/&gt;&lt;PackageReference Include=&quot;StbImageSharp&quot; Version=&quot;2.30.16&quot;/&gt;&lt;/ItemGroup&gt;&lt;/Project&gt;
+</pre></details><details><summary>Inline canary source fingerprints</summary><pre>src/Widgets/Document.gs: f324c764e958edf7e70d3a7d4d8f473ac4b718d93cdde70eb6e9e84be68cbd99
+src/Screen/Screen.gs: a4df587e33f44fff070edd178362f79ef6def9b60f7c8205b61fb26fc3a781e7
+src/Media/Raster.gs: d39ba31ab98980d7990b84e1a94f88a81d7e703710897b62be53600a2737696f</pre></details></html>
