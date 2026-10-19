@@ -40,7 +40,7 @@ The reference states signatures. These guides state use, bounds, and interaction
 This release replaces polling and user-owned application lifecycle code with a retained `Box` tree and callbacks. Update the consumer project SDK first:
 
 ```xml
-<Project Sdk="Gsharp.NET.Sdk/0.4.1270">
+<Project Sdk="Gsharp.NET.Sdk/0.5.26">
 ```
 
 Then migrate each removed surface:

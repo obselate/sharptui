@@ -5,7 +5,7 @@ Use .NET 10, the G# SDK, and the SharpTUI package:
 Version 0.2.0 is available from the local checkout until publication. Use a sibling project reference for local development.
 
 ```xml
-<Project Sdk="Gsharp.NET.Sdk/0.4.1270">
+<Project Sdk="Gsharp.NET.Sdk/0.5.26">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
