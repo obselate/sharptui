@@ -7,6 +7,7 @@ type|SharpTui.App|class
 type|SharpTui.Badge|class
 type|SharpTui.Bind|class
 type|SharpTui.BindingPhase|enum
+type|SharpTui.BorderGlyphs|enum
 type|SharpTui.Box|class
 type|SharpTui.Button|class
 type|SharpTui.CanvasMode|enum

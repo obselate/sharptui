@@ -331,16 +331,17 @@ public class Screen {
     return col
   }
 
-  private func border(x int32, y int32, w int32, h int32, s Style) {
+  private func border(x int32, y int32, w int32, h int32, s Style, glyphs BorderGlyphs) {
     if w < 2 || h < 2 { return }
     let resolved = resolveStyle(s)
     let right = x + w - 1
     let bottom = y + h - 1
+    let rounded = glyphs == BorderGlyphs.Rounded
 
-    stage(x, y, resolve("┌"), resolved)
-    stage(right, y, resolve("┐"), resolved)
-    stage(x, bottom, resolve("└"), resolved)
-    stage(right, bottom, resolve("┘"), resolved)
+    stage(x, y, resolve(rounded ? "╭" : "┌"), resolved)
+    stage(right, y, resolve(rounded ? "╮" : "┐"), resolved)
+    stage(x, bottom, resolve(rounded ? "╰" : "└"), resolved)
+    stage(right, bottom, resolve(rounded ? "╯" : "┘"), resolved)
 
     for i in x + 1 ... right {
       stage(i, y, resolve("─"), resolved)
@@ -500,7 +501,15 @@ public class Screen {
   /// @param r The cell rectangle to draw the border around.
   /// @param s The style to apply to the border.
   public func DrawBorder(r CellRect, s Style) {
-    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s)
+    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s, BorderGlyphs.Square)
+  }
+
+  /// Draws a border around a cell rectangle with the given corner glyphs.
+  /// @param r The cell rectangle to draw the border around.
+  /// @param s The style to apply to the border.
+  /// @param glyphs The corner glyphs to draw.
+  public func DrawBorder(r CellRect, s Style, glyphs BorderGlyphs) {
+    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s, glyphs)
   }
 
   internal func Flush() string {

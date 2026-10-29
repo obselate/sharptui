@@ -6,6 +6,14 @@ import Facebook.Yoga
 
 internal enum Axis { Row, Column }
 
+/// The corner glyphs a border uses.
+public enum BorderGlyphs {
+  /// Square corners: ┌┐└┘.
+  Square;
+  /// Rounded corners: ╭╮╰╯.
+  Rounded
+}
+
 /// The base element. Everything drawable is a Box, so everything nests.
 public open class Box {
   private var axis Axis
@@ -19,6 +27,7 @@ public open class Box {
   private var style Style
   private var focusedStyle Style
   private var showBorder bool
+  private var borderGlyphs BorderGlyphs
   private var placement Placement
   private var showScrollbar bool
   private var canFocus bool
@@ -126,6 +135,12 @@ public open class Box {
       showBorder = value
       layoutStyleDirty = true
     }
+  }
+
+  /// The corner glyphs of the border drawn when ShowBorder is set. Defaults to BorderGlyphs.Square.
+  public prop BorderGlyphs BorderGlyphs {
+    get -> borderGlyphs
+    set -> borderGlyphs = value
   }
 
   /// Text drawn along the top edge, inside the border if ShowBorder is set or on its own row
@@ -268,6 +283,7 @@ public open class Box {
     style = Style()
     focusedStyle = Style()
     showBorder = false
+    borderGlyphs = BorderGlyphs.Square
     title = ""
     placement = Placement.InFlow
     showScrollbar = false
@@ -747,7 +763,7 @@ public open class Box {
       screen.Fill(frame, resolvedStyle)
     }
     if ShowBorder {
-      screen.DrawBorder(frame, chrome)
+      screen.DrawBorder(frame, chrome, BorderGlyphs)
     }
     if Title != "" {
       if ShowBorder {
