@@ -81,6 +81,17 @@ internal class Glyph {
       return total
     }
 
+    /// Display width of the longest cluster prefix that fits in cells.
+    internal func FitWidth(text string, cells int32) int32 {
+      var total = 0
+      for cluster in Glyph.Elements(text) {
+        let width = Glyph.Of(cluster)
+        if total + width > cells { break }
+        total = total + width
+      }
+      return total
+    }
+
     private func IsZeroWidth(cp int32) bool {
       let cat = CharUnicodeInfo.GetUnicodeCategory(cp)
       return cat == UnicodeCategory.NonSpacingMark

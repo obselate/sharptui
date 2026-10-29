@@ -153,6 +153,13 @@ public open class Box {
     }
   }
 
+  /// Text drawn right-aligned on the top border when ShowBorder is set. Title keeps priority, so
+  /// this text is truncated first. Empty string draws nothing.
+  public prop RightTitle string { get; set; }
+
+  /// Text drawn right-aligned on the bottom border when ShowBorder is set. Empty string draws nothing.
+  public prop BottomTitle string { get; set; }
+
   /// Whether this box lays out in flow with siblings or is positioned absolutely. Defaults to
   /// Placement.InFlow.
   public prop Placement Placement {
@@ -285,6 +292,8 @@ public open class Box {
     showBorder = false
     borderGlyphs = BorderGlyphs.Square
     title = ""
+    RightTitle = ""
+    BottomTitle = ""
     placement = Placement.InFlow
     showScrollbar = false
     canFocus = false
@@ -764,21 +773,31 @@ public open class Box {
     }
     if ShowBorder {
       screen.DrawBorder(frame, chrome, BorderGlyphs)
-    }
-    if Title != "" {
-      if ShowBorder {
-        screen.WriteCell(frame.Column + 1, frame.Row, " ", chrome)
-        screen.WriteClipped(frame, 2, 0, Title, chrome)
-        let after = 2 + Glyph.WidthOf(Title)
-        if after < frame.WidthCells { screen.WriteCell(frame.Column + after, frame.Row, " ", chrome) }
-      } else {
-        screen.WriteClipped(frame, 1, 0, Title, chrome)
+      let right = frame.Column + frame.WidthCells - 3
+      var used = 1
+      if Title != "" {
+        let cells = Glyph.FitWidth(Title, frame.WidthCells - 4)
+        borderTitle(screen, frame.Column + 2, frame.Row, Title, cells, chrome)
+        used = cells + 3
       }
+      let rightCells = Glyph.FitWidth(RightTitle, frame.WidthCells - 5 - used)
+      borderTitle(screen, right - rightCells, frame.Row, RightTitle, rightCells, chrome)
+      let bottomCells = Glyph.FitWidth(BottomTitle, frame.WidthCells - 6)
+      borderTitle(screen, right - bottomCells, frame.Row + frame.HeightRows - 1, BottomTitle, bottomCells, chrome)
+    } else if Title != "" {
+      screen.WriteClipped(frame, 1, 0, Title, chrome)
     }
 
     Render(screen, ContentBounds, resolvedStyle)
     if ShowScrollbar { bar(screen, chrome) }
     paintChildren(screen, resolvedStyle)
+  }
+
+  private func borderTitle(screen Screen, column int32, row int32, text string, cells int32, s Style) {
+    if cells <= 0 { return }
+    screen.WriteCell(column - 1, row, " ", s)
+    screen.WriteClipped(CellRect{ Column: column, Row: row, WidthCells: cells, HeightRows: 1 }, 0, 0, text, s)
+    screen.WriteCell(column + cells, row, " ", s)
   }
 
   private func paintChildren(screen Screen, inherited Style) {
