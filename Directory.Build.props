@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.gsproj'">
     <BaseIntermediateOutputPath>obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>
