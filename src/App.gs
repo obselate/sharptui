@@ -158,7 +158,7 @@ public class App {
     screen.DefaultStyle = DefaultStyle
     screen.ColorMode = colorMode
     screen.HyperlinksEnabled = hyperlinksEnabled
-    term.DesiredBackground = DefaultStyle.Background.Packed
+    term.DesiredBackground = screen.ColorMode == TerminalColorMode.NoColor ? -2 : DefaultStyle.Background.Packed
     term.DesiredGraphics = Graphics
     term.DesiredCellPixels = CellPixels
     try {

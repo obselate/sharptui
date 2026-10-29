@@ -352,10 +352,11 @@
     <member name="F:SharpTui.AnsiColor.BrightCyan"><summary>Selects bright ANSI cyan.</summary></member>
     <member name="F:SharpTui.AnsiColor.BrightWhite"><summary>Selects bright ANSI white.</summary></member>
 
-    <member name="F:SharpTui.TerminalColorMode.Auto"><summary>Selects a color mode from terminal capabilities.</summary></member>
+    <member name="F:SharpTui.TerminalColorMode.Auto"><summary>Selects NoColor when NO_COLOR is set and not empty, otherwise a color mode from terminal capabilities.</summary></member>
     <member name="F:SharpTui.TerminalColorMode.TrueColor"><summary>Emits 24-bit RGB terminal colors.</summary></member>
     <member name="F:SharpTui.TerminalColorMode.Palette256"><summary>Quantizes colors to the 256-entry terminal palette.</summary></member>
     <member name="F:SharpTui.TerminalColorMode.Palette16"><summary>Quantizes colors to the base ANSI palette.</summary></member>
+    <member name="F:SharpTui.TerminalColorMode.NoColor"><summary>Emits no colors. Text attributes such as Bold, Reverse, and Underline remain.</summary></member>
 
     <member name="F:SharpTui.TextAreaEnterBehavior.NewLine"><summary>Inserts a line break for Enter.</summary></member>
     <member name="F:SharpTui.TextAreaEnterBehavior.Submit"><summary>Submits for Enter with any non-window modifier combination.</summary></member>

@@ -62,6 +62,13 @@ internal class ColorCheck {
       failed = failed + Checks.Expect(lowColor.Flush().Contains("[92m"),
         "Palette16 emits base ANSI SGR colors")
 
+      let noColor = Screen(2, 1)
+      noColor.ColorMode = TerminalColorMode.NoColor
+      noColor.Write(0, 0, "x", Style{ Foreground: Color.Rgb("D1A047"), Background: Color.Indexed(42), Attributes: TextAttributes.Bold })
+      let plain = noColor.Flush()
+      failed = failed + Checks.Expect(plain.Contains("[1m") && !plain.Contains("38;") && !plain.Contains("48;"),
+        "NoColor emits attributes without SGR colors")
+
       let child = Label{
         Text: "x",
         Style: Style{ Foreground: Color.Inherit, Background: Color.Inherit },
