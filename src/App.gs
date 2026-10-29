@@ -74,6 +74,9 @@ public class App {
   /// Receives terminal focus changes on the UI thread, including while an overlay owns input focus.
   public prop OnFocus Action[bool]? { get; set; }
 
+  /// Receives the terminal size on the UI thread when Run starts and after each resize, before the next layout.
+  public prop OnResize Action[CellSize]? { get; set; }
+
   /// Owns animations and their shared frame deadline.
   public prop Animations AnimationController -> animations
 
@@ -227,6 +230,7 @@ public class App {
     var nextTick = scheduledInterval
     if nextTick > 0 { nextTick = clock.ElapsedMilliseconds + nextTick }
     var nextContentFrame int64 = 0
+    OnResize?.Invoke(CellSize{ WidthCells: term.Columns(), HeightRows: term.Rows() })
     while running {
       let now = clock.ElapsedMilliseconds
       if term.ConsumeExit() {
@@ -241,6 +245,7 @@ public class App {
           Trace.Mark("resize seen " + cols.ToString() + "x" + rows.ToString())
         }
         screen.Resize(cols, rows)
+        OnResize?.Invoke(CellSize{ WidthCells: cols, HeightRows: rows })
         dirty = true
       }
       if term.ConsumeGraphicsChange() || term.ConsumeOutputProgress() || screen.PendingGraphics { dirty = true }
