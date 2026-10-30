@@ -30,6 +30,7 @@ public class TestDriver {
     if height < 0 { throw ArgumentOutOfRangeException("height") }
     app = App()
     this.root = root
+    root.TreeClipboard = app.Clipboard
     screen = Screen(width, height)
     nowMilliseconds = 0
   }

@@ -452,6 +452,38 @@ public class DataCheck {
       firstClipboard.SetText("first")
       failed = failed + Checks.Expect(firstClipboard.GetText() == "first" && secondClipboard.GetText() == "",
         "MemoryClipboard supports independent public clipboard instances")
+      let rich = RichTextBlock{ Runs: List[TextRun]{ TextRun("中文 text", Style()) } }
+      let area = TextArea{ Text: "editable 中文" }
+      failed = failed + Checks.Expect(Object.ReferenceEquals(rich.Clipboard, MemoryClipboard.Shared)
+          && Object.ReferenceEquals(area.Clipboard, MemoryClipboard.Shared),
+        "Standalone text widgets keep the shared memory clipboard")
+      let clipboardRoot = Box{ Children: { Column{ Children: { rich, area } } } }
+      let copy = UiEvent{ Kind: UiEventKind.Key, Key: Key.Character, Text: "c",
+        Modifiers: KeyModifiers.Ctrl }
+      let driver = TestDriver(clipboardRoot, 40, 12)
+      driver.Screen.ColorMode = TerminalColorMode.NoColor
+      driver.Draw()
+      clipboardRoot.Focus(rich)
+      rich.SelectAll()
+      failed = failed + Checks.Expect(driver.Send(copy) == EventResult.Handled
+          && driver.App.Clipboard.GetText() == "中文 text",
+        "RichTextBlock Ctrl+C uses the app clipboard without an explicit assignment")
+      clipboardRoot.Focus(area)
+      driver.Send(UiEvent{ Kind: UiEventKind.Key, Key: Key.Character, Text: "a",
+        Modifiers: KeyModifiers.Ctrl })
+      failed = failed + Checks.Expect(driver.Send(copy) == EventResult.Handled
+          && driver.App.Clipboard.GetText() == "editable 中文",
+        "TextArea Ctrl+C uses the app clipboard without an explicit assignment")
+      rich.Clipboard = firstClipboard
+      area.Clipboard = secondClipboard
+      clipboardRoot.Focus(rich)
+      driver.Send(copy)
+      clipboardRoot.Focus(area)
+      driver.Send(copy)
+      failed = failed + Checks.Expect(firstClipboard.GetText() == "中文 text"
+          && secondClipboard.GetText() == "editable 中文"
+          && driver.App.Clipboard.GetText() == "editable 中文",
+        "Explicit widget clipboards take precedence over the app clipboard")
 
       return failed
     }

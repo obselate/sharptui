@@ -168,11 +168,14 @@ public class App {
       return
     }
     defer term.Restore()
+    root.TreeClipboard = clipboard
 
     try {
       loop(root)
     } catch (e IOException) {
       Console.Error.WriteLine("sharptui: lost the terminal: " + e.Message)
+    } finally {
+      root.TreeClipboard = nil
     }
   }
 
