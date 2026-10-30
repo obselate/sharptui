@@ -4184,12 +4184,15 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <li><code>prop Columns List[TableColumn] { get; set; }</code> — Column definitions in display order.</li>
 <li><code>prop FirstVisibleColumnIndex int32 { get; set; }</code> — Index of the first visible column in the horizontal viewport.</li>
 <li><code>prop FirstVisibleRowIndex int32 { get; set; }</code> — Index of the first data row visible in the viewport.</li>
+<li><code>prop FollowTail bool { get; set; }</code> — Keeps the last selectable row selected and visible until backward navigation or a left click.</li>
 <li><code>prop HeaderStyle Style { get; set; }</code> — Style applied to the header row.</li>
+<li><code>prop OnActivate Action[TableRow] { get; set; }</code> — Receives the selected row on Enter or a left click on that row. Activation does not change selection.</li>
 <li><code>prop OnChange Action[SelectionChange] { get; set; }</code> — Receives each user selection change after navigation completes. Programmatic selection is silent.</li>
 <li><code>prop Rows List[TableRow] { get; set; }</code> — Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.</li>
 <li><code>prop SelectedRowId string { get; }</code> — Id of the selected row, or empty when no row is selected.</li>
 <li><code>prop SelectedRowIndex int32 { get; set; }</code> — Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.</li>
 <li><code>prop SelectedRowStyle Style { get; set; }</code> — Style merged over the selected row's inherited style.</li>
+<li><code>prop ShowHeader bool { get; set; }</code> — Shows the header row. Defaults to true.</li>
 <li><code>prop Source KeyedSource[TableRow, string] { get; set; }</code> — An optional indexed row source. When set, the source supplies rows instead of Rows.</li>
 </ul>
 <h3 id="methods-33">Methods</h3>

@@ -460,6 +460,8 @@ func uiBenchTableSelection() {
   let h = 50
   let table = uiBenchTable(8, 200, w, h)
   table.SelectedRowIndex = 20
+  var activations = 0
+  table.OnActivate = (row) -> activations = activations + 1
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
   table.Focus(table)
@@ -467,10 +469,12 @@ func uiBenchTableSelection() {
 
   let step = func(i int32) {
     table.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
+    table.Handle(keyEv(Key.Enter))
+    table.Handle(mouseEv(0, table.SelectedRowIndex + 1))
     uiBenchDraw(table, screen, sink)
   }
   uiBenchRun("table selection move", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
-    if table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 {
+    if table.SelectedRowIndex != 20 || table.FirstVisibleRowIndex != 0 || activations != 1128 {
       Console.WriteLine("SharpTUI table selection validation failed")
     }
     table.Handle(keyEv(Key.Down))

@@ -135,6 +135,27 @@ public open class TableView : Box {
   private var rows List[TableRow]
   private var source KeyedSource[TableRow, string]?
   private var selection SelectionState
+  private var followTail bool
+  private var showHeader bool
+
+  /// Keeps the last selectable row selected and visible until backward navigation or a left click.
+  public prop FollowTail bool {
+    get -> followTail
+    set {
+      followTail = value
+      if value { Refresh() }
+    }
+  }
+  /// Shows the header row. Defaults to true.
+  public prop ShowHeader bool {
+    get -> showHeader
+    set {
+      showHeader = value
+      MarkMeasureDirty()
+    }
+  }
+  /// Receives the selected row on Enter or a left click on that row. Activation does not change selection.
+  public prop OnActivate Action[TableRow]? { get; set; }
 
   /// Receives each user selection change after navigation completes. Programmatic selection is silent.
   public prop OnChange Action[SelectionChange]? {
@@ -215,6 +236,7 @@ public open class TableView : Box {
     selectedRowId = ""
     selectedRowSelectable = false
     observedRowCount = 0
+    showHeader = true
     FirstVisibleRowIndex = 0
     FirstVisibleColumnIndex = 0
     HeaderStyle = Style()
@@ -230,7 +252,7 @@ public open class TableView : Box {
     reconcileSelection(true)
   }
 
-  protected override func ScrollExtentRows() int32 -> rowCount() + 1
+  protected override func ScrollExtentRows() int32 -> rowCount() + (ShowHeader ? 1 : 0)
 
   /// Returns FirstVisibleRowIndex as the current scroll offset.
   /// @returns The index of the first visible row.
@@ -243,12 +265,12 @@ public open class TableView : Box {
   protected override func Render(screen Screen, r CellRect, ink Style) {
     reconcileSelection()
     if r.HeightRows <= 0 || Columns.Count == 0 { return }
-    let height = r.HeightRows - 1
+    let headerRows = ShowHeader ? 1 : 0
+    let height = r.HeightRows - headerRows
     FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
 
     let widths = columnWidths(r.WidthCells)
-    let headerStyle = HeaderStyle.MergedOver(ink)
-    drawHeader(screen, r, widths, headerStyle)
+    if ShowHeader { drawHeader(screen, r, widths, HeaderStyle.MergedOver(ink)) }
 
     let count = rowCount()
     var i = FirstVisibleRowIndex
@@ -259,7 +281,7 @@ public open class TableView : Box {
       let data = rowAt(i)
       var rowStyle = data.Style.MergedOver(ink)
       if selected { rowStyle = SelectedRowStyle.MergedOver(rowStyle) }
-      drawRow(screen, r, row + 1, Columns.Count, widths, data.Cells, rowStyle)
+      drawRow(screen, r, row + headerRows, Columns.Count, widths, data.Cells, rowStyle)
       i = i + 1
     }
   }
@@ -277,9 +299,14 @@ public open class TableView : Box {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
-    let height = bounds.HeightRows - 1
+    let headerRows = ShowHeader ? 1 : 0
+    let height = bounds.HeightRows - headerRows
     if height <= 0 { return EventResult.Continue }
     reconcileSelection()
+    if ev.Kind == UiEventKind.Key {
+      if ev.Key == Key.Up || ev.Key == Key.PageUp || ev.Key == Key.Home { followTail = false }
+      if ev.Key == Key.Enter { return activate() }
+    }
 
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Up { return result(moveTo(selection.Index - 1, height)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Down { return result(moveTo(selection.Index + 1, height)) }
@@ -292,19 +319,30 @@ public open class TableView : Box {
 
     if ev.Kind == UiEventKind.Mouse {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
-      if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleRowIndex - Selection.WheelStep, height)) }
+      if ev.Mouse == MouseKind.ScrollUp {
+        followTail = false
+        return result(scrollTo(FirstVisibleRowIndex - Selection.WheelStep, height))
+      }
       if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleRowIndex + Selection.WheelStep, height)) }
       if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
+        followTail = false
         let hit = ev.Position.Row - bounds.Row
-        if hit == 0 { return EventResult.Continue }
-        let row = FirstVisibleRowIndex + hit - 1
+        if hit < headerRows { return EventResult.Continue }
+        let row = FirstVisibleRowIndex + hit - headerRows
         let count = rowCount()
         if row < 0 || row >= count { return EventResult.Continue }
         if !rowAt(row).IsSelectable { return EventResult.Continue }
+        if row == selection.Index { return activate() }
         return result(moveTo(row, height))
       }
     }
     return EventResult.Continue
+  }
+
+  private func activate() EventResult {
+    if rowCount() == 0 || !selectedRowSelectable || OnActivate == nil { return EventResult.Continue }
+    OnActivate!!(rowAt(selection.Index))
+    return EventResult.Handled
   }
 
   private func columnWidths(total int32) List[int32] {
@@ -557,6 +595,13 @@ public open class TableView : Box {
       return
     }
 
+    if followTail {
+      let last = nearestSelectable(count - 1, -1)
+      setSelection(last < 0 ? count - 1 : last, false)
+      FirstVisibleRowIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleRowIndex,
+        ContentBounds.HeightRows - (ShowHeader ? 1 : 0))
+      return
+    }
     let previous = selection.Index
     let current = Selection.ClampIndex(count, previous)
     let currentRow = rowAt(current)

@@ -538,6 +538,57 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(stable.SelectedRowIndex == 1 && stable.SelectedRowId == "item3",
         "TableView restores selection by stable row Id after filtering or sorting")
 
+      let following = makeTable()
+      following.ShowHeader = false
+      let followingRoot = Box{ Children: { following } }
+      let followingScreen = Screen(40, 12)
+      followingRoot.Draw(followingScreen)
+      followingRoot.Focus(following)
+      following.FollowTail = true
+      following.Rows.Add(tblRow("末尾", "21"))
+      followingRoot.Draw(followingScreen)
+      failed = failed + Checks.Expect(following.SelectedRowId == "末尾"
+          && following.FirstVisibleRowIndex == following.Rows.Count - 6,
+        "TableView follows appended rows with a hidden header at 40x12")
+      followingRoot.Handle(keyEv(Key.Up))
+      let pausedIndex = following.SelectedRowIndex
+      let pausedOffset = following.FirstVisibleRowIndex
+      following.Rows.Add(tblRow("next", "22"))
+      followingRoot.Draw(followingScreen)
+      failed = failed + Checks.Expect(!following.FollowTail && following.SelectedRowIndex == pausedIndex
+          && following.FirstVisibleRowIndex == pausedOffset,
+        "TableView preserves paused selection and viewport on append")
+      var activations = 0
+      let activationChanges = SelectionProbe()
+      following.OnChange = activationChanges.Record
+      following.OnActivate = (row) -> activations = activations + 1
+      followingRoot.Handle(keyEv(Key.Enter))
+      failed = failed + Checks.Expect(activationChanges.Take() == nil,
+        "TableView Enter activation does not emit a selection change")
+      followingRoot.Handle(mouseEv(0, 0))
+      failed = failed + Checks.Expect(activations == 1, "TableView first click only selects")
+      activationChanges.Clear()
+      followingRoot.Handle(mouseEv(0, 0))
+      failed = failed + Checks.Expect(activations == 2 && activationChanges.Take() == nil,
+        "TableView second click activates without a selection change")
+      followingRoot.Handle(UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Right,
+        Position: CellPoint{ Column: 0, Row: 1 },
+      })
+      failed = failed + Checks.Expect(activations == 2 && following.SelectedRowIndex == pausedOffset,
+        "TableView right click does not select or activate")
+      following.Rows.Clear()
+      following.FollowTail = true
+      followingRoot.Draw(followingScreen)
+      followingRoot.Handle(keyEv(Key.Enter))
+      failed = failed + Checks.Expect(following.SelectedRowId == "" && activations == 2,
+        "TableView empty follow does not activate")
+      let replacedSourceTable = TableView{ Source: CheckTableSource() }
+      replacedSourceTable.SelectedRowIndex = 1
+      replacedSourceTable.Source = CheckTableSource()
+      failed = failed + Checks.Expect(replacedSourceTable.SelectedRowId == "selected",
+        "TableView source replacement preserves the selected row Id")
+
       let skipped = makeTable()
       skipped.Rows[1].IsSelectable = false
       skipped.SelectedRowIndex = 0
