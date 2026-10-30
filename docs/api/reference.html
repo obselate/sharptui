@@ -906,8 +906,8 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>12-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuibutton" data-search="sharptui.button a push button: &quot; text &quot; centred, flips ink when focused. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty, focusable button. properties prop onclick action { get; set; } — work invoked when the button is activated. prop text string { get; set; } — the label centred within the button.">
+<section class="sheet api-type" aria-labelledby="sharptuibutton" data-search="sharptui.button a push button with a centred label, flips ink when focused. g# kind: class .
+inherits box ; see that type for inherited members. constructors init() — creates an empty, focusable button. properties prop horizontalpadding int32 { get; set; } — padding in cells on each side of the label. defaults to one. must not be negative. prop onclick action { get; set; } — work invoked when the button is activated. prop text string { get; set; } — the label centred within the button.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -921,7 +921,7 @@ inherits box ; see that type for inherited members. constructors init() — crea
       </div>
     </div>
     <div class="chapter-copy">
-      <p>A push button: " Text " centred, flips ink when focused.</p>
+      <p>A push button with a centred label, flips ink when focused.</p>
 <p>G# kind: <code>class</code>.
 Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="constructors-3">Constructors</h3>
@@ -930,6 +930,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 <h3 id="properties-6">Properties</h3>
 <ul>
+<li><code>prop HorizontalPadding int32 { get; set; }</code> — Padding in cells on each side of the label. Defaults to one. Must not be negative.</li>
 <li><code>prop OnClick Action { get; set; }</code> — Work invoked when the button is activated.</li>
 <li><code>prop Text string { get; set; }</code> — The label centred within the button.</li>
 </ul>
@@ -1990,7 +1991,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuiformfield" data-search="sharptui.formfield a short label, a retained editor, and optional field state. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty field. labels wrap above editors when their combined width does not fit. properties prop editor box { get; set; } — the retained editor. any box can be used. replacing it detaches the previous editor. prop ismodified bool { get; set; } — whether a visible asterisk is drawn beside the editor. the caller owns modified state. prop label string { get; set; } — the single-line field label. measured in terminal cells. prop statestyle style { get; set; } — the style applied to statetext. prop statetext string { get; set; } — a short state symbol or value beside the editor. empty text hides it.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty field. labels wrap above editors when their combined width does not fit. properties prop editor box { get; set; } — the retained editor. any box can be used. replacing it detaches the previous editor. prop ismodified bool { get; set; } — whether the modified marker is drawn beside the editor. the caller owns modified state. prop label string { get; set; } — the single-line field label. measured in terminal cells. prop modifiedstyle style { get; set; } — the style applied to modifiedtext. defaults to the inherited style. prop modifiedtext string { get; set; } — the modified marker text. defaults to an asterisk. prop statestyle style { get; set; } — the style applied to statetext. prop statetext string { get; set; } — a short state symbol or value beside the editor. empty text hides it.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -2014,8 +2015,10 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="properties-22">Properties</h3>
 <ul>
 <li><code>prop Editor Box { get; set; }</code> — The retained editor. Any box can be used. Replacing it detaches the previous editor.</li>
-<li><code>prop IsModified bool { get; set; }</code> — Whether a visible asterisk is drawn beside the editor. The caller owns modified state.</li>
+<li><code>prop IsModified bool { get; set; }</code> — Whether the modified marker is drawn beside the editor. The caller owns modified state.</li>
 <li><code>prop Label string { get; set; }</code> — The single-line field label. Measured in terminal cells.</li>
+<li><code>prop ModifiedStyle Style { get; set; }</code> — The style applied to ModifiedText. Defaults to the inherited style.</li>
+<li><code>prop ModifiedText string { get; set; }</code> — The modified marker text. Defaults to an asterisk.</li>
 <li><code>prop StateStyle Style { get; set; }</code> — The style applied to StateText.</li>
 <li><code>prop StateText string { get; set; }</code> — A short state symbol or value beside the editor. Empty text hides it.</li>
 </ul>

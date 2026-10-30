@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `d95ed160c9241db6376f1795e3644e5a6dcfb02518f5273473e9f0328a67dbec`.
+Public-symbol SHA-256: `091a4c5e115872d7f6f60c6f364d78aca05c8cac6568bcbe25a08b33414bf7a0`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -391,7 +391,7 @@ G# kind: `class`.
 
 ## SharpTui.Button
 
-A push button: " Text " centred, flips ink when focused.
+A push button with a centred label, flips ink when focused.
 
 G# kind: `class`.
 Inherits `Box`; see that type for inherited members.
@@ -402,6 +402,7 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop HorizontalPadding int32 { get; set; }` — Padding in cells on each side of the label. Defaults to one. Must not be negative.
 - `prop OnClick Action { get; set; }` — Work invoked when the button is activated.
 - `prop Text string { get; set; }` — The label centred within the button.
 
@@ -934,8 +935,10 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop Editor Box { get; set; }` — The retained editor. Any box can be used. Replacing it detaches the previous editor.
-- `prop IsModified bool { get; set; }` — Whether a visible asterisk is drawn beside the editor. The caller owns modified state.
+- `prop IsModified bool { get; set; }` — Whether the modified marker is drawn beside the editor. The caller owns modified state.
 - `prop Label string { get; set; }` — The single-line field label. Measured in terminal cells.
+- `prop ModifiedStyle Style { get; set; }` — The style applied to ModifiedText. Defaults to the inherited style.
+- `prop ModifiedText string { get; set; }` — The modified marker text. Defaults to an asterisk.
 - `prop StateStyle Style { get; set; }` — The style applied to StateText.
 - `prop StateText string { get; set; }` — A short state symbol or value beside the editor. Empty text hides it.
 
