@@ -11,6 +11,7 @@ public open class Select : Box {
   private var top int32
   private var options List[string]
   private var selection SelectionState
+  private var placeholder string
 
   /// Receives each user selection change after navigation completes. Programmatic selection is silent.
   public prop OnChange Action[SelectionChange]? {
@@ -22,8 +23,20 @@ public open class Select : Box {
   public prop Options List[string] {
     get -> options
     set {
+      var changed = options.Count != value.Count
+      if !changed {
+        for i in 0 ... options.Count {
+          if options[i] != value[i] {
+            changed = true
+            break
+          }
+        }
+      }
       options = value
-      Refresh()
+      normalizeSelection()
+      highlightIndex = clampIndex(highlightIndex)
+      selection.Change = nil
+      if changed { MarkMeasureDirty() }
     }
   }
   /// Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.
@@ -39,7 +52,14 @@ public open class Select : Box {
   /// Style merged over the highlighted option's inherited style in the open list.
   public prop SelectedStyle Style { get; set; }
   /// Text shown in the closed control when Options is empty.
-  public prop Placeholder string { get; set; }
+  public prop Placeholder string {
+    get -> placeholder
+    set {
+      if placeholder == value { return }
+      placeholder = value
+      MarkMeasureDirty()
+    }
+  }
 
   /// Creates a closed select with no options and the placeholder "select".
   public init() {
@@ -59,6 +79,7 @@ public open class Select : Box {
     normalizeSelection()
     highlightIndex = clampIndex(highlightIndex)
     selection.Change = nil
+    MarkMeasureDirty()
   }
 
   /// Always true, so this select sizes itself via MeasureIntrinsic.
@@ -128,7 +149,7 @@ public open class Select : Box {
   internal override func IsInputScope() bool -> IsOpen
 
   internal override func ScopeFallback(ev UiEvent) EventResult {
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press { return Accept(ev) }
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left { return Accept(ev) }
     return EventResult.Continue
   }
 
@@ -139,7 +160,7 @@ public open class Select : Box {
       highlightIndex = selectedOptionIndex()
       return EventResult.Handled
     }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
       isOpen = true
       highlightIndex = selectedOptionIndex()
       return EventResult.Handled
@@ -167,7 +188,7 @@ public open class Select : Box {
       isOpen = false
       return EventResult.Handled
     }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
       let list = listRect()
       if list.Contains(ev.Position) {
         let inner = list.Inset(CellInsets.All(1))

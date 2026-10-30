@@ -294,7 +294,7 @@ public open class TableView : Box {
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
       if ev.Mouse == MouseKind.ScrollUp { return result(scrollTo(FirstVisibleRowIndex - Selection.WheelStep, height)) }
       if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleRowIndex + Selection.WheelStep, height)) }
-      if ev.Mouse == MouseKind.Press {
+      if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
         let hit = ev.Position.Row - bounds.Row
         if hit == 0 { return EventResult.Continue }
         let row = FirstVisibleRowIndex + hit - 1

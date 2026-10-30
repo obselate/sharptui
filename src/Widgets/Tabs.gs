@@ -19,8 +19,19 @@ public open class Tabs : Box {
   public prop Titles List[string] {
     get -> titles
     set {
+      var changed = titles.Count != value.Count
+      if !changed {
+        for i in 0 ... titles.Count {
+          if titles[i] != value[i] {
+            changed = true
+            break
+          }
+        }
+      }
       titles = value
-      Refresh()
+      if changed { MarkMeasureDirty() }
+      selection.Index = normalizedSelectedIndex()
+      selection.Change = nil
     }
   }
 
@@ -51,6 +62,7 @@ public open class Tabs : Box {
   public func Refresh() {
     selection.Index = normalizedSelectedIndex()
     selection.Change = nil
+    MarkMeasureDirty()
   }
 
   /// Always true, so this tab strip sizes itself via MeasureIntrinsic.
@@ -100,7 +112,7 @@ public open class Tabs : Box {
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left { return result(moveTo(SelectedIndex - 1)) }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Right { return result(moveTo(SelectedIndex + 1)) }
 
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
       let bounds = ContentBounds
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
       let lefts = starts()
@@ -169,27 +181,83 @@ public open class Tabs : Box {
 
 /// A one row bar with a left, centred, and right segment.
 public open class StatusBar : Box {
+  private var leftText string
+  private var centerText string
+  private var rightText string
+  private var leftRuns List[TextRun]
+  private var centerRuns List[TextRun]
+  private var rightRuns List[TextRun]
   /// Text drawn at the left edge of the bar.
-  public prop LeftText string { get; set; }
+  public prop LeftText string {
+    get -> leftText
+    set {
+      if leftText == value { return }
+      leftText = value
+      MarkMeasureDirty()
+    }
+  }
   /// Text drawn centered in the bar when there is room for it and the flanking text.
-  public prop CenterText string { get; set; }
+  public prop CenterText string {
+    get -> centerText
+    set {
+      if centerText == value { return }
+      centerText = value
+      MarkMeasureDirty()
+    }
+  }
   /// Text drawn at the right edge of the bar when there is room.
-  public prop RightText string { get; set; }
+  public prop RightText string {
+    get -> rightText
+    set {
+      if rightText == value { return }
+      rightText = value
+      MarkMeasureDirty()
+    }
+  }
   /// Styled content drawn at the left edge. When non-empty, this takes precedence over LeftText.
-  public prop LeftRuns List[TextRun] { get; set; }
+  public prop LeftRuns List[TextRun] {
+    get -> leftRuns
+    set {
+      let changed = !sameRuns(leftRuns, value)
+      leftRuns = value
+      if changed { MarkMeasureDirty() }
+    }
+  }
   /// Styled content drawn in the center. When non-empty, this takes precedence over CenterText.
-  public prop CenterRuns List[TextRun] { get; set; }
+  public prop CenterRuns List[TextRun] {
+    get -> centerRuns
+    set {
+      let changed = !sameRuns(centerRuns, value)
+      centerRuns = value
+      if changed { MarkMeasureDirty() }
+    }
+  }
   /// Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.
-  public prop RightRuns List[TextRun] { get; set; }
+  public prop RightRuns List[TextRun] {
+    get -> rightRuns
+    set {
+      let changed = !sameRuns(rightRuns, value)
+      rightRuns = value
+      if changed { MarkMeasureDirty() }
+    }
+  }
 
   /// Creates a bar with empty left, center, and right text.
   public init() {
     LeftText = ""
     CenterText = ""
     RightText = ""
-    LeftRuns = List[TextRun]()
-    CenterRuns = List[TextRun]()
-    RightRuns = List[TextRun]()
+    leftRuns = List[TextRun]()
+    centerRuns = List[TextRun]()
+    rightRuns = List[TextRun]()
+  }
+
+  private func sameRuns(a List[TextRun], b List[TextRun]) bool {
+    if a.Count != b.Count { return false }
+    for i in 0 ... a.Count {
+      if !EqualityComparer[TextRun].Default.Equals(a[i], b[i]) { return false }
+    }
+    return true
   }
 
   /// Always true, so this bar sizes itself via MeasureIntrinsic.

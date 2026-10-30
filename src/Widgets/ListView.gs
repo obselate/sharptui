@@ -191,7 +191,7 @@ public open class ListView : Box {
         return result(scrollTo(FirstVisibleItemIndex - Selection.WheelStep, bounds.HeightRows))
       }
       if ev.Mouse == MouseKind.ScrollDown { return result(scrollTo(FirstVisibleItemIndex + Selection.WheelStep, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.Press {
+      if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
         FollowTail = false
         return result(selectAt(FirstVisibleItemIndex + (ev.Position.Row - bounds.Row), bounds.HeightRows))
       }
