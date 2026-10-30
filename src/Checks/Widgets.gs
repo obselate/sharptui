@@ -72,6 +72,7 @@ public class WidgetCheck {
       var failed = 0
       failed = failed + checkKeyHints()
       failed = failed + checkPointerCorrectness()
+      failed = failed + checkTableCellContent()
 
       failed = failed + Checks.Expect(Viewport.ClampOffset(20, 18, 5) == 15
         && Viewport.BringIntoView(20, 12, 2, 5) == 8,
@@ -1566,5 +1567,148 @@ private func runWidgetScenario() int32 {
   driver.Send(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab, Phase: KeyPhase.Press })
   failed = failed + Checks.Expect(driver.FocusedElement != nil,
     "TestDriver exposes focus after normal input routing")
+  return failed
+}
+
+private func checkTableCellContent() int32 {
+  var failed = 0
+  let table = TableView{ ShowBorder: true }
+  for column in 0 ... 4 { table.Columns.Add(TableColumn{ Header: "value" }) }
+  for index in 0 ... 64 {
+    table.Rows.Add(TableRow{ Id: index.ToString(), Cells: {
+      TableCell{ Text: "hidden", Content: ProgressBar{ Value: 1.0, FilledGlyph: "#" } },
+      TableCell{ Content: Sparkline{ Values: { 0.0, 1.0 } } },
+      TableCell{ Content: Toggle{ Text: "enable" } },
+      TableCell{ Content: Label{ Text: "label", Width: CellLength.Cells(100) } },
+    } })
+  }
+  let root = Box{ Children: { table } }
+  let widths = List[int32]{ 40, 60, 80, 120, 160 }
+  let heights = List[int32]{ 12, 18, 24, 36, 48 }
+  let offsets = List[int32]{ 0, 5, 40 }
+  for width in widths {
+    for height in heights {
+      let screen = Screen(width, height)
+      for offset in offsets {
+        table.FirstVisibleRowIndex = offset
+        root.Draw(screen)
+        let view = table.ContentBounds
+        let first = table.FirstVisibleRowIndex
+        guard let bar = table.Rows[first].Cells[0].Content else { return failed + Checks.Expect(false, "missing bar cell") }
+        guard let spark = table.Rows[first].Cells[1].Content else { return failed + Checks.Expect(false, "missing sparkline cell") }
+        guard let toggle = table.Rows[first].Cells[2].Content else { return failed + Checks.Expect(false, "missing toggle cell") }
+        guard let label = table.Rows[first].Cells[3].Content else { return failed + Checks.Expect(false, "missing label cell") }
+        let cellWidth = (view.WidthCells - 3) / 4
+        failed += Checks.Expect(bar.Bounds.Column == view.Column && bar.Bounds.Row == view.Row + 1
+            && bar.Bounds.HeightRows == 1 && spark.Bounds.Column == bar.Bounds.Column + bar.Bounds.WidthCells + 1
+            && toggle.Bounds.Column == spark.Bounds.Column + spark.Bounds.WidthCells + 1
+            && label.Bounds.Column == toggle.Bounds.Column + toggle.Bounds.WidthCells + 1
+            && label.Bounds.WidthCells >= cellWidth && label.Bounds.Column + label.Bounds.WidthCells == view.Column + view.WidthCells
+            && screen.Probe(bar.Bounds.Column, bar.Bounds.Row) == "#"
+            && screen.Probe(spark.Bounds.Column + spark.Bounds.WidthCells - 1, spark.Bounds.Row) == "█"
+            && screen.Probe(toggle.Bounds.Column, toggle.Bounds.Row) == "["
+            && screen.Probe(label.Bounds.Column, label.Bounds.Row) == "l",
+          "TableView places and clips retained cells at each viewport size and scroll offset")
+      }
+    }
+  }
+  let screen = Screen(40, 12)
+  table.FirstVisibleRowIndex = 0
+  root.Draw(screen)
+  guard let firstToggle = table.Rows[0].Cells[2].Content else { return failed + Checks.Expect(false, "missing first toggle cell") }
+  root.Focus(table)
+  root.Handle(keyEv(Key.Tab))
+  failed += Checks.Expect(firstToggle.IsFocused, "TableView Tab enters the first visible focusable cell")
+  guard let secondToggle = table.Rows[1].Cells[2].Content else { return failed + Checks.Expect(false, "missing second toggle cell") }
+  root.Handle(mouseEv(secondToggle.Bounds.Column, secondToggle.Bounds.Row))
+  if secondToggle is Toggle {
+    failed += Checks.Expect(secondToggle.IsChecked && secondToggle.IsFocused && table.SelectedRowIndex == 0,
+      "TableView sends left clicks to Toggle cells without changing row selection")
+  }
+  guard let secondBar = table.Rows[1].Cells[0].Content else { return failed + Checks.Expect(false, "missing second bar cell") }
+  root.Handle(mouseEv(secondBar.Bounds.Column, secondBar.Bounds.Row))
+  failed += Checks.Expect(table.SelectedRowIndex == 1 && table.IsFocused,
+    "TableView inert cells leave row selection to the table")
+  let chart = ChartView{ Series: {
+    ChartSeries{ Points: { ChartPoint{ X: 0.0, Y: 0.0 }, ChartPoint{ X: 1.0, Y: 1.0 } } },
+  } }
+  var clicks = 0
+  let button = Button{ Text: "apply", OnClick: () -> clicks = clicks + 1 }
+  table.Rows[0].Cells[3] = TableCell{ Content: chart }
+  table.Rows[1].Cells[3] = TableCell{ Content: button }
+  root.Draw(screen)
+  root.Handle(mouseEv(chart.Bounds.Column, chart.Bounds.Row))
+  failed += Checks.Expect(chart.Bounds.HeightRows == 1 && table.SelectedRowIndex == 0 && table.IsFocused,
+    "TableView one-row chart cells leave row selection to the table")
+  root.Focus(secondToggle)
+  root.Handle(keyEv(Key.Tab))
+  root.Handle(keyEv(Key.Enter))
+  root.Handle(mouseEv(button.Bounds.Column, button.Bounds.Row))
+  failed += Checks.Expect(button.IsFocused && clicks == 2 && table.SelectedRowIndex == 0,
+    "TableView Button cells receive Tab, Enter, and left click")
+  table.FirstVisibleRowIndex = 20
+  root.Draw(screen)
+  root.Focus(firstToggle)
+  failed += Checks.Expect(!firstToggle.IsFocused && !firstToggle.IsAttached,
+    "TableView hidden rows cannot retain focus or attachment")
+  failed += Checks.Expect(root.Handle(mouseEv(0, screen.Size.HeightRows)) == EventResult.Continue
+      && !firstToggle.IsFocused,
+    "TableView does not hit content outside its visible rows")
+  root.Focus(table)
+  root.Handle(keyEv(Key.Tab))
+  failed += Checks.Expect(Object.ReferenceEquals(root.FocusedElement, table.Rows[20].Cells[2].Content),
+    "TableView Tab skips hidden rows after scrolling")
+  let probe = MouseCaptureProbe{ CaptureOnClick: true, ConsumeMouse: true }
+  probe.MakeFocusable()
+  table.Rows[23].Cells[2] = TableCell{ Content: probe }
+  root.Draw(screen)
+  root.Handle(mouseEv(probe.Bounds.Column, probe.Bounds.Row))
+  root.Draw(screen)
+  failed += Checks.Expect(probe.Captured && probe.IsFocused,
+    "TableView preserves visible cell focus and mouse capture across paint")
+  table.Source = CheckTableSource()
+  failed += Checks.Expect(!probe.Captured && !probe.IsFocused && !probe.IsAttached && probe.LostCount == 1,
+    "TableView source replacement detaches old cells and releases focus and capture")
+  failed += Checks.Expect(root.Handle(mouseEv(probe.Bounds.Column, probe.Bounds.Row)) == EventResult.Continue
+      && probe.PressCount == 1,
+    "TableView does not hit the old area of content removed by source replacement")
+  table.Source = nil
+  table.FirstVisibleRowIndex = 20
+  root.Draw(screen)
+  root.Handle(mouseEv(probe.Bounds.Column, probe.Bounds.Row))
+  table.Rows.RemoveAt(23)
+  table.Refresh()
+  failed += Checks.Expect(!probe.Captured && !probe.IsFocused && !probe.IsAttached && probe.LostCount == 2,
+    "TableView row removal detaches old cell content")
+  table.FollowTail = true
+  root.Draw(screen)
+  guard let lastToggle = table.Rows[table.Rows.Count - 1].Cells[2].Content else { return failed + Checks.Expect(false, "missing last toggle cell") }
+  failed += Checks.Expect(table.SelectedRowIndex == table.Rows.Count - 1
+      && lastToggle.Bounds.Row == table.ContentBounds.Row + table.ContentBounds.HeightRows - 1,
+    "TableView FollowTail lays out retained cells on the last visible row")
+  table.FollowTail = false
+  let wheel = UiEvent{
+    Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollUp,
+    Position: CellPoint{ Column: 1, Row: 2 },
+  }
+  let output = TerminalBuffer(4096)
+  for frame in 0 ... 64 {
+    table.FirstVisibleRowIndex = frame % 2
+    screen.Clear()
+    root.Draw(screen)
+    root.Handle(wheel)
+    screen.Emit(output)
+  }
+  let before = GC.GetAllocatedBytesForCurrentThread()
+  for frame in 0 ... 64 {
+    table.FirstVisibleRowIndex = frame % 2
+    screen.Clear()
+    root.Draw(screen)
+    root.Handle(wheel)
+    screen.Emit(output)
+  }
+  let allocated = GC.GetAllocatedBytesForCurrentThread() - before
+  failed += Checks.Expect(allocated == 0,
+    "TableView warmed retained-cell paint, wheel input, and output allocate zero bytes: " + allocated.ToString())
   return failed
 }

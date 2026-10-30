@@ -38,6 +38,7 @@ public open class Box {
   private var title string
   private var wrapChildren bool
   private var constrainWidth bool
+  private var constrainedLayout bool
 
   private var yoga Facebook.Yoga.Node?
   private var config Facebook.Yoga.Config?
@@ -348,6 +349,12 @@ public open class Box {
 
   internal open prop ClipChildren bool -> false
 
+  internal open prop LayoutChildren bool -> true
+
+  internal func LayoutChild(child Box, bounds CellRect) {
+    child.computeRegion(bounds, bounds, this)
+  }
+
   internal open func PreviewMouse(ev UiEvent) EventResult -> EventResult.Continue
 
   internal open func LayoutCompleted() {
@@ -372,13 +379,13 @@ public open class Box {
       CellRect{ WidthCells: width, HeightRows: height })
   }
 
-  private func computeRegion(bounds CellRect, clip CellRect) {
+  private func computeRegion(bounds CellRect, clip CellRect, owner Box? = nil) {
     if !IsVisible {
       clearBounds()
       return
     }
-    linkTree(nil)
-    synchronizeMouseCapture(topInputScope())
+    linkTree(owner)
+    if owner == nil { synchronizeMouseCapture(topInputScope()) }
     if config == nil {
       let fresh = YGConfigAPI.YGConfigNew()
       YGConfigAPI.YGConfigSetPointScaleFactor(fresh, 1.0F)
@@ -387,9 +394,13 @@ public open class Box {
     guard let cfg = config else { return }
     treeViewport = bounds
 
-    prepareTree(nil)
+    prepareTree(owner, owner != nil)
     build(cfg)
     guard let root = yoga else { return }
+    if owner != nil {
+      YGNodeStyleAPI.YGNodeStyleSetWidth(root, float32(bounds.WidthCells))
+      YGNodeStyleAPI.YGNodeStyleSetHeight(root, float32(bounds.HeightRows))
+    }
     YGNodeAPI.YGNodeCalculateLayout(root, float32(bounds.WidthCells), float32(bounds.HeightRows), YGDirection.LTR)
     read(float32(bounds.Column), float32(bounds.Row), clip)
   }
@@ -987,22 +998,25 @@ public open class Box {
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Top, float32(top))
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Right, float32(right))
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Bottom, float32(bottom))
-      if Width.IsAuto { YGNodeStyleAPI.YGNodeStyleSetWidthAuto(node) }
-      else { YGNodeStyleAPI.YGNodeStyleSetWidth(node, float32(Width.CellCount)) }
-      if Height.IsAuto { YGNodeStyleAPI.YGNodeStyleSetHeightAuto(node) }
-      else { YGNodeStyleAPI.YGNodeStyleSetHeight(node, float32(Height.CellCount)) }
+      if !constrainedLayout {
+        if Width.IsAuto { YGNodeStyleAPI.YGNodeStyleSetWidthAuto(node) }
+        else { YGNodeStyleAPI.YGNodeStyleSetWidth(node, float32(Width.CellCount)) }
+        if Height.IsAuto { YGNodeStyleAPI.YGNodeStyleSetHeightAuto(node) }
+        else { YGNodeStyleAPI.YGNodeStyleSetHeight(node, float32(Height.CellCount)) }
+      }
       layoutStyleDirty = false
     }
 
-    var allVisible = !childVisibilityDirty && linked.Count == Children.Count
+    let childCount = LayoutChildren ? Children.Count : 0
+    var allVisible = !childVisibilityDirty && linked.Count == childCount
     if allVisible && !sameChildList(linked) { allVisible = false }
     var same = allVisible
 
-    var visibleCount = Children.Count
+    var visibleCount = childCount
     if !allVisible {
       visibleCount = 0
       var visible = 0
-      while visible < Children.Count {
+      while visible < childCount {
         if Children[visible].IsVisible { visibleCount = visibleCount + 1 }
         visible = visible + 1
       }
@@ -1019,7 +1033,7 @@ public open class Box {
     }
 
     var child = 0
-    while child < Children.Count {
+    while child < childCount {
       if Children[child].IsVisible { Children[child].build(config) }
       child = child + 1
     }
@@ -1031,7 +1045,7 @@ public open class Box {
       if same && !allVisible {
         var at = 0
         var linkedChild = 0
-        while linkedChild < Children.Count {
+        while linkedChild < childCount {
           let kid = Children[linkedChild]
           if kid.IsVisible {
             if !Object.ReferenceEquals(linked[at], kid) { same = false }
@@ -1045,7 +1059,7 @@ public open class Box {
         linked.Clear()
         var at = 0
         var linkedChild = 0
-        while linkedChild < Children.Count {
+        while linkedChild < childCount {
           let kid = Children[linkedChild]
           let child = kid.yoga
           if kid.IsVisible && child != nil {
@@ -1066,8 +1080,12 @@ public open class Box {
     childVisibilityDirty = false
   }
 
-  private func prepareTree(owner Box?) {
+  private func prepareTree(owner Box?, constrained bool = false) {
     parent = owner
+    if constrainedLayout != constrained {
+      constrainedLayout = constrained
+      layoutStyleDirty = true
+    }
     if !IsVisible {
       clearBounds()
       return
@@ -1075,7 +1093,7 @@ public open class Box {
     PrepareInputScope()
     PrepareLayout()
     var child = 0
-    while child < Children.Count {
+    while LayoutChildren && child < Children.Count {
       Children[child].prepareTree(this)
       child = child + 1
     }
@@ -1122,7 +1140,7 @@ public open class Box {
     let width = int32(YGNodeLayoutAPI.YGNodeLayoutGetWidth(node))
     let height = int32(YGNodeLayoutAPI.YGNodeLayoutGetHeight(node))
 
-    if !Placement.IsInFlow {
+    if !constrainedLayout && !Placement.IsInFlow {
       if Placement.IsCentered {
         column = float32(parent.Column + (parent.WidthCells - width) / 2)
         row = float32(parent.Row + (parent.HeightRows - height) / 2)
@@ -1139,7 +1157,7 @@ public open class Box {
       HeightRows: height,
     }
     var child = 0
-    while child < Children.Count {
+    while LayoutChildren && child < Children.Count {
       if Children[child].IsVisible { Children[child].read(column, row, bounds) }
       else { Children[child].clearBounds() }
       child = child + 1
