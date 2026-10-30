@@ -51,6 +51,10 @@ internal class DialogKeyProbe : Dialog {
   }
 }
 
+internal class SelectOverrideProbe : Select {
+  protected override func Accept(ev UiEvent) EventResult -> base.Accept(ev)
+}
+
 internal class OverlayCheck {
   shared {
     internal func Run() int32 {
@@ -125,14 +129,14 @@ internal class OverlayCheck {
       failed = failed + Checks.Expect(overlay.IsVisible && field.IsFocused,
         "IsVisible true reopens Overlay through the same focus lifecycle")
 
-      let behind = OverlayProbe{ Marker: "b" }
+      let behind = OverlayProbe{ Marker: "b", Placement: Placement.At(CellPoint{}) }
       let front = OverlayProbe{ Marker: "f" }
       let frontOverlay = Overlay{ Content: front, Placement: Placement.At(CellPoint{}) }
-      let ordered = Box{ Children: { frontOverlay, behind } }
+      let ordered = Box{ Children: { Form{ Height: CellLength.Cells(1), Children: { frontOverlay } }, behind } }
       let orderedScreen = Screen(8, 3)
       ordered.Draw(orderedScreen)
       failed = failed + Checks.Expect(orderedScreen.Probe(0, 0) == "f",
-        "Overlay paints above normal siblings regardless of child order")
+        "Nested Overlay paints above later branches of the tree")
 
       let first = OverlayProbe{ Marker: "1" }
       let hidden = OverlayProbe{ Marker: "2" }
@@ -201,6 +205,75 @@ internal class OverlayCheck {
         "Overlay unchanged redraw is allocation-free after warmup")
 
       failed = failed + checkBoundedChoices()
+      failed = failed + checkPopupLayers()
+      return failed
+    }
+
+    private func checkPopupLayers() int32 {
+      var failed = 0
+      let chooser = SelectOverrideProbe{
+        Width: CellLength.Cells(20),
+        Options: List[string]{ "选项零", "选项一", "选项二", "选项三", "选项四", "选项五", "选项六", "选项七" },
+      }
+      let changes = List[bool](10)
+      chooser.OnOpenChange = opened -> changes.Add(opened)
+      let form = Form{ LabelWidth: 6, Height: CellLength.Cells(4) }
+      form.Add(FormField{ Label: "Choice", Editor: chooser })
+      let later = List[OverlayProbe](5)
+      for i in 0 ... 5 {
+        let editor = OverlayProbe{ Marker: "later row", Width: CellLength.Cells(20) }
+        later.Add(editor)
+        form.Add(FormField{ Label: "Later", Editor: editor })
+      }
+      let behind = OverlayProbe{
+        Marker: "underlying", Width: CellLength.Cells(40), Height: CellLength.Cells(8),
+        Style: Style{ Background: Color.TerminalDefault },
+      }
+      let root = Box{ Children: { form, behind } }
+      let screen = Screen(40, 12)
+      screen.ColorMode = TerminalColorMode.NoColor
+      root.Draw(screen)
+      root.Focus(chooser)
+      root.Handle(keyEv(Key.Enter))
+      screen.Clear()
+      root.Draw(screen)
+      let column = chooser.Bounds.Column
+      let row = chooser.Bounds.Row
+      let edge = form.Bounds.Row + form.Bounds.HeightRows
+      failed += Checks.Expect(chooser.IsOpen && screen.Probe(column, row + 1) == "┌"
+          && screen.Probe(column + 1, row + 2) == "选"
+          && screen.Probe(column + 1, edge) == "选"
+          && column >= 0 && column + chooser.Bounds.WidthCells <= 40 && row + 8 < 12
+          && screen.Probe(column + chooser.Bounds.WidthCells - 1, row + 8) == "┘",
+        "Select in the first of six form rows paints above later rows and beyond the form clip within 40x12")
+      root.Draw(screen)
+      let before = GC.GetAllocatedBytesForCurrentThread()
+      root.Draw(screen)
+      failed += Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == before,
+        "Clipped form popup repaint allocates no managed memory after warmup")
+      root.Handle(mouseEv(column + 1, row + 3))
+      failed += Checks.Expect(!chooser.IsOpen && chooser.SelectedIndex == 1 && later[2].MouseCount == 0,
+        "Popup item clicks select instead of reaching the form row underneath")
+      root.Handle(keyEv(Key.Enter))
+      root.Handle(mouseEv(column + 1, edge))
+      failed += Checks.Expect(!chooser.IsOpen && chooser.SelectedIndex == edge - row - 2
+          && behind.MouseCount == 0,
+        "Popup item clicks beyond a clipping parent select before background input")
+      root.Handle(keyEv(Key.Enter))
+      root.Handle(keyEv(Key.Enter))
+      failed += Checks.Expect(!chooser.IsOpen, "Select Enter closes the popup")
+      root.Handle(keyEv(Key.Enter))
+      root.Handle(keyEv(Key.Escape))
+      failed += Checks.Expect(!chooser.IsOpen, "Select Escape closes the popup")
+      root.Handle(mouseEv(column, row))
+      root.Handle(mouseEv(39, 11))
+      failed += Checks.Expect(!chooser.IsOpen && behind.MouseCount == 0,
+        "Select outside click closes without reaching the background")
+      var notified = changes.Count == 10
+      for i in 0 ... changes.Count {
+        if changes[i] != (i % 2 == 0) { notified = false }
+      }
+      failed += Checks.Expect(notified, "Select notifies every open and Enter, Escape, item, or outside-click close")
       return failed
     }
 

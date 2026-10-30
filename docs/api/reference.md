@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `c03cb02b995591f424c2014045a594b58fae2ebde0453b3f6db5e8d40e43b71b`.
+Public-symbol SHA-256: `057655b817c38d566f4739cfd4f4af8d3ebb55ef7eec4bdb95f5f5abc794405f`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1769,7 +1769,7 @@ G# kind: `enum`.
 
 ## SharpTui.Select
 
-A dropdown select with a bounded floating option list. Add a Select late among its siblings so the open list paints over them.
+A dropdown select with a bounded floating option list.
 
 G# kind: `class`.
 Inherits `Box`; see that type for inherited members.
@@ -1782,6 +1782,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop IsOpen bool { get; }` — Whether the floating option list is currently shown.
 - `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
+- `prop OnOpenChange Action[bool] { get; set; }` — Receives true when the option list opens and false when it closes.
 - `prop Options List[string] { get; set; }` — Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.
 - `prop Placeholder string { get; set; }` — Text shown in the closed control when Options is empty.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.

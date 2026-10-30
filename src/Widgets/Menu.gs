@@ -4,7 +4,6 @@ import System
 import System.Collections.Generic
 
 /// A dropdown select with a bounded floating option list.
-/// Add a Select late among its siblings so the open list paints over them.
 public open class Select : Box {
   private var isOpen bool
   private var highlightIndex int32
@@ -37,6 +36,8 @@ public open class Select : Box {
   }
   /// Whether the floating option list is currently shown.
   public prop IsOpen bool -> isOpen
+  /// Receives true when the option list opens and false when it closes.
+  public prop OnOpenChange Action[bool]? { get; set; }
   /// Style merged over the highlighted option's inherited style in the open list.
   public prop SelectedStyle Style { get; set; }
   /// Text shown in the closed control when Options is empty.
@@ -120,7 +121,7 @@ public open class Select : Box {
   /// Delegates keyboard and mouse input to the closed or open handling path depending on IsOpen.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     let outcome = acceptSelection(ev)
     selection.Notify()
     return outcome
@@ -144,15 +145,15 @@ public open class Select : Box {
   private func acceptClosed(ev UiEvent) EventResult {
     if Options.Count == 0 { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
-      isOpen = true
       highlightIndex = selectedOptionIndex()
       top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, Math.Max(0, listRect().HeightRows - 2))
+      setOpen(true)
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
-      isOpen = true
       highlightIndex = selectedOptionIndex()
       top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, Math.Max(0, listRect().HeightRows - 2))
+      setOpen(true)
       return EventResult.Handled
     }
     return EventResult.Continue
@@ -179,11 +180,11 @@ public open class Select : Box {
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
       setSelection(highlightIndex, true)
-      isOpen = false
+      setOpen(false)
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Escape {
-      isOpen = false
+      setOpen(false)
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
@@ -194,10 +195,16 @@ public open class Select : Box {
         let idx = top + row
         if row >= 0 && row < inner.HeightRows && idx < Options.Count { setSelection(idx, true) }
       }
-      isOpen = false
+      setOpen(false)
       return EventResult.Handled
     }
     return EventResult.Continue
+  }
+
+  private func setOpen(value bool) {
+    if isOpen == value { return }
+    isOpen = value
+    if let callback = OnOpenChange { callback(value) }
   }
 
   private func listRect() CellRect {

@@ -422,7 +422,8 @@ public open class Box {
   public func Draw(screen Screen) {
     if !IsVisible { return }
     Compute(screen.Size.WidthCells, screen.Size.HeightRows)
-    paintTree(screen, screen.DefaultStyle)
+    if !IsInputScope() { paintTree(screen, screen.DefaultStyle) }
+    paintScopes(screen, screen.DefaultStyle)
   }
 
   /// Lays out and draws an independent subtree inside a clipped virtual row.
@@ -433,7 +434,10 @@ public open class Box {
     if !IsVisible || bounds.WidthCells <= 0 || bounds.HeightRows <= 0 { return }
     computeRegion(bounds, clip)
     let previous = screen.PushClip(clip)
-    try { paintTree(screen, screen.DefaultStyle) }
+    try {
+      if !IsInputScope() { paintTree(screen, screen.DefaultStyle) }
+      paintScopes(screen, screen.DefaultStyle)
+    }
     finally { screen.RestoreClip(previous) }
   }
 
@@ -901,18 +905,24 @@ public open class Box {
 
   private func paintChildren(screen Screen, inherited Style) {
     var child = 0
-    var hasScope = false
     while child < Children.Count {
       let next = Children[child]
-      if next.IsInputScope() { hasScope = true }
-      else { next.paintTree(screen, inherited) }
+      if !next.IsInputScope() { next.paintTree(screen, inherited) }
       child = child + 1
     }
-    if !hasScope { return }
-    child = 0
+  }
+
+  private func paintScopes(screen Screen, inherited Style) {
+    if !IsVisible { return }
+    if IsInputScope() {
+      let previous = screen.SuspendClip()
+      try { paintTree(screen, inherited) }
+      finally { screen.RestoreClip(previous) }
+    }
+    let resolved = Style.MergedOver(inherited)
+    var child = 0
     while child < Children.Count {
-      let next = Children[child]
-      if next.IsInputScope() { next.paintTree(screen, inherited) }
+      Children[child].paintScopes(screen, resolved)
       child = child + 1
     }
   }
