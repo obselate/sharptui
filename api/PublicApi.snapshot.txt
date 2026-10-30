@@ -19,6 +19,11 @@ type|SharpTui.CellPoint|struct
 type|SharpTui.CellRect|struct
 type|SharpTui.CellSize|struct
 type|SharpTui.CellText|class
+type|SharpTui.ChartPoint|struct
+type|SharpTui.ChartSeries|class
+type|SharpTui.ChartStyle|enum
+type|SharpTui.ChartTick|struct
+type|SharpTui.ChartView|class
 type|SharpTui.Clipboard|interface
 type|SharpTui.Color|struct
 type|SharpTui.Column|class

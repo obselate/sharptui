@@ -19,6 +19,11 @@ SharpTui.CellPoint
 SharpTui.CellRect
 SharpTui.CellSize
 SharpTui.CellText
+SharpTui.ChartPoint
+SharpTui.ChartSeries
+SharpTui.ChartStyle
+SharpTui.ChartTick
+SharpTui.ChartView
 SharpTui.Clipboard
 SharpTui.Color
 SharpTui.Column

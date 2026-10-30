@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `9d08bf9ffd180d895e73d8d1055bc9e432ba4cb5767d11ca53b6874aa3950554`.
+Public-symbol SHA-256: `099937dbb877f1f9af2cbbe8496ec3684cd74daa51a9aa23e87f77b3ff7e2806`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -27,6 +27,11 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.CellRect](#sharptuicellrect)
 - [SharpTui.CellSize](#sharptuicellsize)
 - [SharpTui.CellText](#sharptuicelltext)
+- [SharpTui.ChartPoint](#sharptuichartpoint)
+- [SharpTui.ChartSeries](#sharptuichartseries)
+- [SharpTui.ChartStyle](#sharptuichartstyle)
+- [SharpTui.ChartTick](#sharptuicharttick)
+- [SharpTui.ChartView](#sharptuichartview)
 - [SharpTui.Clipboard](#sharptuiclipboard)
 - [SharpTui.Color](#sharptuicolor)
 - [SharpTui.Column](#sharptuicolumn)
@@ -637,6 +642,80 @@ G# kind: `class`.
   - `text`: The text to wrap.
   - `widthCells`: The maximum line width in terminal cells.
   - Returns: The wrapped lines in order.
+
+## SharpTui.ChartPoint
+
+A numeric sample. A non-finite coordinate marks a gap.
+
+G# kind: `struct`.
+
+### Properties
+
+- `prop X float64 { get; init; }` — The horizontal coordinate.
+- `prop Y float64 { get; init; }` — The vertical coordinate.
+
+## SharpTui.ChartSeries
+
+An ordered set of samples and its drawing style.
+
+G# kind: `class`.
+
+### Constructors
+
+- `init()` — Creates an empty line series.
+
+### Properties
+
+- `prop ChartStyle ChartStyle { get; set; }` — The drawing mode for this series.
+- `prop Points List[ChartPoint] { get; set; }` — The samples in connection order. Call ChartView.Refresh after changing a series.
+- `prop Style Style { get; set; }` — The terminal style for this series.
+
+## SharpTui.ChartStyle
+
+Selects how a numeric chart series is drawn.
+
+G# kind: `enum`.
+
+### Values
+
+- `Line` — Connects consecutive finite samples.
+- `Area` — Fills consecutive finite samples to the lower vertical bound.
+- `Points` — Draws separate samples without connecting them.
+
+## SharpTui.ChartTick
+
+A caller-supplied numeric axis label.
+
+G# kind: `struct`.
+
+### Properties
+
+- `prop Text string { get; init; }` — The complete label. Labels that do not fit are suppressed.
+- `prop Value float64 { get; init; }` — The axis coordinate.
+
+## SharpTui.ChartView
+
+A retained XY chart with optional labels and a one-row block-level mode.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty chart with automatic ranges.
+
+### Properties
+
+- `prop AxisStyle Style { get; set; }` — The terminal style of axis labels.
+- `prop HorizontalRange NumericRange { get; set; }` — The horizontal scale. Auto uses all finite samples. Constant samples map to the center.
+- `prop HorizontalTicks List[ChartTick] { get; set; }` — Optional horizontal labels, in priority order. Colliding labels are suppressed whole.
+- `prop Series List[ChartSeries] { get; set; }` — The ordered series. Call Refresh after changing a list or a series in place.
+- `prop VerticalRange NumericRange { get; set; }` — The vertical scale. Auto uses all finite samples. Constant samples map to the center.
+- `prop VerticalTicks List[ChartTick] { get; set; }` — Optional vertical labels, in priority order. Colliding labels are suppressed whole.
+
+### Methods
+
+- `func Refresh()` — Invalidates retained samples and labels after an in-place change.
 
 ## SharpTui.Clipboard
 
