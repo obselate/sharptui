@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `df0f27484761223439d7d6acfa31e96b74e76c69f42f7353da55355d42cdd5c2`.
+Public-symbol SHA-256: `5d4e12ba4d8d23af3232fdd549a43b1127da2831ef8b37c86efde7653d8ab7b2`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1975,7 +1975,7 @@ G# kind: `class`.
 
 ## SharpTui.TableCell
 
-One table cell containing either plain text or styled text runs.
+One table cell containing a retained widget, plain text, or styled text runs.
 
 G# kind: `struct`.
 
@@ -1987,6 +1987,7 @@ G# kind: `struct`.
 
 ### Properties
 
+- `prop Content Box { get; init; }` — Retained one-row content drawn instead of Text and Runs. A widget can belong to only one cell.
 - `prop Runs List[TextRun] { get; init; }` — Styled text segments drawn instead of Text when the list is non-empty.
 - `prop Style Style { get; init; }` — Style merged over the row style before this cell is drawn.
 - `prop Text string { get; init; }` — Plain text drawn when Runs is nil or empty.

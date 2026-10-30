@@ -4105,7 +4105,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>86-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuitablecell" data-search="sharptui.tablecell one table cell containing either plain text or styled text runs. g# kind: struct . constructors init() — creates an empty plain-text cell inheriting its row&#x27;s style. init(text string) — creates a plain-text cell inheriting its row&#x27;s style. text : the text displayed in the cell. properties prop runs list[textrun] { get; init; } — styled text segments drawn instead of text when the list is non-empty. prop style style { get; init; } — style merged over the row style before this cell is drawn. prop text string { get; init; } — plain text drawn when runs is nil or empty.">
+<section class="sheet api-type" aria-labelledby="sharptuitablecell" data-search="sharptui.tablecell one table cell containing a retained widget, plain text, or styled text runs. g# kind: struct . constructors init() — creates an empty plain-text cell inheriting its row&#x27;s style. init(text string) — creates a plain-text cell inheriting its row&#x27;s style. text : the text displayed in the cell. properties prop content box { get; init; } — retained one-row content drawn instead of text and runs. a widget can belong to only one cell. prop runs list[textrun] { get; init; } — styled text segments drawn instead of text when the list is non-empty. prop style style { get; init; } — style merged over the row style before this cell is drawn. prop text string { get; init; } — plain text drawn when runs is nil or empty.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -4119,7 +4119,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
       </div>
     </div>
     <div class="chapter-copy">
-      <p>One table cell containing either plain text or styled text runs.</p>
+      <p>One table cell containing a retained widget, plain text, or styled text runs.</p>
 <p>G# kind: <code>struct</code>.</p>
 <h3 id="constructors-44">Constructors</h3>
 <ul>
@@ -4132,6 +4132,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 <h3 id="properties-56">Properties</h3>
 <ul>
+<li><code>prop Content Box { get; init; }</code> — Retained one-row content drawn instead of Text and Runs. A widget can belong to only one cell.</li>
 <li><code>prop Runs List[TextRun] { get; init; }</code> — Styled text segments drawn instead of Text when the list is non-empty.</li>
 <li><code>prop Style Style { get; init; }</code> — Style merged over the row style before this cell is drawn.</li>
 <li><code>prop Text string { get; init; }</code> — Plain text drawn when Runs is nil or empty.</li>

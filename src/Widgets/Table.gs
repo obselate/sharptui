@@ -68,11 +68,12 @@ public class TableColumn {
   }
 }
 
-/// One table cell containing either plain text or styled text runs.
+/// One table cell containing a retained widget, plain text, or styled text runs.
 public struct TableCell {
   private var text string
   private var runs List[TextRun]?
   private var style Style
+  private var content Box?
 
   /// Plain text drawn when Runs is nil or empty.
   public prop Text string {
@@ -89,12 +90,18 @@ public struct TableCell {
     get -> style
     init -> style = value
   }
+  /// Retained one-row content drawn instead of Text and Runs. A widget can belong to only one cell.
+  public prop Content Box? {
+    get -> content
+    init -> content = value
+  }
 
   /// Creates an empty plain-text cell inheriting its row's style.
   public init() {
     text = ""
     runs = nil
     style = Style()
+    content = nil
   }
 
   /// Creates a plain-text cell inheriting its row's style.
@@ -103,6 +110,7 @@ public struct TableCell {
     this.text = text
     runs = nil
     style = Style()
+    content = nil
   }
 }
 
@@ -127,6 +135,25 @@ public class TableRow {
 }
 
 
+internal class TableCellHost : Box {
+  internal prop Content Box? {
+    get -> Children.Count == 0 ? nil : Children[0]
+    set {
+      if Object.ReferenceEquals(Content, value) { return }
+      Children.Clear()
+      if value != nil { Children.Add(value) }
+      Children = Children
+    }
+  }
+
+  internal override prop LayoutChildren bool -> false
+  internal override prop ClipChildren bool -> true
+
+  internal override func LayoutCompleted() {
+    if let content = Content { LayoutChild(content, ContentBounds) }
+  }
+}
+
 /// A scrolling table with a header row and selectable data rows.
 public open class TableView : Box {
   private var columnGap int32
@@ -137,6 +164,10 @@ public open class TableView : Box {
   private var selection SelectionState
   private var followTail bool
   private var showHeader bool
+  private let cellHosts List[TableCellHost] = List[TableCellHost]()
+  private let cellContents List[Box] = List[Box]()
+  private let cellBounds List[CellRect] = List[CellRect]()
+  private let cellStyles List[Style] = List[Style]()
 
   /// Keeps the last selectable row selected and visible until backward navigation or a left click.
   public prop FollowTail bool {
@@ -171,6 +202,7 @@ public open class TableView : Box {
   public prop Rows List[TableRow] {
     get -> rows
     set {
+      detachContent()
       source = nil
       rows = value
       Refresh()
@@ -181,6 +213,7 @@ public open class TableView : Box {
     get -> source
     set {
       if Object.ReferenceEquals(source, value) { return }
+      detachContent()
       source = value
       Refresh()
     }
@@ -250,6 +283,105 @@ public open class TableView : Box {
   /// Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
   public func Refresh() {
     reconcileSelection(true)
+    if Bounds.WidthCells > 0 && Bounds.HeightRows > 0 { LayoutCompleted() }
+  }
+
+  internal override prop LayoutChildren bool -> false
+  internal override prop ClipChildren bool -> true
+
+  internal override func PreviewMouse(ev UiEvent) EventResult {
+    if ev.Mouse == MouseKind.ScrollUp || ev.Mouse == MouseKind.ScrollDown { return Accept(ev) }
+    if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left { followTail = false }
+    return EventResult.Continue
+  }
+
+  internal override func LayoutCompleted() {
+    reconcileSelection()
+    let r = ContentBounds
+    let headerRows = ShowHeader ? 1 : 0
+    let height = Math.Max(0, r.HeightRows - headerRows)
+    FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
+    let widths = columnWidths(r.WidthCells)
+    cellContents.Clear()
+    cellBounds.Clear()
+    cellStyles.Clear()
+    var row = FirstVisibleRowIndex
+    let end = Math.Min(rowCount(), row + height)
+    while row < end {
+      let data = rowAt(row)
+      var style = data.Style
+      if row == selection.Index { style = SelectedRowStyle.MergedOver(style) }
+      var x = 0
+      var column = Math.Max(0, FirstVisibleColumnIndex)
+      while column < Columns.Count && x < r.WidthCells {
+        let width = Math.Min(widths[column], r.WidthCells - x)
+        if width > 0 && column < data.Cells.Count {
+          let cell = data.Cells[column]
+          if let content = cell.Content {
+            if cellContents.Contains(content) { throw ArgumentException("A widget can belong to only one visible table cell.") }
+            if content.Contains(this) || (content.IsAttached && !Contains(content)) { throw ArgumentException("Table cell content already has a parent.") }
+            cellContents.Add(content)
+            cellBounds.Add(CellRect{
+              Column: r.Column + x, Row: r.Row + headerRows + row - FirstVisibleRowIndex,
+              WidthCells: width, HeightRows: 1,
+            })
+            cellStyles.Add(cell.Style.MergedOver(style))
+          }
+        }
+        x = x + widths[column] + ColumnGap
+        column = column + 1
+      }
+      row = row + 1
+    }
+    var index = 0
+    while index < cellHosts.Count {
+      let host = cellHosts[index]
+      if let content = host.Content {
+        if !cellContents.Contains(content) { host.Content = nil }
+      }
+      index = index + 1
+    }
+    Children.Clear()
+    index = 0
+    while index < cellContents.Count {
+      let content = cellContents[index]
+      var host TableCellHost? = nil
+      var available TableCellHost? = nil
+      var candidate = 0
+      while candidate < cellHosts.Count {
+        let current = cellHosts[candidate]
+        if Object.ReferenceEquals(current.Content, content) { host = current }
+        if current.Content == nil { available = current }
+        candidate = candidate + 1
+      }
+      if host == nil {
+        host = available ?? TableCellHost()
+        if available == nil { cellHosts.Add(host) }
+        host.Content = content
+      }
+      host.Style = cellStyles[index]
+      Children.Add(host)
+      index = index + 1
+    }
+    Children = Children
+    index = 0
+    while index < Children.Count {
+      LayoutChild(Children[index], cellBounds[index])
+      index = index + 1
+    }
+  }
+
+  private func detachContent() {
+    var index = 0
+    while index < cellHosts.Count {
+      cellHosts[index].Content = nil
+      index = index + 1
+    }
+    Children.Clear()
+    Children = Children
+    cellContents.Clear()
+    cellBounds.Clear()
+    cellStyles.Clear()
   }
 
   protected override func ScrollExtentRows() int32 -> rowCount() + (ShowHeader ? 1 : 0)
@@ -292,6 +424,7 @@ public open class TableView : Box {
   protected override func Accept(ev UiEvent) EventResult {
     let outcome = acceptSelection(ev)
     selection.Notify()
+    if outcome != EventResult.Continue { LayoutCompleted() }
     return outcome
   }
 
@@ -425,6 +558,7 @@ public open class TableView : Box {
   private func drawTableCell(screen Screen, r CellRect, x int32, row int32, width int32,
     cell TableCell, alignment HorizontalAlignment, inherited Style) {
     let ink = cell.Style.MergedOver(inherited)
+    if cell.Content != nil { return }
     guard let runs = cell.Runs else {
       drawTextCell(screen, r, x, row, width, cell.Text, alignment, ink)
       return
