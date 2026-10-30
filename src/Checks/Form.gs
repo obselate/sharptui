@@ -24,7 +24,15 @@ internal class FormEditorProbe : Box {
 internal class FormCheck {
   shared {
     internal func Run() int32 {
+      let constrained = Box{ Width: CellLength.Cells(64), Height: CellLength.Cells(1), ConstrainWidth: true }
+      let constraintRoot = Box{ Children: { constrained } }
+      constraintRoot.Compute(32, 1)
+      let constrainedWidth = constrained.Bounds.WidthCells
+      constrained.ConstrainWidth = false
+      constraintRoot.Compute(32, 1)
       var failed = 0
+      failed = failed + Checks.Expect(constrainedWidth == 32 && constrained.Bounds.WidthCells == 64,
+        "Disabling a form width constraint restores the editor's requested width")
       let first = TextInput{ Text: "保留文本", Width: CellLength.Cells(32), CaretGraphemeIndex: 2 }
       let probe = FormEditorProbe{}
       let last = TextInput{ Text: "末行", CaretGraphemeIndex: 1 }
@@ -178,14 +186,14 @@ internal class FormCheck {
         }
         for i in 0 ... 64 {
           root.Draw(screen)
-          form.DeliverTo(form, wheel)
-          form.DeliverTo(form, wheelDown)
+          root.Handle(wheel)
+          root.Handle(wheelDown)
         }
         let before = GC.GetAllocatedBytesForCurrentThread()
         for i in 0 ... 64 {
           root.Draw(screen)
-          form.DeliverTo(form, wheel)
-          form.DeliverTo(form, wheelDown)
+          root.Handle(wheel)
+          root.Handle(wheelDown)
         }
         let allocated = GC.GetAllocatedBytesForCurrentThread() - before
         failed = failed + Checks.Expect(allocated == 0,

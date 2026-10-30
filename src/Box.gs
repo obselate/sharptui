@@ -961,6 +961,9 @@ public open class Box {
       if constrainWidth {
         YGNodeStyleAPI.YGNodeStyleSetMinWidth(node, 0.0F)
         YGNodeStyleAPI.YGNodeStyleSetMaxWidthPercent(node, 100.0F)
+      } else {
+        YGNodeStyleAPI.YGNodeStyleSetMinWidth(node, Single.NaN)
+        YGNodeStyleAPI.YGNodeStyleSetMaxWidth(node, Single.NaN)
       }
       YGNodeStyleAPI.YGNodeStyleSetFlexGrow(node, float32(Grow))
       YGNodeStyleAPI.YGNodeStyleSetFlexShrink(node, flexShrink)
