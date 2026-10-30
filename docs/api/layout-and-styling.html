@@ -190,8 +190,8 @@
 </table></div>
 <p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect.Contains</code></a> tests a point against its half-open rectangle. <a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuicellrect"><code>CellRect.Inset</code></a> clamps a consumed width or height to 0. It does not return a negative rectangle.</p>
 <figure class="listing"><figcaption class="listing-head"><span>Listing 2-1</span><span>Measure in cells</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>panel<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{
-<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">36</span>),
-<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">10</span>),
+<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="m">36</span>,
+<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="m">10</span>,
 <span class="w">  </span><span class="nc">Padding</span>:<span class="w"> </span><span class="nc">CellInsets</span>{<span class="w"> </span><span class="nc">LeftCells</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">TopRows</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">RightCells</span>:<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="nc">BottomRows</span>:<span class="w"> </span><span class="m">1</span><span class="w"> </span>},
 <span class="w">  </span><span class="nc">ShowBorder</span>:<span class="w"> </span><span class="k">true</span>,
 }
@@ -251,8 +251,8 @@
 </tbody>
 </table></div>
 <figure class="listing"><figcaption class="listing-head"><span>Listing 3-1</span><span>Flow before overlay</span></figcaption><pre class="language-gs"><code><span class="k">let</span><span class="w"> </span>dialog<span class="w"> </span>=<span class="w"> </span><span class="nc">Box</span>{
-<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">32</span>),
-<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="nc">CellLength</span>.<span class="nf">Cells</span>(<span class="m">7</span>),
+<span class="w">  </span><span class="nc">Width</span>:<span class="w"> </span><span class="m">32</span>,
+<span class="w">  </span><span class="nc">Height</span>:<span class="w"> </span><span class="m">7</span>,
 <span class="w">  </span><span class="nc">Placement</span>:<span class="w"> </span><span class="nc">Placement</span>.<span class="nc">Centered</span>,
 <span class="w">  </span><span class="nc">ShowBorder</span>:<span class="w"> </span><span class="k">true</span>,
 <span class="w">  </span><span class="nc">Title</span>:<span class="w"> </span><span class="s2">"confirm"</span>,

@@ -49,7 +49,7 @@ public open class TextBlock : Box {
     cache = List[string]()
     cachedFor = ""
     cachedWidth = -1
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// TextBlock always sizes itself via MeasureIntrinsic rather than Width and Height.
@@ -61,7 +61,7 @@ public open class TextBlock : Box {
   /// @returns The measured content size in cells and rows.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     var width = 1000000
-    if Wrapping == TextWrapping.Word && availableWidth != nil { width = availableWidth!! }
+    if Wrapping == TextWrapping.Word && availableWidth != nil { width = availableWidth }
     if width <= 0 { return CellSize{} }
 
     let lines = Wrapping == TextWrapping.Word ? CellText.Wrap(Text, width) : CellText.Wrap(Text, 1000000)

@@ -22,8 +22,8 @@ For every member, see [reference.md](reference.md).
 
 ```gs
 let panel = Box{
-  Width: CellLength.Cells(36),
-  Height: CellLength.Cells(10),
+  Width: 36,
+  Height: 10,
   Padding: CellInsets{ LeftCells: 1, TopRows: 1, RightCells: 1, BottomRows: 1 },
   ShowBorder: true,
 }
@@ -48,8 +48,8 @@ let inside = frame.Contains(cursor)
 
 ```gs
 let dialog = Box{
-  Width: CellLength.Cells(32),
-  Height: CellLength.Cells(7),
+  Width: 32,
+  Height: 7,
   Placement: Placement.Centered,
   ShowBorder: true,
   Title: "confirm",

@@ -11,6 +11,9 @@ public enum EventResult { Continue; Handled; Exit }
 
 /// Owns the terminal session and drives the paint and input loop for a Box tree.
 public class App {
+  /// The retained tree run by this app. Changing it takes effect on the next Run.
+  public prop Root Box? { get; set; }
+
   private var term Terminal
   private var input Input
   private var screen Screen
@@ -32,6 +35,21 @@ public class App {
   private var workerGate Object
   private var workerCancellations List[CancellationTokenSource]
 
+  /// The image backend. Auto probes Kitty, then Sixel, then uses colored half blocks.
+  public prop Graphics GraphicsProtocol { get; set; }
+
+  private var cellPixels PixelSize
+
+  /// Physical pixels per terminal cell. Leave zero to query the terminal, with an 8 by 16 fallback.
+  public prop CellPixels PixelSize {
+    get -> cellPixels
+    set {
+      if (value.Width == 0) != (value.Height == 0) || value.Width < 0 || value.Height < 0
+        || value.Width > 256 || value.Height > 256 { throw ArgumentOutOfRangeException("CellPixels") }
+      cellPixels = value
+    }
+  }
+
   /// The style used for unstyled drawing in the application.
   public prop DefaultStyle Style {
     get -> defaultStyle
@@ -49,6 +67,15 @@ public class App {
       wake.Set()
     }
   }
+
+  /// Runs on the UI thread at TickInterval, including while an overlay owns input focus.
+  public prop OnTick Action? { get; set; }
+
+  /// Receives terminal focus changes on the UI thread, including while an overlay owns input focus.
+  public prop OnFocus Action[bool]? { get; set; }
+
+  /// Receives the terminal size on the UI thread when Run starts and after each resize, before the next layout.
+  public prop OnResize Action[CellSize]? { get; set; }
 
   /// Owns animations and their shared frame deadline.
   public prop Animations AnimationController -> animations
@@ -101,6 +128,8 @@ public class App {
     mouseTracking = MouseTracking.Drag
     colorMode = TerminalColorMode.Auto
     hyperlinksEnabled = true
+    Graphics = GraphicsProtocol.Auto
+    CellPixels = PixelSize{}
     keys = Keymap()
     quitGestures = List[KeyGesture]()
     quitGestures.Add(KeyGesture{ Key: Key.Escape })
@@ -116,9 +145,9 @@ public class App {
     screen = Screen(term.Columns(), term.Rows())
   }
 
-  /// Runs a retained tree. Escape and Ctrl+C quit.
-  /// @param root The root box of the tree to run.
-  public func Run(root Box) {
+  /// Runs Root. Escape and Ctrl+C quit. Throws when Root has not been set.
+  public func Run() {
+    guard let root = Root else { throw InvalidOperationException("App.Root must be set before Run") }
     if !term.IsTty() {
       Console.Error.WriteLine("sharptui: standard input and output must be terminals")
       return
@@ -129,7 +158,9 @@ public class App {
     screen.DefaultStyle = DefaultStyle
     screen.ColorMode = colorMode
     screen.HyperlinksEnabled = hyperlinksEnabled
-    term.DesiredBackground = DefaultStyle.Background.Packed
+    term.DesiredBackground = screen.ColorMode == TerminalColorMode.NoColor ? -2 : DefaultStyle.Background.Packed
+    term.DesiredGraphics = Graphics
+    term.DesiredCellPixels = CellPixels
     try {
       term.Enter(input, mouseTracking)
     } catch (e IOException) {
@@ -198,6 +229,8 @@ public class App {
     var scheduledInterval = tickMilliseconds()
     var nextTick = scheduledInterval
     if nextTick > 0 { nextTick = clock.ElapsedMilliseconds + nextTick }
+    var nextContentFrame int64 = 0
+    OnResize?.Invoke(CellSize{ WidthCells: term.Columns(), HeightRows: term.Rows() })
     while running {
       let now = clock.ElapsedMilliseconds
       if term.ConsumeExit() {
@@ -212,7 +245,14 @@ public class App {
           Trace.Mark("resize seen " + cols.ToString() + "x" + rows.ToString())
         }
         screen.Resize(cols, rows)
+        OnResize?.Invoke(CellSize{ WidthCells: cols, HeightRows: rows })
         dirty = true
+      }
+      if term.ConsumeGraphicsChange() || term.ConsumeOutputProgress() || screen.PendingGraphics { dirty = true }
+      let contentInterval = root.FrameMilliseconds()
+      if contentInterval > 0 && now >= nextContentFrame {
+        dirty = true
+        nextContentFrame = now + contentInterval
       }
       animations.Observe(now)
 
@@ -256,6 +296,7 @@ public class App {
       }
 
       if running && dirty {
+        term.ConfigureGraphics(screen)
         screen.Clear()
         root.Draw(screen)
         let written = term.Present(screen)
@@ -267,8 +308,9 @@ public class App {
 
       if !running { continue }
 
-      var deadline int64 = -1
-      if interval > 0 { deadline = nextTick }
+      var deadline int64 = contentInterval > 0 ? nextContentFrame : -1
+      if screen.PendingGraphics { deadline = clock.ElapsedMilliseconds + 8 }
+      if interval > 0 && (deadline < 0 || nextTick < deadline) { deadline = nextTick }
       let animationDeadline = animations.NextDeadline(clock.ElapsedMilliseconds)
       if animationDeadline >= 0 && (deadline < 0 || animationDeadline < deadline) {
         deadline = animationDeadline
@@ -326,6 +368,8 @@ public class App {
   internal func AnimationDeadline(nowMilliseconds int64) int64 -> animations.NextDeadline(nowMilliseconds)
 
   internal func Route(root Box, ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Tick { OnTick?.Invoke() }
+    if ev.Kind == UiEventKind.Focus { OnFocus?.Invoke(ev.IsFocused) }
     if Keys.Offer(ev, BindingPhase.BeforeWidgets) { return EventResult.Handled }
 
     let result = root.Handle(ev)

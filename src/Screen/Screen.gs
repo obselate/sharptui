@@ -3,6 +3,7 @@ package SharpTui
 import System
 import System.Collections.Generic
 import System.Text
+import System.Threading
 
 /// Text attribute bits that can be combined on a Style.
 @Flags
@@ -97,13 +98,46 @@ internal struct Cell {
   var Link int32
 }
 
+internal struct ScreenClip {
+  var Active bool
+  var Bounds CellRect
+}
+
 /// A double-buffered terminal cell grid; draw calls stage into the back buffer and Flush emits only the cells that changed since the front buffer.
 public class Screen {
+  private var activeClip ScreenClip
   private var width int32
   private var height int32
   private var defaultStyle Style
   private var colorMode TerminalColorMode
   private var hyperlinksEnabled bool
+  private var graphics GraphicsProtocol
+  private var cellPixels PixelSize
+  private var images GraphicsPlane?
+
+  /// The image backend. A standalone screen resolves Auto to HalfBlock.
+  public prop Graphics GraphicsProtocol {
+    get -> graphics
+    set {
+      let next = value == GraphicsProtocol.Auto ? GraphicsProtocol.HalfBlock : value
+      if graphics == next { return }
+      graphics = next
+      Invalidate()
+    }
+  }
+
+  /// The physical size of one terminal cell. Defaults to 8 by 16 pixels outside an App.
+  public prop CellPixels PixelSize {
+    get -> cellPixels
+    set {
+      if value.Width <= 0 || value.Height <= 0 || value.Width > 256 || value.Height > 256 {
+        throw ArgumentOutOfRangeException("CellPixels")
+      }
+      if cellPixels.Width == value.Width && cellPixels.Height == value.Height { return }
+      cellPixels = value
+      Invalidate()
+    }
+  }
 
   /// The screen dimensions measured in terminal cells and rows.
   public prop Size CellSize {
@@ -141,6 +175,14 @@ public class Screen {
   private var front List[Cell]
   private var glyphs GlyphCache
   private var links HyperlinkCache
+  private var graphicsWake AutoResetEvent?
+  internal prop PendingGraphics bool -> images?.Pending ?? false
+
+  internal func EnableAsyncGraphics(wake AutoResetEvent) {
+    graphicsWake = wake
+    images?.EnableAsync(wake)
+  }
+
   private var compatibility TerminalBuffer?
 
   /// Creates a screen of the given size in cells, with the terminal-configured default style.
@@ -156,6 +198,9 @@ public class Screen {
     }
     colorMode = TerminalColorMode.TrueColor
     hyperlinksEnabled = true
+    graphics = GraphicsProtocol.HalfBlock
+    cellPixels = PixelSize{ Width: 8, Height: 16 }
+    images = nil
     back = List[Cell]()
     front = List[Cell]()
     glyphs = GlyphCache()
@@ -180,11 +225,28 @@ public class Screen {
       back.Add(blank())
       front.Add(invalid())
     }
+    if let plane = images { plane.Resize(width, height) }
     if glyphs.Count() > glyphs.Limit(width, height) { glyphs.Clear() }
   }
 
   /// Forgets what the terminal is showing before the next renderer pass.
+  internal func PushClip(bounds CellRect) ScreenClip {
+    let previous = activeClip
+    activeClip = ScreenClip{ Active: true, Bounds: ImageRaster.Clip(bounds,
+      previous.Active ? previous.Bounds : CellRect{ WidthCells: width, HeightRows: height }) }
+    return previous
+  }
+
+  internal func VisibleClip(bounds CellRect) CellRect -> ImageRaster.Clip(bounds, activeClip.Active ? activeClip.Bounds : CellRect{ WidthCells: width, HeightRows: height })
+
+  internal func RestoreClip(previous ScreenClip) { activeClip = previous }
+
   internal func Invalidate() {
+    if let plane = images { plane.Invalidate() }
+    InvalidateCells()
+  }
+
+  internal func InvalidateCells() {
     for i in 0 ... front.Count {
       front[i] = invalid()
     }
@@ -198,6 +260,7 @@ public class Screen {
   /// Fills the whole screen with blank cells in the given style.
   /// @param s The style whose background and attributes are applied to every cell.
   public func Clear(s Style) {
+    if let plane = images { plane.Clear() }
     let resolved = resolveStyle(s)
     for i in 0 ... back.Count {
       var c = blank()
@@ -268,16 +331,17 @@ public class Screen {
     return col
   }
 
-  private func border(x int32, y int32, w int32, h int32, s Style) {
+  private func border(x int32, y int32, w int32, h int32, s Style, glyphs BorderGlyphs) {
     if w < 2 || h < 2 { return }
     let resolved = resolveStyle(s)
     let right = x + w - 1
     let bottom = y + h - 1
+    let rounded = glyphs == BorderGlyphs.Rounded
 
-    stage(x, y, resolve("┌"), resolved)
-    stage(right, y, resolve("┐"), resolved)
-    stage(x, bottom, resolve("└"), resolved)
-    stage(right, bottom, resolve("┘"), resolved)
+    stage(x, y, resolve(rounded ? "╭" : "┌"), resolved)
+    stage(right, y, resolve(rounded ? "╮" : "┐"), resolved)
+    stage(x, bottom, resolve(rounded ? "╰" : "└"), resolved)
+    stage(right, bottom, resolve(rounded ? "╯" : "┘"), resolved)
 
     for i in x + 1 ... right {
       stage(i, y, resolve("─"), resolved)
@@ -437,7 +501,15 @@ public class Screen {
   /// @param r The cell rectangle to draw the border around.
   /// @param s The style to apply to the border.
   public func DrawBorder(r CellRect, s Style) {
-    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s)
+    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s, BorderGlyphs.Square)
+  }
+
+  /// Draws a border around a cell rectangle with the given corner glyphs.
+  /// @param r The cell rectangle to draw the border around.
+  /// @param s The style to apply to the border.
+  /// @param glyphs The corner glyphs to draw.
+  public func DrawBorder(r CellRect, s Style, glyphs BorderGlyphs) {
+    border(r.Column, r.Row, r.WidthCells, r.HeightRows, s, glyphs)
   }
 
   internal func Flush() string {
@@ -456,6 +528,7 @@ public class Screen {
     var cursorX = -1
     var cursorY = -1
     var wrote = false
+    if let plane = images { wrote = plane.Prepare(this, output) }
 
     for y in 0 ... height {
       var x = 0
@@ -510,8 +583,77 @@ public class Screen {
     if !wrote { return 0 }
     if lastLink != 0 { Ansi.AppendHyperlinkEnd(output) }
     Ansi.AppendReset(output)
+    if let plane = images { plane.Emit(this, output) }
     Ansi.AppendSyncOff(output)
     return output.Count()
+  }
+
+  /// Draws an image with contain scaling inside a cell rectangle.
+  /// @param source The decoded, owned raster.
+  /// @param bounds The destination rectangle before clipping.
+  public func DrawImage(source ImageSource, bounds CellRect) {
+    DrawImage(source, bounds, bounds, ImageFit.Contain)
+  }
+
+  /// Draws an image with explicit scaling and clipping, including partially scrolled virtual rows.
+  /// @param source The decoded, owned raster.
+  /// @param bounds The full destination rectangle before clipping.
+  /// @param clip The visible cell rectangle.
+  /// @param fit The scaling rule.
+  public func DrawImage(source ImageSource, bounds CellRect, clip CellRect, fit ImageFit) {
+    if bounds.WidthCells <= 0 || bounds.HeightRows <= 0 { return }
+    var draw = ImageRaster.Layout(source, bounds, fit, cellPixels)
+    if graphics == GraphicsProtocol.Kitty {
+      let pw = float64(draw.Target.WidthCells) * float64(cellPixels.Width)
+      let ph = float64(draw.Target.HeightRows) * float64(cellPixels.Height)
+      let scale = Math.Min(2048.0 / Math.Max(pw, ph), Math.Max(
+        Math.Max(float64(draw.Crop.WidthCells) / pw, float64(draw.Crop.HeightRows) / ph),
+        Math.Max(float64(draw.Target.WidthCells) / pw, float64(draw.Target.HeightRows) / ph)))
+      draw.RasterWidth = Math.Max(1, int32(Math.Round(pw * scale)))
+      draw.RasterHeight = Math.Max(1, int32(Math.Round(ph * scale)))
+    }
+    var visible = ImageRaster.Clip(ImageRaster.Clip(draw.Target, clip),
+      CellRect{ WidthCells: width, HeightRows: height })
+    if activeClip.Active { visible = ImageRaster.Clip(visible, activeClip.Bounds) }
+    if visible.WidthCells == 0 || visible.HeightRows == 0 { return }
+    if (graphics == GraphicsProtocol.Kitty && draw.Target.WidthCells <= KittyEncoder.Diacritics.Length
+      && draw.Target.HeightRows <= KittyEncoder.Diacritics.Length) || (graphics == GraphicsProtocol.Sixel
+      && int64(visible.WidthCells) * cellPixels.Width * visible.HeightRows * cellPixels.Height <= 4194304
+      && visible.WidthCells * cellPixels.Width <= 8192 && visible.HeightRows * cellPixels.Height <= 8192) {
+      if images == nil { images = GraphicsPlane(width, height) }
+      guard let plane = images else { return }
+      if graphics == GraphicsProtocol.Kitty {
+        if let wake = graphicsWake { plane.EnableAsync(wake) }
+      }
+      for y in visible.Row ... visible.Row + visible.HeightRows {
+        for x in visible.Column ... visible.Column + visible.WidthCells {
+          let index = y * width + x
+          var cell = blank()
+          cell.Bg = back[index].Bg
+          back[index] = cell
+        }
+      }
+      if plane.Stage(draw, visible) { return }
+    }
+    for y in visible.Row ... visible.Row + visible.HeightRows {
+      for x in visible.Column ... visible.Column + visible.WidthCells {
+        let sx = x - draw.Target.Column
+        let sy = (y - draw.Target.Row) * 2
+        let top = ImageRaster.Opaque(ImageRaster.Pixel(draw, sx, sy, draw.Target.WidthCells,
+          draw.Target.HeightRows * 2), BackgroundAt(x, y))
+        let bottom = ImageRaster.Opaque(ImageRaster.Pixel(draw, sx, sy + 1, draw.Target.WidthCells,
+          draw.Target.HeightRows * 2), BackgroundAt(x, y))
+        WriteCell(x, y, "▀", Style{ Foreground: Color.Rgb((top >> 16) & 255, (top >> 8) & 255, top & 255),
+          Background: Color.Rgb((bottom >> 16) & 255, (bottom >> 8) & 255, bottom & 255) })
+      }
+    }
+  }
+
+  internal func BackgroundAt(x int32, y int32) int32 -> back[y * width + x].Bg
+  internal func CellChanged(index int32) bool -> !same(back[index], front[index])
+
+  internal func ReleaseGraphics(output TerminalBuffer) {
+    if let plane = images { plane.Release(output) }
   }
 
   internal func Probe(x int32, y int32) string -> glyphs.Text(back[y * width + x].Glyph)
@@ -582,6 +724,11 @@ public class Screen {
 
   private func stage(x int32, y int32, glyph int32, s Style, link int32) {
     if x < 0 || y < 0 || x >= width || y >= height { return }
+    if activeClip.Active && !activeClip.Bounds.Contains(x, y) { return }
+    if activeClip.Active && glyphs.Width(glyph) == 2 && !activeClip.Bounds.Contains(x + 1, y) {
+      stage(x, y, GlyphIds.AsciiFirst, s, link)
+      return
+    }
 
     var c = Cell{}
     c.Glyph = glyph
@@ -590,6 +737,7 @@ public class Screen {
     c.Attr = int32(s.Attributes)
     c.Link = link
     back[y * width + x] = c
+    if let plane = images { plane.Cover(y * width + x) }
 
     if glyphs.Width(glyph) == 2 && x + 1 < width {
       var tail = Cell{}
@@ -599,6 +747,7 @@ public class Screen {
       tail.Attr = int32(s.Attributes)
       tail.Link = link
       back[y * width + x + 1] = tail
+      if let plane = images { plane.Cover(y * width + x + 1) }
     }
   }
 

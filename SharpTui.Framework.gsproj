@@ -1,11 +1,11 @@
-<Project Sdk="Gsharp.NET.Sdk/0.4.59">
+<Project Sdk="Gsharp.NET.Sdk/0.5.212">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SharpTui</RootNamespace>
     <PackageId>SharpTui.Framework</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <Title>SharpTUI</Title>
     <Authors>Obselate</Authors>
     <Description>A small retained-tree TUI framework for G#</Description>
@@ -31,9 +31,11 @@
     <Compile Remove="tools/**/*.gs" />
     <Compile Remove="agent-testing/**/*.gs" />
     <Compile Remove="showcases/**/*.gs" />
+    <Compile Remove="bonsai-apps/**/*.gs" />
     <Compile Remove="archive/**/*.gs" />
     <None Update="README.md" Pack="true" PackagePath="\" />
     <ProjectReference Include="vendor/Yoga.Net/src/Yoga.Net/Yoga.Net.csproj" />
+    <PackageReference Include="StbImageSharp" Version="2.30.16" />
   </ItemGroup>
 
   <!-- The G# SDK writes the XML doc file to obj only; feed it to the copy pipeline. -->

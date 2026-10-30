@@ -279,8 +279,8 @@ internal class TerminalHostCheck {
       let allMotionRestore = allMotionHost.OutputText()
       failed = failed + Checks.Expect(allMotionEnter == Ansi.AltScreenOn + Ansi.CursorHide
           + Ansi.MouseOn(MouseTracking.AllMotion) + Ansi.BracketedPasteOn
-            + Ansi.KittyKeyboardQuery
-          && allMotionRestore == allMotionEnter + Ansi.BracketedPasteOff + Ansi.MouseOff
+            + Ansi.KittyKeyboardQuery + Terminal.GraphicsQuery
+          && allMotionRestore == allMotionEnter + Terminal.GraphicsRestore + Ansi.BracketedPasteOff + Ansi.MouseOff
             + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset,
         "terminal entry and restore use the configured all-motion policy")
 
@@ -293,8 +293,8 @@ internal class TerminalHostCheck {
       backgroundTerminal.Restore()
       let expectedBackgroundOutput = Ansi.AltScreenOn + Ansi.CursorHide
         + Ansi.MouseOn(MouseTracking.Drag) + Ansi.BracketedPasteOn
-        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery
-        + Ansi.SetDefaultBackground("#071838") + Ansi.BracketedPasteOff + Ansi.MouseOff
+        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery + Terminal.GraphicsQuery
+        + Ansi.SetDefaultBackground("#071838") + Terminal.GraphicsRestore + Ansi.BracketedPasteOff + Ansi.MouseOff
         + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset
         + Ansi.SetDefaultBackground("rgb:0000/1111/2222")
       failed = failed + Checks.Expect(backgroundHost.OutputText() == expectedBackgroundOutput,
@@ -310,8 +310,8 @@ internal class TerminalHostCheck {
       faultBackgroundTerminal.RestoreOnFault()
       let expectedFaultBackgroundOutput = Ansi.AltScreenOn + Ansi.CursorHide
         + Ansi.MouseOn(MouseTracking.Drag) + Ansi.BracketedPasteOn
-        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery
-        + Ansi.SetDefaultBackground("#071838") + Ansi.BracketedPasteOff + Ansi.MouseOff
+        + Ansi.KittyKeyboardQuery + Ansi.DefaultBackgroundQuery + Terminal.GraphicsQuery
+        + Ansi.SetDefaultBackground("#071838") + Terminal.GraphicsRestore + Ansi.BracketedPasteOff + Ansi.MouseOff
         + Ansi.CursorShow + Ansi.AltScreenOff + Ansi.Reset
         + Ansi.SetDefaultBackground("#123456")
       failed = failed + Checks.Expect(faultBackgroundHost.OutputText()

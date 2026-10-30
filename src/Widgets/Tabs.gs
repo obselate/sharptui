@@ -6,6 +6,12 @@ import System.Collections.Generic
 /// A horizontal strip of titles; arrow keys or a click switch the active one.
 public open class Tabs : Box {
   private var selection SelectionState
+
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
   private var titles List[string]
   private var titleStarts List[int32]
 
@@ -36,13 +42,10 @@ public open class Tabs : Box {
     titleStarts = List[int32]()
     selection = SelectionState()
     SelectedStyle = Style()
-    GapCells = 2
+    Gap = 2
     CanFocus = true
   }
 
-  /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  /// @returns The pending SelectionChange, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Re-resolves selection after direct Titles mutation.
   public func Refresh() {
@@ -53,14 +56,14 @@ public open class Tabs : Box {
   /// Always true, so this tab strip sizes itself via MeasureIntrinsic.
   protected override prop MeasuresIntrinsic bool -> true
 
-  /// Measures the strip as the sum of all title widths plus GapCells between them.
+  /// Measures the strip as the sum of all title widths plus Gap between them.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
   /// @param availableHeight The available height in rows, or nil when unconstrained.
   /// @returns The measured size in cells.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     var width = 0
     for i in 0 ... Titles.Count {
-      if i > 0 { width = width + GapCells }
+      if i > 0 { width = width + Gap }
       width = width + Glyph.WidthOf(Titles[i])
     }
     return CellSize{ WidthCells: width, HeightRows: 1 }
@@ -86,6 +89,12 @@ public open class Tabs : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event changed the selection, Continue otherwise.
   protected override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Left { return result(moveTo(SelectedIndex - 1)) }
@@ -109,13 +118,13 @@ public open class Tabs : Box {
     return selection.Set(Selection.ClampIndex(Titles.Count, want), true)
   }
 
-  /// Left edge of each title, laid end to end with GapCells between.
+  /// Left edge of each title, laid end to end with Gap between.
   private func starts() List[int32] {
     titleStarts.Clear()
     var x = 0
     for t in Titles {
       titleStarts.Add(x)
-      x = x + Glyph.WidthOf(t) + GapCells
+      x = x + Glyph.WidthOf(t) + Gap
     }
     return titleStarts
   }

@@ -3,7 +3,7 @@ package SharpTui
 import System
 
 /// Selects how RGB and indexed colors are serialized to the terminal.
-public enum TerminalColorMode { Auto; TrueColor; Palette256; Palette16 }
+public enum TerminalColorMode { Auto; TrueColor; Palette256; Palette16; NoColor }
 
 /// The sixteen colors provided by the base ANSI terminal palette.
 public enum AnsiColor {

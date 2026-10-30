@@ -53,19 +53,19 @@ open class Edit : Column {
     doc = MarkdownView{ Source: previewSource, Theme: previewTheme() }
     bar = dimStatusBar()
 
-    leftBox = Box{ GrowWeight: 1, ShowBorder: true, Title: "source",
+    leftBox = Box{ Grow: 1, ShowBorder: true, Title: "source",
       Style: Style{ Foreground: Color.Rgb("3A4152"), Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { area } }
-    rightBox = Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Title: "preview",
+    rightBox = Box{ Grow: 1, ShowBorder: true, ShowScrollbar: true, Title: "preview",
       Style: Style{ Foreground: Color.Rgb("3A4152"), Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { doc } }
 
-    find = TextInput{ GrowWeight: 1, Placeholder: "find", Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
+    find = TextInput{ Grow: 1, Placeholder: "find", Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
       PlaceholderStyle: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
-    swap = TextInput{ GrowWeight: 1, Placeholder: "replace with", Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
+    swap = TextInput{ Grow: 1, Placeholder: "replace with", Style: Style{ Foreground: Ink.Text, Background: Color.Inherit },
       PlaceholderStyle: Style{ Foreground: Ink.Dim, Background: Color.Inherit } }
-    findBox = Row{ Height: CellLength.Cells(1), GrowWeight: 0, GapCells: 2, Children: { find, swap } }
+    findBox = Row{ Height: 1, Grow: 0, Gap: 2, Children: { find, swap } }
     searching = false
 
-    Children.Add(Row{ GrowWeight: 1, GapCells: 1, Children: { leftBox, rightBox } })
+    Children.Add(Row{ Grow: 1, Gap: 1, Children: { leftBox, rightBox } })
     Children.Add(bar)
     Focus(area)
   }

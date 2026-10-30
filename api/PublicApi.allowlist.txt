@@ -7,6 +7,7 @@ SharpTui.App
 SharpTui.Badge
 SharpTui.Bind
 SharpTui.BindingPhase
+SharpTui.BorderGlyphs
 SharpTui.Box
 SharpTui.Button
 SharpTui.CanvasMode
@@ -26,7 +27,11 @@ SharpTui.Dialog
 SharpTui.DialogAction
 SharpTui.Easing
 SharpTui.EventResult
+SharpTui.GraphicsProtocol
 SharpTui.HorizontalAlignment
+SharpTui.ImageFit
+SharpTui.ImageSource
+SharpTui.ImageView
 SharpTui.Key
 SharpTui.KeyGesture
 SharpTui.KeyModifiers
@@ -38,12 +43,15 @@ SharpTui.ListItem
 SharpTui.ListView
 SharpTui.MarkdownTheme
 SharpTui.MarkdownView
+SharpTui.MediaPlayer
+SharpTui.MediaView
 SharpTui.MemoryClipboard
 SharpTui.MouseButton
 SharpTui.MouseKind
 SharpTui.MouseTracking
 SharpTui.NumericRange
 SharpTui.Overlay
+SharpTui.PixelSize
 SharpTui.Placement
 SharpTui.ProgressBar
 SharpTui.RadioGroup

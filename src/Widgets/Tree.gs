@@ -94,6 +94,12 @@ public open class TreeView : Box {
   private var builtRevision int32
   private var builtRootCount int32
   private var selection SelectionState
+
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
   private var selectedId string
   private var selectedNode TreeNode?
   /// Top-level nodes of the tree; setting it replaces the roots and calls Refresh.
@@ -120,6 +126,25 @@ public open class TreeView : Box {
     set {
       rebuild()
       setSelection(clampIndex(value), false)
+    }
+  }
+  /// The selected visible node's stable Id. Assigning an unknown Id leaves selection unchanged and never emits OnChange.
+  public prop SelectedKey string {
+    get {
+      rebuild()
+      return selectedId
+    }
+    set {
+      rebuild()
+      if source != nil {
+        let index = source!!.IndexOfKey(value)
+        if index >= 0 && index < rowCount() { setSelection(index, false) }
+        return
+      }
+      for i in 0 ... visible.Count {
+        if visible[i].Id == value { setSelection(i, false)
+          return }
+      }
     }
   }
   /// Index of the first visible tree node.
@@ -160,7 +185,7 @@ public open class TreeView : Box {
     parents = List[int32?]()
     childCounts = List[int32]()
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   /// Rebuilds visible rows after direct mutation of the active Roots or Source data.
@@ -170,9 +195,6 @@ public open class TreeView : Box {
     selection.Change = nil
   }
 
-  /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  /// @returns The pending selection change, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Paints each visible node's indent, expand marker, and text, highlighting the selected row.
   /// @param screen The screen to paint into.
@@ -225,7 +247,13 @@ public open class TreeView : Box {
   /// Handles keyboard navigation, expand/collapse, mouse-wheel scrolling, and click-to-select within the content bounds.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds

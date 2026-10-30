@@ -34,17 +34,17 @@ open class Watcher : Column {
     shownMoved = 0
     shownHasPrev = false
 
-    pane = ListView{ GrowWeight: 1, SelectionMarker: "" }
-    entry = TextInput{ GrowWeight: 1, Placeholder: "a command, run through sh -c",
+    pane = ListView{ Grow: 1, SelectionMarker: "" }
+    entry = TextInput{ Grow: 1, Placeholder: "a command, run through sh -c",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     entry.Text = this.command
     bar = dimStatusBar()
-    frame = Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true,
+    frame = Box{ Grow: 1, ShowBorder: true, ShowScrollbar: true,
       Title: this.command == "" ? "no command yet" : this.command,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { pane } }
 
     Children.Add(frame)
-    Children.Add(Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "command", Children: { entry } })
+    Children.Add(Box{ Height: 3, ShowBorder: true, Title: "command", Children: { entry } })
     Children.Add(bar)
     if this.command == "" { Focus(entry) } else { Focus(pane) }
     if this.command != "" { again() } else { showEmpty() }

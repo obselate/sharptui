@@ -12,6 +12,12 @@ public open class Select : Box {
   private var options List[string]
   private var selection SelectionState
 
+  /// Receives each user selection change after navigation completes. Programmatic selection is silent.
+  public prop OnChange Action[SelectionChange]? {
+    get -> selection.OnChange
+    set -> selection.OnChange = value
+  }
+
   /// Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.
   public prop Options List[string] {
     get -> options
@@ -47,9 +53,6 @@ public open class Select : Box {
     top = 0
   }
 
-  /// Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  /// @returns The pending selection change, or nil when none is pending.
-  public func ConsumeSelectionChange() SelectionChange? -> selection.Consume()
 
   /// Re-resolves selection after direct Options mutation.
   public func Refresh() {
@@ -109,6 +112,12 @@ public open class Select : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
+    let outcome = acceptSelection(ev)
+    selection.Notify()
+    return outcome
+  }
+
+  private func acceptSelection(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     normalizeSelection()

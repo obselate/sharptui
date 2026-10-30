@@ -64,9 +64,9 @@ public class Selfcheck {
       failed = failed + Checks.Expect(second < first / 2, "dirty cell repaints only itself")
 
       let side = Box{ Width: CellLength.Cells(20) }
-      let mid = Box{ GrowWeight: 1 }
-      let right = Box{ GrowWeight: 1 }
-      let root = Row{ GapCells: 1, Children: { side, mid, right } }
+      let mid = Box{ Grow: 1 }
+      let right = Box{ Grow: 1 }
+      let root = Row{ Gap: 1, Children: { side, mid, right } }
       root.Compute(80, 24)
 
       failed = failed + Checks.Expect(side.Bounds.WidthCells == 20, "fixed width honored")
@@ -112,6 +112,15 @@ public class Selfcheck {
       failed = failed + Checks.Expect(list.ContentBounds.HeightRows == 12, "child height is the interior")
       failed = failed + Checks.Expect(rows.Probe(0, 0) == "┌", "the border is drawn")
       failed = failed + Checks.Expect(rows.Probe(2, 0) == "i", "the title sits on the top border")
+
+      let titled = Box{ ShowBorder: true, BorderGlyphs: BorderGlyphs.Rounded, Title: "设备", RightTitle: "状态正常", BottomTitle: "日志共一千行" }
+      let narrow = Screen(17, 3)
+      titled.Draw(narrow)
+      failed = failed + Checks.Expect(narrow.Probe(0, 0) == "╭" && narrow.Probe(2, 0) == "设" && narrow.Probe(10, 0) == "状"
+        && narrow.Probe(12, 0) == "态" && narrow.Probe(14, 0) == " " && narrow.Probe(15, 0) == "─" && narrow.Probe(16, 0) == "╮",
+        "the right title truncates whole wide clusters after the left title")
+      failed = failed + Checks.Expect(narrow.Probe(4, 2) == "日" && narrow.Probe(12, 2) == "千" && narrow.Probe(14, 2) == " "
+        && narrow.Probe(16, 2) == "╯", "the bottom title truncates whole wide clusters before the corner")
 
       let down = UiEvent{ Kind: UiEventKind.Key, Key: Key.Down }
       for n in 0 ... 14 {

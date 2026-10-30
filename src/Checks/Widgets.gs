@@ -26,7 +26,7 @@ func tblRow(a string, b string) TableRow {
 }
 
 func makeTable() TableView {
-  let t = TableView{ GrowWeight: 0, Height: CellLength.Cells(6) }
+  let t = TableView{ Grow: 0, Height: CellLength.Cells(6) }
   t.Columns.Add(TableColumn{ Header: "Name", ColumnWidth: ColumnWidth.Cells(5) })
   t.Columns.Add(TableColumn{ Header: "Age", ColumnWidth: ColumnWidth.Share(1) })
   for n in 0 ... 20 {
@@ -197,7 +197,9 @@ public class WidgetCheck {
         Runs: { TextRun("inbox", Style{ Attributes: TextAttributes.Bold }) },
       }
       let archive = ListItem{ Id: "archive", Text: "archive" }
+      let presentedChanges = SelectionProbe()
       let presented = ListView{ Width: CellLength.Cells(12), Height: CellLength.Cells(3), SelectionMarker: "" }
+      presented.OnChange = presentedChanges.Record
       presented.Items.Add(heading)
       presented.Items.Add(inbox)
       presented.Items.Add(archive)
@@ -208,15 +210,16 @@ public class WidgetCheck {
         && presentedScreen.Probe(0, 1) == "i", "ListView skips non-selectable rows and Runs override Text")
       presentedRoot.Focus(presented)
       presentedRoot.Handle(keyEv(Key.Down))
-      if let moved = presented.ConsumeSelectionChange() {
+      if let moved = presentedChanges.Take() {
         failed = failed + Checks.Expect(moved.PreviousIndex == 1 && moved.SelectedIndex == 2,
-          "ListView exposes and consumes keyboard selection changes")
+          "ListView delivers keyboard selection changes")
       } else {
         failed = failed + Checks.Expect(false, "ListView exposes keyboard selection changes")
       }
+      presentedChanges.Clear()
       presented.Items = List[ListItem]{ archive, heading, inbox }
       failed = failed + Checks.Expect(presented.SelectedIndex == 0 && presented.SelectedId == "archive"
-        && presented.ConsumeSelectionChange() == nil,
+        && presentedChanges.Take() == nil,
         "ListView keeps a stable Id across item replacement without emitting a change")
       archive.IsSelectable = false
       failed = failed + Checks.Expect(presented.SelectedIndex == 2 && presented.SelectedId == "inbox",
@@ -366,16 +369,16 @@ public class WidgetCheck {
         "RadioGroup attaches declarative Children before selection handling")
 
       let button = Button{ Text: "apply" }
-      var buttonPresses = 0
-      button.OnPress = () -> buttonPresses = buttonPresses + 1
+      var buttonClickes = 0
+      button.OnClick = () -> buttonClickes = buttonClickes + 1
       let buttonRoot = Box{ Children: { button } }
       buttonRoot.Draw(Screen(20, 3))
       buttonRoot.Focus(button)
       buttonRoot.Handle(keyEv(Key.Enter))
-      failed = failed + Checks.Expect(buttonPresses == 1,
-        "Button invokes OnPress once for Enter")
+      failed = failed + Checks.Expect(buttonClickes == 1,
+        "Button invokes OnClick once for Enter")
       buttonRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter, Phase: KeyPhase.Release })
-      failed = failed + Checks.Expect(buttonPresses == 1,
+      failed = failed + Checks.Expect(buttonClickes == 1,
         "Button ignores Enter release callbacks")
 
       let half = ProgressBar{ Value: 5.0, Maximum: 10.0, Width: CellLength.Cells(10) }
@@ -447,7 +450,11 @@ public class WidgetCheck {
           && missingSparkScreen.Probe(3, 0) == " ",
         "Sparkline excludes non-finite samples from automatic ranges and renders them blank")
 
+      let tableChanges = SelectionProbe()
+
       let table = makeTable()
+
+      table.OnChange = tableChanges.Record
       let tabroot = Box{ Children: { table } }
       let tabscr = Screen(20, 10)
       tabroot.Draw(tabscr)
@@ -460,25 +467,28 @@ public class WidgetCheck {
       }
       failed = failed + Checks.Expect(table.SelectedRowIndex == 6, "six downs select row 6")
       failed = failed + Checks.Expect(table.FirstVisibleRowIndex == 2, "the window scrolls by the minimum to keep it visible")
-      if let moved = table.ConsumeSelectionChange() {
+      if let moved = tableChanges.Take() {
         failed = failed + Checks.Expect(moved.PreviousIndex == 5 && moved.SelectedIndex == 6,
-          "TableView exposes and consumes the latest user selection change")
+          "TableView delivers the latest user selection change")
       } else {
-        failed = failed + Checks.Expect(false, "TableView exposes user selection changes")
+        failed = failed + Checks.Expect(false, "TableView delivers user selection changes")
       }
+      tableChanges.Clear()
       table.SelectedRowIndex = 2
-      failed = failed + Checks.Expect(table.ConsumeSelectionChange() == nil,
-        "programmatic TableView selection clears pending output")
+      failed = failed + Checks.Expect(tableChanges.Take() == nil,
+        "programmatic TableView selection does not emit a user change")
       tabroot.Handle(keyEv(Key.Down))
+      tableChanges.Clear()
       table.Rows = List[TableRow]{ tblRow("replacement", "0") }
-      failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && table.ConsumeSelectionChange() == nil,
-        "TableView Rows replacement normalizes selection and clears pending output")
+      failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && tableChanges.Take() == nil,
+        "TableView Rows replacement normalizes selection and does not emit a user change")
       table.Rows.Add(tblRow("second", "1"))
       tabroot.Handle(keyEv(Key.Down))
       table.Rows.RemoveAt(1)
+      tableChanges.Clear()
       table.Refresh()
-      failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && table.ConsumeSelectionChange() == nil,
-        "TableView.Refresh clears pending output after direct Rows mutation")
+      failed = failed + Checks.Expect(table.SelectedRowIndex == 0 && tableChanges.Take() == nil,
+        "TableView.Refresh does not emit a user change after direct Rows mutation")
 
       let directTableRows = List[TableRow]{
         tblRow("first", "first"),
@@ -541,17 +551,21 @@ public class WidgetCheck {
       tab2root.Handle(mouseEv(0, table2.Bounds.Row + 2))
       failed = failed + Checks.Expect(table2.SelectedRowIndex == 1, "a click on a data row selects it")
 
-      let tableBlank = TableView{ GrowWeight: 0, Height: CellLength.Cells(5) }
+      let tableBlankChanges = SelectionProbe()
+
+      let tableBlank = TableView{ Grow: 0, Height: CellLength.Cells(5) }
+
+      tableBlank.OnChange = tableBlankChanges.Record
       tableBlank.Columns.Add(TableColumn{ Header: "Name", ColumnWidth: ColumnWidth.Cells(5) })
       tableBlank.Rows.Add(tblRow("only", ""))
       let blankRoot = Box{ Children: { tableBlank } }
       blankRoot.Draw(Screen(20, 10))
       let blankResult = blankRoot.Handle(mouseEv(0, tableBlank.Bounds.Row + tableBlank.Bounds.HeightRows - 1))
       failed = failed + Checks.Expect(blankResult == EventResult.Continue && tableBlank.SelectedRowIndex == 0
-          && tableBlank.ConsumeSelectionChange() == nil,
+          && tableBlankChanges.Take() == nil,
         "a click in empty TableView space does not select the last row")
 
-      let table3 = TableView{ GrowWeight: 0, Height: CellLength.Cells(3) }
+      let table3 = TableView{ Grow: 0, Height: CellLength.Cells(3) }
       table3.Columns.Add(TableColumn{ Header: "Name", ColumnWidth: ColumnWidth.Cells(5) })
       table3.Rows.Add(tblRow("abcdefgh", "x"))
       let tab3root = Box{ Children: { table3 } }
@@ -561,7 +575,7 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(tab3scr.Probe(4, dataY) == "e", "a fixed width column truncates by display width")
       failed = failed + Checks.Expect(tab3scr.Probe(5, dataY) == " ", "truncation never spills into the gutter")
 
-      let aligned = TableView{ GrowWeight: 0, Height: CellLength.Cells(3) }
+      let aligned = TableView{ Grow: 0, Height: CellLength.Cells(3) }
       aligned.Columns.Add(TableColumn{
         Header: "N",
         ColumnWidth: ColumnWidth.Cells(4),
@@ -577,7 +591,7 @@ public class WidgetCheck {
         "TableColumn.Alignment positions a cell")
 
       let richTable = TableView{
-        GrowWeight: 0,
+        Grow: 0,
         Height: CellLength.Cells(3),
         ColumnSeparator: "│",
         ColumnSeparatorStyle: Style{ Foreground: Color.Rgb("E5484D") },
@@ -610,32 +624,38 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(richTableScreen.Flush().Contains("[38;2;229;72;77m"),
         "TableView emits cell and separator colors")
 
+      let tabsChanges = SelectionProbe()
+
       let tabs = Tabs{ Titles: { "aa", "bb", "cc" } }
+
+      tabs.OnChange = tabsChanges.Record
       let tsroot = Box{ Children: { tabs } }
       tsroot.Draw(Screen(30, 3))
       failed = failed + Checks.Expect(tsroot.Handle(keyEv(Key.Left)) == EventResult.Continue, "Left at the first tab clamps, no wrap")
       failed = failed + Checks.Expect(tabs.SelectedIndex == 0, "SelectedIndex stays at the first tab")
       failed = failed + Checks.Expect(tsroot.Handle(keyEv(Key.Right)) == EventResult.Handled, "Right moves to the next tab")
       failed = failed + Checks.Expect(tabs.SelectedIndex == 1, "SelectedIndex is now the second tab")
-      if let moved = tabs.ConsumeSelectionChange() {
+      if let moved = tabsChanges.Take() {
         failed = failed + Checks.Expect(moved.PreviousIndex == 0 && moved.SelectedIndex == 1,
-          "Tabs exposes and consumes user selection changes")
+          "Tabs delivers user selection changes")
       } else {
-        failed = failed + Checks.Expect(false, "Tabs exposes user selection changes")
+        failed = failed + Checks.Expect(false, "Tabs delivers user selection changes")
       }
       tsroot.Handle(keyEv(Key.Right))
       failed = failed + Checks.Expect(tabs.SelectedIndex == 2, "SelectedIndex is now the last tab")
       failed = failed + Checks.Expect(tsroot.Handle(keyEv(Key.Right)) == EventResult.Continue, "Right at the last tab clamps, no wrap")
       failed = failed + Checks.Expect(tabs.SelectedIndex == 2, "SelectedIndex stays at the last tab")
+      tabsChanges.Clear()
       tabs.Titles = List[string]{ "replacement" }
-      failed = failed + Checks.Expect(tabs.SelectedIndex == 0 && tabs.ConsumeSelectionChange() == nil,
-        "Tabs Titles replacement normalizes selection and clears pending output")
+      failed = failed + Checks.Expect(tabs.SelectedIndex == 0 && tabsChanges.Take() == nil,
+        "Tabs Titles replacement normalizes selection and does not emit a user change")
       tabs.Titles.Add("second")
       tsroot.Handle(keyEv(Key.Right))
       tabs.Titles.RemoveAt(1)
+      tabsChanges.Clear()
       tabs.Refresh()
-      failed = failed + Checks.Expect(tabs.SelectedIndex == 0 && tabs.ConsumeSelectionChange() == nil,
-        "Tabs.Refresh clears pending output after direct Titles mutation")
+      failed = failed + Checks.Expect(tabs.SelectedIndex == 0 && tabsChanges.Take() == nil,
+        "Tabs.Refresh does not emit a user change after direct Titles mutation")
       tabs.Titles.Clear()
       failed = failed + Checks.Expect(tabs.SelectedIndex == 0, "SelectedIndex normalizes when Titles becomes empty")
       failed = failed + Checks.Expect(rejectsTabIndex(), "Tabs rejects a negative SelectedIndex")
@@ -873,8 +893,140 @@ private class WidgetScenarioView : Box {
   }
 }
 
+private open class RasterOverlayCheck : CanvasView {
+  protected override func Render(screen Screen, bounds CellRect, style Style) {
+    base.Render(screen, bounds, style)
+    screen.WriteClipped(bounds, 1, 0, "ZIP", style)
+  }
+}
+
 private func runWidgetScenario() int32 {
   var failed = 0
+  let overlay = RasterOverlayCheck()
+  overlay.Surface = CanvasSurface(3, 1, CanvasMode.HalfBlock)
+  overlay.Surface.HalfBlock(0, 0, Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6))
+  let overlayScreen = Screen(3, 1)
+  overlay.Draw(overlayScreen)
+  failed = failed + Checks.Expect(overlayScreen.Probe(0, 0) == "▀"
+      && overlayScreen.Probe(1, 0) == "Z" && overlayScreen.Probe(2, 0) == "I",
+    "canvas subclasses can retain raster content and paint clipped labels above it")
+  let raster = CanvasView(2, 1, CanvasMode.HalfBlock)
+  let upper = Color.Rgb(12, 34, 56)
+  let lower = Color.Rgb(78, 90, 123)
+  raster.Surface.Point(0, 1)
+  raster.Surface.HalfBlock(0, 0, upper, lower)
+  raster.Surface.HalfBlock(-1, 0, upper, lower)
+  raster.Surface.HalfBlock(2, 0, upper, lower)
+  raster.Surface.HalfBlock(0, -1, upper, lower)
+  raster.Surface.HalfBlock(0, 1, upper, lower)
+  let rasterScreen = Screen(2, 1)
+  raster.Draw(rasterScreen)
+  let rasterWire = rasterScreen.Flush()
+  failed = failed + Checks.Expect(rasterScreen.Probe(0, 0) == "▀"
+      && rasterScreen.Probe(1, 0) == " "
+      && rasterWire.Contains("[38;2;12;34;56m")
+      && rasterWire.Contains("[48;2;78;90;123m"),
+    "raster half blocks replace masks, preserve both RGB samples, and clip coordinates")
+  raster.Surface.HalfBlock(0, 0, lower, upper)
+  raster.Draw(rasterScreen)
+  let changedRasterWire = rasterScreen.Flush()
+  failed = failed + Checks.Expect(changedRasterWire.Contains("[38;2;78;90;123m")
+      && changedRasterWire.Contains("[48;2;12;34;56m"),
+    "raster half blocks repaint independent color changes")
+  raster.Surface.Clear()
+  raster.Draw(rasterScreen)
+  failed = failed + Checks.Expect(rasterScreen.Probe(0, 0) == " ",
+    "clearing a raster removes its half blocks")
+  var rejectedRasterMode = false
+  try {
+    CanvasSurface(1, 1, CanvasMode.Braille).HalfBlock(0, 0, upper, lower)
+  } catch (error InvalidOperationException) {
+    rejectedRasterMode = true
+  }
+  failed = failed + Checks.Expect(rejectedRasterMode, "raster half blocks reject other packing modes")
+
+  let quadrant = CanvasView(7, 1, CanvasMode.Quadrant)
+  let red = Color.Rgb(255, 0, 0)
+  let blue = Color.Rgb(0, 0, 255)
+  quadrant.Surface.Quadrant(0, 0, red, blue, blue, blue)
+  quadrant.Surface.Quadrant(1, 0, blue, red, blue, blue)
+  quadrant.Surface.Quadrant(2, 0, red, red, blue, blue)
+  quadrant.Surface.Quadrant(3, 0, blue, blue, red, blue)
+  quadrant.Surface.Quadrant(4, 0, red, blue, red, blue)
+  quadrant.Surface.Quadrant(5, 0, blue, red, red, blue)
+  quadrant.Surface.Quadrant(6, 0, red, red, red, blue)
+  quadrant.Surface.Quadrant(-1, 0, red, red, red, red)
+  quadrant.Surface.Quadrant(7, 0, red, red, red, red)
+  quadrant.Surface.Quadrant(0, -1, red, red, red, red)
+  quadrant.Surface.Quadrant(0, 1, red, red, red, red)
+  let quadrantScreen = Screen(7, 1)
+  quadrant.Draw(quadrantScreen)
+  failed = failed + Checks.Expect(quadrantScreen.Probe(0, 0) == "▘"
+      && quadrantScreen.Probe(1, 0) == "▝" && quadrantScreen.Probe(2, 0) == "▀"
+      && quadrantScreen.Probe(3, 0) == "▖" && quadrantScreen.Probe(4, 0) == "▌"
+      && quadrantScreen.Probe(5, 0) == "▞" && quadrantScreen.Probe(6, 0) == "▛",
+    "quadrant raster cells retain all seven foreground partition patterns and clip coordinates")
+  let independent = CanvasView(1, 1, CanvasMode.Quadrant)
+  independent.Surface.Point(0, 1)
+  independent.Surface.Quadrant(0, 0, Color.Rgb(250, 10, 10), Color.Rgb(240, 20, 20),
+    Color.Rgb(10, 10, 250), Color.Rgb(20, 20, 240))
+  let independentScreen = Screen(1, 1)
+  independent.Draw(independentScreen)
+  let independentWire = independentScreen.Flush()
+  failed = failed + Checks.Expect(independentScreen.Probe(0, 0) == "▀"
+      && independentWire.Contains("[38;2;245;15;15m")
+      && independentWire.Contains("[48;2;15;15;245m"),
+    "quadrant raster cells choose the least-squared-error RGB partition and group means")
+  independent.Surface.Quadrant(0, 0, red, red, red, red)
+  independent.Draw(independentScreen)
+  let uniformWire = independentScreen.Flush()
+  failed = failed + Checks.Expect(independentScreen.Probe(0, 0) == " "
+      && uniformWire.Contains("[48;2;255;0;0m"),
+    "uniform quadrant raster cells replace prior masks with one background color")
+  independent.Surface.Clear()
+  independent.Draw(independentScreen)
+  failed = failed + Checks.Expect(independentScreen.Probe(0, 0) == " ",
+    "clearing a quadrant raster resets its retained cell")
+  var rejectedQuadrantMode = false
+  try {
+    CanvasSurface(1, 1, CanvasMode.HalfBlock).Quadrant(0, 0, red, red, blue, blue)
+  } catch (error InvalidOperationException) {
+    rejectedQuadrantMode = true
+  }
+  failed = failed + Checks.Expect(rejectedQuadrantMode, "quadrant raster cells reject other packing modes")
+
+  let brailleRaster = CanvasView(2, 1, CanvasMode.Braille)
+  brailleRaster.Surface.Point(0, 0)
+  brailleRaster.Surface.BrailleCell(0, 0, 130, red, blue)
+  brailleRaster.Surface.BrailleCell(-1, 0, 255, red, blue)
+  brailleRaster.Surface.BrailleCell(2, 0, 255, red, blue)
+  let brailleScreen = Screen(2, 1)
+  brailleRaster.Draw(brailleScreen)
+  let brailleWire = brailleScreen.Flush()
+  failed = failed + Checks.Expect(brailleScreen.Probe(0, 0) == "⢂"
+      && brailleScreen.Probe(1, 0) == " "
+      && brailleWire.Contains("[38;2;255;0;0m")
+      && brailleWire.Contains("[48;2;0;0;255m"),
+    "packed braille cells replace masks, preserve both colors, and clip coordinates")
+  brailleRaster.Surface.Clear()
+  brailleRaster.Draw(brailleScreen)
+  failed = failed + Checks.Expect(brailleScreen.Probe(0, 0) == " ",
+    "clearing a packed braille raster resets its retained cell")
+  var rejectedBrailleMode = false
+  try {
+    CanvasSurface(1, 1, CanvasMode.Quadrant).BrailleCell(0, 0, 1, red, blue)
+  } catch (error InvalidOperationException) {
+    rejectedBrailleMode = true
+  }
+  var rejectedBrailleMask = false
+  try {
+    CanvasSurface(1, 1, CanvasMode.Braille).BrailleCell(0, 0, 256, red, blue)
+  } catch (error ArgumentOutOfRangeException) {
+    rejectedBrailleMask = true
+  }
+  failed = failed + Checks.Expect(rejectedBrailleMode && rejectedBrailleMask,
+    "packed braille cells reject other modes and invalid dot masks")
+
   let ownedCanvas = CanvasView(3, 2, CanvasMode.Cell)
   ownedCanvas.Surface.Point(0, 0)
   ownedCanvas.Surface.Resize(4, 2)
@@ -1267,7 +1419,7 @@ private func runWidgetScenario() int32 {
     turns = turns + 1
   }
   failed = failed + Checks.Expect(!failedWorker.IsRunning
-      && workerError != nil && workerError!!.Message == "worker failure",
+      && workerError != nil && workerError.Message == "worker failure",
     "worker failures invoke once on the application loop")
 
   let cancellationStarted = AutoResetEvent(false)

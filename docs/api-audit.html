@@ -1,0 +1,1540 @@
+<!doctype html><meta charset="utf-8"><title>SharpTUI API audit</title><style>body{font:16px system-ui;max-width:1100px;margin:3rem auto;padding:0 1rem;line-height:1.5;background:#10151d;color:#dce6f4}table{border-collapse:collapse;width:100%;margin:1rem 0}td,th{border:1px solid #354254;padding:.6rem;text-align:left;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px monospace}summary{cursor:pointer;padding:.5rem}input{padding:.6rem;width:90%;font:inherit}a{color:#9ec7ff}</style>
+<h1>SharpTUI API audit, 29 September 2026</h1><p>API cleanup, native graphics and the G# Discordo client are implemented. 101 public types remain. Documented members and enum values: 605 before, 656 after. The API-only phase retained 94 types and 612 documented members. Breaking source changes were approved. External pinned consumers are excluded by user instruction. The current Release assembly and exact exported symbols establish the contract.</p>
+<h2>Allocation handoff</h2><table><tr><th>Candidate</th><th>Class and current cost</th><th>Displaced cost and alternative</th><th>Verdict and API constraint</th></tr>
+<tr><td>Retained selection callbacks</td><td>hot, 0 B/op navigation and callback invocation</td><td>One retained delegate bound at construction or rebinding. Source-owned keys and cached heights remain. Direct callback 1.881 / 2.040 / 1.953 ns/op, median 1.953 in 3 independent tiering-disabled processes.</td><td>Accept allocation-free direction. Notify once after navigation settles. Programmatic changes stay silent. No per-event adapter, snapshot or tree rebuild.</td></tr>
+<tr><td>Screen shrink 400x200 to 80x24</td><td>boundary, warmed shrink 0 B, capacity 131072 cells per buffer</td><td>Simplest 0 B alternative retains peak buffers. Warmed trim allocates 76848 B and releases 4915440 B forced-GC heap in each of 3 processes.</td><td>Defer. No stable-size threshold or churn hysteresis tested. Preserve current buffers in API phase.</td></tr>
+<tr><td>Glyph and paste storage</td><td>boundary, Clear and Reset retain capacity</td><td>Historical measurements are not a current rebaseline. Storage lives with screen or decoder.</td><td>Defer. Require fresh lifetime, retention and churn tests before allocation relaxation.</td></tr>
+<tr><td>Unicode paint and measurement</td><td>hot, already 3600 B/frame or 72 B/MeasureWidth call</td><td>Cost originates in existing grapheme traversal. Not a verified 0 B path.</td><td>Reject as a 0 B sacrifice candidate. Do not generalize hot-path zero allocation claims.</td></tr>
+<tr><td>Per-frame source snapshots and full tree rebuilds</td><td>hot, current unchanged list/table/tree/virtual rendering 0 B/op</td><td>Move ownership into cached offsets, retained widget state and source-owned key lookup. Full rebuilt snapshots move allocation into input/frame processing.</td><td>Reject. No demonstrated total gain over the existing retained alternative.</td></tr>
+<tr><td>Media encoding caches</td><td>new capability. All six clean/changing image benchmark paths are warmed 0 B/op, 0 Gen0/op.</td><td>First image creates a screen-owned compositor. At most 64 logical draws and 4 million raster pixels. Palette, error rows, placement claims and terminal output retain bounded capacities. Invisible placements are removed while covered image data stays cached until the source leaves the staged frame.</td><td>Accept the allocation-free steady-state implementation. Construction, first use, growth, decode and seek are explicit boundaries. No allocation relaxation was accepted. Rejected alternative: per-frame encoded strings and temporary pixel snapshots. Test the direct raster encoder and retained arrays first, which already keep 0 B/op.</td></tr>
+</table><p>No bounded-allocation production optimization was accepted. Baseline source: HEAD eedcb3604658e53b85bc1e6b0f80ac70c8523568 plus pre-existing diff SHA256 9700fa9655f888c22fded04d563c93693a7cb27645064959d6f274d9b6c5e9fd. This replaces the August checkpoint. SDK 0.4.59 before, 0.4.591 after. Timings are noisy and include an SDK change. No speedup claim is made.</p>
+<h2>Reduction decisions</h2><table><tr><th>Capability and exact source signature change</th><th>Consumer change and cost disposition</th><th>Verdict and migration</th></tr>
+<tr><td>ListView, TableView, TreeView, VirtualListView, Tabs, Select: ConsumeSelectionChange() SelectionChange? -&gt; OnChange Action[SelectionChange]? { get; set; }</td><td>Replace render-time polling with a callback declared once. Identity, scroll offsets, exception propagation and stable-key restoration are retained. Captured callbacks may retain app state until the widget is released or rebound. Dispatch remains 0 B/op.</td><td>Replace, implemented. Six consume methods removed, six callback properties added. Programmatic changes no longer cancel a user callback that has already run. User actions are delivered individually instead of coalescing to the latest unconsumed action.</td></tr>
+<tr><td>Button.OnPress Action? -&gt; Button.OnClick Action?; TextArea.OnChanged Action[string]? -&gt; TextArea.OnChange Action[string]?</td><td>One event name for activation and one name for state change. Same retained delegate lifetime and dispatch costs.</td><td>Rename, implemented. Direct source rename, no compatibility aliases.</td></tr>
+<tr><td>Box.GapCells int32 -&gt; Gap int32; Box.GrowWeight int32 -&gt; Grow int32; TableView.ColumnGapCells int32 -&gt; ColumnGap int32</td><td>Shorter names, same checked units, layout invalidation and parent-local growth. No caching, ownership or allocation changes.</td><td>Rename, implemented. Existing explicit cell geometry types stay. A pixel is a distinct unit for phase 2.</td></tr>
+<tr><td>App.Run(root Box) -&gt; App.Root Box? { get; set; } plus Run()</td><td>App{ Root: tree }.Run() makes the retained tree visible in the application declaration. Run requires Root. Root replacement applies on the next Run, with no active-tree switch. Existing terminal restoration semantics remain.</td><td>Replace, implemented. One added property. Roots that need app.Animations can be assigned after constructing the app.</td></tr>
+<tr><td>Box.Add(child Box); implicit int32 -&gt; CellLength; implicit int32 -&gt; CellInsets</td><td>Collection-only Box(){ child } declarations use Add. Property declarations retain Children: { child }. Width: 24 and Padding: 1 remove geometry factory calls. Validation still rejects negative values. No conversions allocate.</td><td>Add, implemented. Existing child collections, Auto and asymmetric insets remain available.</td></tr>
+<tr><td>TextInput.OnChange Action[string]?; Toggle.OnChange Action[bool]?; RadioGroup.OnChange Action[Toggle]?</td><td>Explicit user state transitions replace observation during drawing. Programmatic loads stay silent. Payloads are current text or activated state/choice.</td><td>Add, implemented. Callback construction is bounded to retained widget or rebinding lifetime.</td></tr>
+<tr><td>Native media and virtual row integration: Screen.DrawImage(source ImageSource, bounds CellRect); DrawImage(source ImageSource, bounds CellRect, clip CellRect, fit ImageFit); Box.Draw(screen Screen, bounds CellRect, clipBounds CellRect); App.OnTick Action?; App.OnFocus Action[bool]?</td><td>Retained virtual message subtrees use one clipped Draw. Screen restores the parent clip in finally. Tick callbacks continue inside overlays. Kitty cell placeholders, adaptive palette and three video buffers stay owned and bounded. Player construction is blocking, decode/publish occurs on a G# worker, Advance is nonblocking and warmed 0 B.</td><td>Add, implemented. App/root ownership stays explicit. Image sources own RGBA copies. Views borrow players and owners dispose them. Existing text hot paths and callbacks remain 0 B.</td></tr>
+<tr><td>TreeView.SelectedKey string { get; set; }</td><td>The client previously coordinated visible row indices to select a parent or active channel. The setter uses the existing source key lookup or retained visible nodes. Unknown keys preserve selection, programmatic changes stay silent, and hidden nodes do not implicitly expand. No new snapshots or per-frame allocation.</td><td>Add, implemented. Preserves cached flattening and explicit expansion. The client replaces an index scan with tree.SelectedKey = parent.Id.</td></tr>
+<tr><td>Automatic source invalidation or removal of Refresh()</td><td>Variable item heights, tree expansion and external mutable sources need explicit invalidation unless ownership changes. Removing it without a versioned source would hide required work or rescan every frame.</td><td>Defer. Revisit with actual Discord timeline data and measured mutation/anchoring costs.</td></tr>
+<tr><td>Goo-style Build/reconciliation on every state change</td><td>Would replace retained object mutation with rebuilding and key reconciliation. Adds callback/tree allocations and changes identity/focus/lifetime semantics.</td><td>Reject for this pass. No equivalent measured benefit. Goo syntax consistency does not require copying its whole runtime.</td></tr>
+<tr><td>Merge text and rich views, remove diagnostic types, merge source and mutable-list APIs</td><td>Plain, styled, variable-height and source-owned data have distinct costs and ownership. TestDriver is an intentional public headless entry point.</td><td>Retain. Every current capability remains represented. Zero repo references are not removal evidence.</td></tr>
+</table><h2>Consumer intent trace</h2><pre>Before: state = Label{ Text: &quot;ready&quot; }  [state/view]
+mode = Select{ Options: { &quot;text&quot;, &quot;media&quot; } }  [view]
+root.Handle(ev)  [framework choreography]
+if mode.ConsumeSelectionChange() != nil { state.Text = mode.Options[mode.SelectedIndex] }  [framework choreography + domain transition]
+
+After: state = Label{ Text: &quot;ready&quot; }  [state/view]
+mode = Select{ Options: { &quot;text&quot;, &quot;media&quot; }, OnChange: change -&gt; state.Text = mode.Options[change.SelectedIndex] }  [view + domain transition]
+App{ Root: Column{ Children: { state, mode } } }.Run()  [one ownership declaration]
+
+Edge: list.OnChange = change -&gt; list.Items = replacement
+Identity and scrolling settle before the callback. The callback can replace the source immediately. A programmatic selection or source load stays silent. The root owns input and repaint. Refresh remains when an external source changes same-count heights.</pre>
+<h2>Three-process regression results</h2><table><tr><th>Operation</th><th>Before us/op, median</th><th>After us/op, median</th><th>Allocation and output</th></tr>
+<tr><td>selection move</td><td>641.8, 430.0, 615.1; median 615.1</td><td>416.2, 444.6, 468.7; median 444.6</td><td>0 B/op, 0 Gen0/op; 164 terminal bytes in both variants</td></tr>
+<tr><td>list presented 10k selection move</td><td>295.5, 263.6, 317.9; median 295.5</td><td>270.5, 302.2, 279.0; median 279.0</td><td>0 B/op, 0 Gen0/op; 156 terminal bytes in both variants</td></tr>
+<tr><td>button press callback</td><td>186.6, 197.3, 188.5; median 188.5</td><td>200.1, 204.4, 205.9; median 204.4</td><td>0 B/op, 0 Gen0/op; 0 terminal bytes in both variants</td></tr>
+<tr><td>list unchanged redraw</td><td>197.7, 163.5, 201.3; median 197.7</td><td>165.5, 166.0, 165.6; median 165.6</td><td>0 B/op, 0 Gen0/op; 0 terminal bytes in both variants</td></tr>
+<tr><td>table unchanged redraw</td><td>1146.7, 593.7, 789.9; median 789.9</td><td>593.9, 545.9, 531.4; median 545.9</td><td>0 B/op, 0 Gen0/op; 0 terminal bytes in both variants</td></tr>
+<tr><td>tree unchanged redraw</td><td>311.4, 202.8, 250.3; median 250.3</td><td>256.7, 210.6, 203.7; median 210.6</td><td>0 B/op, 0 Gen0/op; 0 terminal bytes in both variants</td></tr>
+<tr><td>virtual list unchanged redraw</td><td>423.0, 328.9, 431.5; median 423.0</td><td>356.7, 443.1, 415.4; median 415.4</td><td>0 B/op, 0 Gen0/op; 0 terminal bytes in both variants</td></tr>
+</table><p>Release framework, bundled examples, API/XML gate, selfcheck including callbacks and reentrant row replacement, strict lint for changed core API files, and Linux PTY no-reply/BEL/ST checks pass. Docs, symbol hash and plugin catalog are generated from the Release assembly. Existing local Canvas edits are preserved. Source and assembly fingerprints accompany the final verification below.</p>
+<h2>Media allocation handoff and absolute measurements</h2><p>Each sample is one independent Release process with tiered compilation disabled. The fixture is a 64 by 48 RGBA raster stretched into 40 by 12 cells on an 80 by 24 screen. Changing frames modify every red channel. Each path warms for 64 frames and measures 100 frames. Screen/source/terminal-buffer construction is excluded and explicitly retained at the first-use boundary. Each clean and changing sample has 0 B/op and 0 Gen0 collections. Clean output is zero bytes.</p><table><tr><th>Backend and frame</th><th>Three samples, us/op</th><th>Median, us/op</th><th>Transport bytes/op</th></tr>
+<tr><td>HalfBlock clean</td><td>[130.0, 105.1, 115.8]</td><td>115.8</td><td>0</td></tr>
+<tr><td>HalfBlock changing</td><td>[173.1, 166.8, 188.6]</td><td>173.1</td><td>15200</td></tr>
+<tr><td>Kitty clean</td><td>[58.0, 58.7, 60.8]</td><td>58.7</td><td>0</td></tr>
+<tr><td>Kitty changing</td><td>[446.8, 418.2, 410.2]</td><td>418.2</td><td>24551</td></tr>
+<tr><td>Sixel clean</td><td>[65.2, 62.3, 59.4]</td><td>62.3</td><td>0</td></tr>
+<tr><td>Sixel changing</td><td>[11276.5, 10952.6, 10510.5]</td><td>10952.6</td><td>41425</td></tr>
+</table><p>The direct native encoders use reusable storage. Kitty physical placement restoration failed the real popup screen comparison and was rejected. Unicode image placeholders passed exact restoration and use the same retained claims to compose image cells with text. A fixed protocol diacritic table is retained once. Text is invalidated only for changed claims or image geometry, and no glyph strings or snapshots are created per frame. The raster has the target pixel aspect ratio so Contain, Cover and Stretch preserve their stated semantics. Fully covered staged sources keep their bounded upload cache. Terminal rasters are deleted when draws leave the frame or when the backend changes. Native Kitty rectangles above 297 rows or columns fall back to half blocks. Auto Kitty mode requires a terminal supporting Unicode image placeholders, such as Kitty 0.28 or later. This passes the simplest allocation-free alternative gate before considering encoded snapshots. Decode is bounded to 16 MiB encoded and 64 MiB RGBA. Native frame raster budget is 4 million pixels, Sixel edges at most 8192, and logical image count at most 64. Video owns three maximum 1024 by 1024 RGBA buffers and a two-frame queue. Saturated producers replace complete frames instead of growing the queue. Pause and dispose stop owned processes and join readers. EOF ends playback and the completed reader remains owned until disposal. Player pause/resume reuses the buffers. A paused seek starts a bounded video-only decoder and publishes one preview frame before joining it. No audio starts for the preview. Seek and process construction remain rare, visible work. Test video Advance reports 0 UI-thread bytes over 1000 warmed polls.</p>
+<h2>Verification fingerprints</h2><pre>Source (.gs and .gsproj, sorted path plus content): 25dd7351e0ab44154e96a2952b44d3cf2f7e203249de35cd19170aa1da0fd389
+Release assembly: 0dee625f5ba0131596cfc1388e9cf0eba8db39b6acd307fb025a3b84306899f5
+Public contract: b0192446659ef959ceaf9a635d138beccff29b0805334d229358399bbdd0ce23</pre><p>Package version 0.2.0 marks the breaking API. No package was published. Before/after timing rows measure the API-only transition. The final media fixture is a separate workload and is not a speedup comparison. Existing Unicode paint and width allocations remain outside the verified zero-allocation ASCII hot paths.</p>
+<h2>Complete capability map and exact exported contract</h2><p>Every exported type and each of its declared members belongs to the capability listed below. The expanded contract includes inheritance/interface records and exact CLR signatures. Generated package helper containers are included separately. This is the inventory, not a claim that absence of textual uses makes removal safe.</p><input id="q" placeholder="Filter types or members" aria-label="Filter contract">
+<details class="contract"><summary>Animation / SharpTui.Animation / 10 exported contract records</summary><pre>method|SharpTui.Animation|Lerp|SharpTui.CellPoint|generic:0|from:SharpTui.CellPoint,to:SharpTui.CellPoint,progress:System.Double
+method|SharpTui.Animation|Lerp|SharpTui.Color|generic:0|from:SharpTui.Color,to:SharpTui.Color,progress:System.Double
+method|SharpTui.Animation|Lerp|System.Double|generic:0|from:System.Double,to:System.Double,progress:System.Double
+method|SharpTui.Animation|Lerp|System.Int32|generic:0|from:System.Int32,to:System.Int32,progress:System.Double
+method|SharpTui.Animation|Parallel|SharpTui.Animation|generic:0|animations:SharpTui.Animation[]
+method|SharpTui.Animation|Repeat|SharpTui.Animation|generic:0|animation:SharpTui.Animation
+method|SharpTui.Animation|Repeat|SharpTui.Animation|generic:0|animation:SharpTui.Animation,count:System.Int32
+method|SharpTui.Animation|Sequence|SharpTui.Animation|generic:0|animations:SharpTui.Animation[]
+method|SharpTui.Animation|Tween|SharpTui.Animation|generic:0|duration:System.TimeSpan,update:System.Action`1[[System.Double, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],easing:SharpTui.Easing
+method|SharpTui.Animation|Wait|SharpTui.Animation|generic:0|duration:System.TimeSpan</pre></details>
+<details class="contract"><summary>Animation / SharpTui.AnimationController / 4 exported contract records</summary><pre>property|SharpTui.AnimationController|MotionScale|System.Double|
+method|SharpTui.AnimationController|Play|SharpTui.AnimationHandle|generic:0|animation:SharpTui.Animation
+method|SharpTui.AnimationController|get_MotionScale|System.Double|generic:0|
+method|SharpTui.AnimationController|set_MotionScale|System.Void|generic:0|value:System.Double</pre></details>
+<details class="contract"><summary>Animation / SharpTui.AnimationHandle / 4 exported contract records</summary><pre>property|SharpTui.AnimationHandle|State|SharpTui.AnimationState|
+method|SharpTui.AnimationHandle|Cancel|System.Void|generic:0|
+method|SharpTui.AnimationHandle|Finish|System.Void|generic:0|
+method|SharpTui.AnimationHandle|get_State|SharpTui.AnimationState|generic:0|</pre></details>
+<details class="contract"><summary>Animation / SharpTui.AnimationState / 4 exported contract records</summary><pre>field|SharpTui.AnimationState|Cancelled|SharpTui.AnimationState
+field|SharpTui.AnimationState|Completed|SharpTui.AnimationState
+field|SharpTui.AnimationState|Running|SharpTui.AnimationState
+field|SharpTui.AnimationState|value__|System.Int32</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.AnsiColor / 17 exported contract records</summary><pre>field|SharpTui.AnsiColor|Black|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Blue|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightBlack|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightBlue|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightCyan|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightGreen|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightMagenta|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightRed|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightWhite|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|BrightYellow|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Cyan|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Green|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Magenta|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Red|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|White|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|Yellow|SharpTui.AnsiColor
+field|SharpTui.AnsiColor|value__|System.Int32</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.App / 44 exported contract records</summary><pre>ctor|SharpTui.App|
+property|SharpTui.App|Animations|SharpTui.AnimationController|
+property|SharpTui.App|CellPixels|SharpTui.PixelSize|
+property|SharpTui.App|Clipboard|SharpTui.Clipboard|
+property|SharpTui.App|ColorMode|SharpTui.TerminalColorMode|
+property|SharpTui.App|DefaultStyle|SharpTui.Style|
+property|SharpTui.App|Graphics|SharpTui.GraphicsProtocol|
+property|SharpTui.App|HyperlinksEnabled|System.Boolean|
+property|SharpTui.App|Keys|SharpTui.Keymap|
+property|SharpTui.App|MouseTracking|SharpTui.MouseTracking|
+property|SharpTui.App|OnFocus|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.App|OnTick|System.Action|
+property|SharpTui.App|QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.App|Root|SharpTui.Box|
+property|SharpTui.App|TickInterval|System.TimeSpan|
+method|SharpTui.App|Post|System.Void|generic:0|work:System.Action
+method|SharpTui.App|RequestDraw|System.Void|generic:0|
+method|SharpTui.App|Run|System.Void|generic:0|
+method|SharpTui.App|StartWorker|SharpTui.Worker|generic:1|work:Func`2,completed:Action`1,failed:System.Action`1[[System.Exception, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],cancelled:System.Action
+method|SharpTui.App|get_Animations|SharpTui.AnimationController|generic:0|
+method|SharpTui.App|get_CellPixels|SharpTui.PixelSize|generic:0|
+method|SharpTui.App|get_Clipboard|SharpTui.Clipboard|generic:0|
+method|SharpTui.App|get_ColorMode|SharpTui.TerminalColorMode|generic:0|
+method|SharpTui.App|get_DefaultStyle|SharpTui.Style|generic:0|
+method|SharpTui.App|get_Graphics|SharpTui.GraphicsProtocol|generic:0|
+method|SharpTui.App|get_HyperlinksEnabled|System.Boolean|generic:0|
+method|SharpTui.App|get_Keys|SharpTui.Keymap|generic:0|
+method|SharpTui.App|get_MouseTracking|SharpTui.MouseTracking|generic:0|
+method|SharpTui.App|get_OnFocus|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.App|get_OnTick|System.Action|generic:0|
+method|SharpTui.App|get_QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.App|get_Root|SharpTui.Box|generic:0|
+method|SharpTui.App|get_TickInterval|System.TimeSpan|generic:0|
+method|SharpTui.App|set_CellPixels|System.Void|generic:0|value:SharpTui.PixelSize
+method|SharpTui.App|set_ColorMode|System.Void|generic:0|value:SharpTui.TerminalColorMode
+method|SharpTui.App|set_DefaultStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.App|set_Graphics|System.Void|generic:0|value:SharpTui.GraphicsProtocol
+method|SharpTui.App|set_HyperlinksEnabled|System.Void|generic:0|value:System.Boolean
+method|SharpTui.App|set_Keys|System.Void|generic:0|value:SharpTui.Keymap
+method|SharpTui.App|set_MouseTracking|System.Void|generic:0|value:SharpTui.MouseTracking
+method|SharpTui.App|set_OnFocus|System.Void|generic:0|value:System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.App|set_OnTick|System.Void|generic:0|value:System.Action
+method|SharpTui.App|set_Root|System.Void|generic:0|value:SharpTui.Box
+method|SharpTui.App|set_TickInterval|System.Void|generic:0|value:System.TimeSpan</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Badge / 4 exported contract records</summary><pre>ctor|SharpTui.Badge|
+property|SharpTui.Badge|Text|System.String|
+method|SharpTui.Badge|get_Text|System.String|generic:0|
+method|SharpTui.Badge|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.Bind / 13 exported contract records</summary><pre>property|SharpTui.Bind|Gesture|SharpTui.KeyGesture|
+property|SharpTui.Bind|Handler|System.Action|
+property|SharpTui.Bind|Id|System.String|
+property|SharpTui.Bind|IsEnabled|System.Boolean|
+property|SharpTui.Bind|Label|System.String|
+property|SharpTui.Bind|Phase|SharpTui.BindingPhase|
+method|SharpTui.Bind|get_Gesture|SharpTui.KeyGesture|generic:0|
+method|SharpTui.Bind|get_Handler|System.Action|generic:0|
+method|SharpTui.Bind|get_Id|System.String|generic:0|
+method|SharpTui.Bind|get_IsEnabled|System.Boolean|generic:0|
+method|SharpTui.Bind|get_Label|System.String|generic:0|
+method|SharpTui.Bind|get_Phase|SharpTui.BindingPhase|generic:0|
+method|SharpTui.Bind|set_IsEnabled|System.Void|generic:0|value:System.Boolean</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.BindingPhase / 3 exported contract records</summary><pre>field|SharpTui.BindingPhase|AfterWidgets|SharpTui.BindingPhase
+field|SharpTui.BindingPhase|BeforeWidgets|SharpTui.BindingPhase
+field|SharpTui.BindingPhase|value__|System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.Box / 61 exported contract records</summary><pre>ctor|SharpTui.Box|
+property|SharpTui.Box|Bounds|SharpTui.CellRect|
+property|SharpTui.Box|CanFocus|System.Boolean|
+property|SharpTui.Box|CanReceiveMouse|System.Boolean|
+property|SharpTui.Box|Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Box|ContentBounds|SharpTui.CellRect|
+property|SharpTui.Box|FocusedElement|SharpTui.Box|
+property|SharpTui.Box|FocusedStyle|SharpTui.Style|
+property|SharpTui.Box|Gap|System.Int32|
+property|SharpTui.Box|Grow|System.Int32|
+property|SharpTui.Box|Height|SharpTui.CellLength|
+property|SharpTui.Box|IsFocused|System.Boolean|
+property|SharpTui.Box|IsVisible|System.Boolean|
+property|SharpTui.Box|Padding|SharpTui.CellInsets|
+property|SharpTui.Box|Placement|SharpTui.Placement|
+property|SharpTui.Box|ShowBorder|System.Boolean|
+property|SharpTui.Box|ShowScrollbar|System.Boolean|
+property|SharpTui.Box|Style|SharpTui.Style|
+property|SharpTui.Box|Title|System.String|
+property|SharpTui.Box|Width|SharpTui.CellLength|
+method|SharpTui.Box|Add|System.Void|generic:0|child:SharpTui.Box
+method|SharpTui.Box|Draw|System.Void|generic:0|screen:SharpTui.Screen
+method|SharpTui.Box|Draw|System.Void|generic:0|screen:SharpTui.Screen,bounds:SharpTui.CellRect,clip:SharpTui.CellRect
+method|SharpTui.Box|FocusNext|System.Boolean|generic:0|
+method|SharpTui.Box|FocusPrevious|System.Boolean|generic:0|
+method|SharpTui.Box|Focus|System.Void|generic:0|target:SharpTui.Box
+method|SharpTui.Box|Handle|SharpTui.EventResult|generic:0|ev:SharpTui.UiEvent
+method|SharpTui.Box|get_Bounds|SharpTui.CellRect|generic:0|
+method|SharpTui.Box|get_CanFocus|System.Boolean|generic:0|
+method|SharpTui.Box|get_CanReceiveMouse|System.Boolean|generic:0|
+method|SharpTui.Box|get_Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Box|get_ContentBounds|SharpTui.CellRect|generic:0|
+method|SharpTui.Box|get_FocusedElement|SharpTui.Box|generic:0|
+method|SharpTui.Box|get_FocusedStyle|SharpTui.Style|generic:0|
+method|SharpTui.Box|get_Gap|System.Int32|generic:0|
+method|SharpTui.Box|get_Grow|System.Int32|generic:0|
+method|SharpTui.Box|get_Height|SharpTui.CellLength|generic:0|
+method|SharpTui.Box|get_IsFocused|System.Boolean|generic:0|
+method|SharpTui.Box|get_IsVisible|System.Boolean|generic:0|
+method|SharpTui.Box|get_Padding|SharpTui.CellInsets|generic:0|
+method|SharpTui.Box|get_Placement|SharpTui.Placement|generic:0|
+method|SharpTui.Box|get_ShowBorder|System.Boolean|generic:0|
+method|SharpTui.Box|get_ShowScrollbar|System.Boolean|generic:0|
+method|SharpTui.Box|get_Style|SharpTui.Style|generic:0|
+method|SharpTui.Box|get_Title|System.String|generic:0|
+method|SharpTui.Box|get_Width|SharpTui.CellLength|generic:0|
+method|SharpTui.Box|set_CanFocus|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Box|set_CanReceiveMouse|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Box|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Box|set_FocusedStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.Box|set_Gap|System.Void|generic:0|value:System.Int32
+method|SharpTui.Box|set_Grow|System.Void|generic:0|value:System.Int32
+method|SharpTui.Box|set_Height|System.Void|generic:0|value:SharpTui.CellLength
+method|SharpTui.Box|set_IsVisible|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Box|set_Padding|System.Void|generic:0|value:SharpTui.CellInsets
+method|SharpTui.Box|set_Placement|System.Void|generic:0|value:SharpTui.Placement
+method|SharpTui.Box|set_ShowBorder|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Box|set_ShowScrollbar|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Box|set_Style|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.Box|set_Title|System.Void|generic:0|value:System.String
+method|SharpTui.Box|set_Width|System.Void|generic:0|value:SharpTui.CellLength</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Button / 7 exported contract records</summary><pre>ctor|SharpTui.Button|
+property|SharpTui.Button|OnClick|System.Action|
+property|SharpTui.Button|Text|System.String|
+method|SharpTui.Button|get_OnClick|System.Action|generic:0|
+method|SharpTui.Button|get_Text|System.String|generic:0|
+method|SharpTui.Button|set_OnClick|System.Void|generic:0|value:System.Action
+method|SharpTui.Button|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.CanvasMode / 5 exported contract records</summary><pre>field|SharpTui.CanvasMode|Braille|SharpTui.CanvasMode
+field|SharpTui.CanvasMode|Cell|SharpTui.CanvasMode
+field|SharpTui.CanvasMode|HalfBlock|SharpTui.CanvasMode
+field|SharpTui.CanvasMode|Quadrant|SharpTui.CanvasMode
+field|SharpTui.CanvasMode|value__|System.Int32</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.CanvasSurface / 30 exported contract records</summary><pre>ctor|SharpTui.CanvasSurface|width:System.Int32,height:System.Int32,mode:SharpTui.CanvasMode
+property|SharpTui.CanvasSurface|HeightRows|System.Int32|
+property|SharpTui.CanvasSurface|Mode|SharpTui.CanvasMode|
+property|SharpTui.CanvasSurface|SubcellHeight|System.Int32|
+property|SharpTui.CanvasSurface|SubcellWidth|System.Int32|
+property|SharpTui.CanvasSurface|WidthCells|System.Int32|
+method|SharpTui.CanvasSurface|BrailleCell|System.Void|generic:0|column:System.Int32,row:System.Int32,dots:System.Int32,foreground:SharpTui.Color,background:SharpTui.Color
+method|SharpTui.CanvasSurface|Circle|System.Void|generic:0|cx:System.Int32,cy:System.Int32,radius:System.Int32
+method|SharpTui.CanvasSurface|Circle|System.Void|generic:0|cx:System.Int32,cy:System.Int32,radius:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|Clear|System.Void|generic:0|
+method|SharpTui.CanvasSurface|Clear|System.Void|generic:0|style:SharpTui.Style
+method|SharpTui.CanvasSurface|FillCircle|System.Void|generic:0|cx:System.Int32,cy:System.Int32,radius:System.Int32
+method|SharpTui.CanvasSurface|FillCircle|System.Void|generic:0|cx:System.Int32,cy:System.Int32,radius:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|Fill|System.Void|generic:0|x:System.Int32,y:System.Int32,width:System.Int32,height:System.Int32
+method|SharpTui.CanvasSurface|Fill|System.Void|generic:0|x:System.Int32,y:System.Int32,width:System.Int32,height:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|HalfBlock|System.Void|generic:0|column:System.Int32,row:System.Int32,upper:SharpTui.Color,lower:SharpTui.Color
+method|SharpTui.CanvasSurface|Line|System.Void|generic:0|x0:System.Int32,y0:System.Int32,x1:System.Int32,y1:System.Int32
+method|SharpTui.CanvasSurface|Line|System.Void|generic:0|x0:System.Int32,y0:System.Int32,x1:System.Int32,y1:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|Point|System.Void|generic:0|x:System.Int32,y:System.Int32
+method|SharpTui.CanvasSurface|Point|System.Void|generic:0|x:System.Int32,y:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|Polyline|System.Void|generic:0|points:System.Collections.Generic.List`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]],style:SharpTui.Style
+method|SharpTui.CanvasSurface|Quadrant|System.Void|generic:0|column:System.Int32,row:System.Int32,topLeft:SharpTui.Color,topRight:SharpTui.Color,bottomLeft:SharpTui.Color,bottomRight:SharpTui.Color
+method|SharpTui.CanvasSurface|Rect|System.Void|generic:0|x:System.Int32,y:System.Int32,width:System.Int32,height:System.Int32
+method|SharpTui.CanvasSurface|Rect|System.Void|generic:0|x:System.Int32,y:System.Int32,width:System.Int32,height:System.Int32,style:SharpTui.Style
+method|SharpTui.CanvasSurface|Resize|System.Void|generic:0|width:System.Int32,height:System.Int32
+method|SharpTui.CanvasSurface|get_HeightRows|System.Int32|generic:0|
+method|SharpTui.CanvasSurface|get_Mode|SharpTui.CanvasMode|generic:0|
+method|SharpTui.CanvasSurface|get_SubcellHeight|System.Int32|generic:0|
+method|SharpTui.CanvasSurface|get_SubcellWidth|System.Int32|generic:0|
+method|SharpTui.CanvasSurface|get_WidthCells|System.Int32|generic:0|</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.CanvasView / 6 exported contract records</summary><pre>ctor|SharpTui.CanvasView|
+ctor|SharpTui.CanvasView|surface:SharpTui.CanvasSurface
+ctor|SharpTui.CanvasView|width:System.Int32,height:System.Int32,mode:SharpTui.CanvasMode
+property|SharpTui.CanvasView|Surface|SharpTui.CanvasSurface|
+method|SharpTui.CanvasView|get_Surface|SharpTui.CanvasSurface|generic:0|
+method|SharpTui.CanvasView|set_Surface|System.Void|generic:0|value:SharpTui.CanvasSurface</pre></details>
+<details class="contract"><summary>Layout / SharpTui.CellInsets / 16 exported contract records</summary><pre>property|SharpTui.CellInsets|BottomRows|System.Int32|
+property|SharpTui.CellInsets|LeftCells|System.Int32|
+property|SharpTui.CellInsets|None|SharpTui.CellInsets|
+property|SharpTui.CellInsets|RightCells|System.Int32|
+property|SharpTui.CellInsets|TopRows|System.Int32|
+method|SharpTui.CellInsets|All|SharpTui.CellInsets|generic:0|cells:System.Int32
+method|SharpTui.CellInsets|get_BottomRows|System.Int32|generic:0|
+method|SharpTui.CellInsets|get_LeftCells|System.Int32|generic:0|
+method|SharpTui.CellInsets|get_None|SharpTui.CellInsets|generic:0|
+method|SharpTui.CellInsets|get_RightCells|System.Int32|generic:0|
+method|SharpTui.CellInsets|get_TopRows|System.Int32|generic:0|
+method|SharpTui.CellInsets|op_Implicit|SharpTui.CellInsets|generic:0|value:System.Int32
+method|SharpTui.CellInsets|set_BottomRows|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellInsets|set_LeftCells|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellInsets|set_RightCells|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellInsets|set_TopRows|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.CellLength / 8 exported contract records</summary><pre>property|SharpTui.CellLength|Auto|SharpTui.CellLength|
+property|SharpTui.CellLength|CellCount|System.Int32|
+property|SharpTui.CellLength|IsAuto|System.Boolean|
+method|SharpTui.CellLength|Cells|SharpTui.CellLength|generic:0|count:System.Int32
+method|SharpTui.CellLength|get_Auto|SharpTui.CellLength|generic:0|
+method|SharpTui.CellLength|get_CellCount|System.Int32|generic:0|
+method|SharpTui.CellLength|get_IsAuto|System.Boolean|generic:0|
+method|SharpTui.CellLength|op_Implicit|SharpTui.CellLength|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.CellPoint / 6 exported contract records</summary><pre>property|SharpTui.CellPoint|Column|System.Int32|
+property|SharpTui.CellPoint|Row|System.Int32|
+method|SharpTui.CellPoint|get_Column|System.Int32|generic:0|
+method|SharpTui.CellPoint|get_Row|System.Int32|generic:0|
+method|SharpTui.CellPoint|set_Column|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellPoint|set_Row|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.CellRect / 15 exported contract records</summary><pre>property|SharpTui.CellRect|Column|System.Int32|
+property|SharpTui.CellRect|HeightRows|System.Int32|
+property|SharpTui.CellRect|Row|System.Int32|
+property|SharpTui.CellRect|WidthCells|System.Int32|
+method|SharpTui.CellRect|Contains|System.Boolean|generic:0|column:System.Int32,row:System.Int32
+method|SharpTui.CellRect|Contains|System.Boolean|generic:0|point:SharpTui.CellPoint
+method|SharpTui.CellRect|Inset|SharpTui.CellRect|generic:0|insets:SharpTui.CellInsets
+method|SharpTui.CellRect|get_Column|System.Int32|generic:0|
+method|SharpTui.CellRect|get_HeightRows|System.Int32|generic:0|
+method|SharpTui.CellRect|get_Row|System.Int32|generic:0|
+method|SharpTui.CellRect|get_WidthCells|System.Int32|generic:0|
+method|SharpTui.CellRect|set_Column|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellRect|set_HeightRows|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellRect|set_Row|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellRect|set_WidthCells|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.CellSize / 6 exported contract records</summary><pre>property|SharpTui.CellSize|HeightRows|System.Int32|
+property|SharpTui.CellSize|WidthCells|System.Int32|
+method|SharpTui.CellSize|get_HeightRows|System.Int32|generic:0|
+method|SharpTui.CellSize|get_WidthCells|System.Int32|generic:0|
+method|SharpTui.CellSize|set_HeightRows|System.Void|generic:0|value:System.Int32
+method|SharpTui.CellSize|set_WidthCells|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.CellText / 5 exported contract records</summary><pre>ctor|SharpTui.CellText|
+method|SharpTui.CellText|Clip|System.String|generic:0|text:System.String,widthCells:System.Int32
+method|SharpTui.CellText|Graphemes|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|text:System.String
+method|SharpTui.CellText|MeasureWidth|System.Int32|generic:0|text:System.String
+method|SharpTui.CellText|Wrap|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|text:System.String,widthCells:System.Int32</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.Clipboard / 2 exported contract records</summary><pre>method|SharpTui.Clipboard|GetText|System.String|generic:0|
+method|SharpTui.Clipboard|SetText|System.Void|generic:0|text:System.String</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.Color / 19 exported contract records</summary><pre>property|SharpTui.Color|IndexedValue|System.Int32|
+property|SharpTui.Color|Inherit|SharpTui.Color|
+property|SharpTui.Color|IsIndexed|System.Boolean|
+property|SharpTui.Color|IsInherited|System.Boolean|
+property|SharpTui.Color|IsTerminalDefault|System.Boolean|
+property|SharpTui.Color|TerminalDefault|SharpTui.Color|
+method|SharpTui.Color|Ansi|SharpTui.Color|generic:0|color:SharpTui.AnsiColor
+method|SharpTui.Color|Equals|System.Boolean|generic:0|other:SharpTui.Color
+method|SharpTui.Color|Indexed|SharpTui.Color|generic:0|index:System.Int32
+method|SharpTui.Color|Rgb|SharpTui.Color|generic:0|hex:System.String
+method|SharpTui.Color|Rgb|SharpTui.Color|generic:0|red:System.Int32,green:System.Int32,blue:System.Int32
+method|SharpTui.Color|get_IndexedValue|System.Int32|generic:0|
+method|SharpTui.Color|get_Inherit|SharpTui.Color|generic:0|
+method|SharpTui.Color|get_IsIndexed|System.Boolean|generic:0|
+method|SharpTui.Color|get_IsInherited|System.Boolean|generic:0|
+method|SharpTui.Color|get_IsTerminalDefault|System.Boolean|generic:0|
+method|SharpTui.Color|get_TerminalDefault|SharpTui.Color|generic:0|
+method|SharpTui.Color|op_Equality|System.Boolean|generic:0|left:SharpTui.Color,right:SharpTui.Color
+method|SharpTui.Color|op_Inequality|System.Boolean|generic:0|left:SharpTui.Color,right:SharpTui.Color</pre></details>
+<details class="contract"><summary>Layout / SharpTui.Column / 1 exported contract records</summary><pre>ctor|SharpTui.Column|</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.ColumnWidth / 5 exported contract records</summary><pre>method|SharpTui.ColumnWidth|Cells|SharpTui.ColumnWidth|generic:0|count:System.Int32
+method|SharpTui.ColumnWidth|Equals|System.Boolean|generic:0|other:SharpTui.ColumnWidth
+method|SharpTui.ColumnWidth|Share|SharpTui.ColumnWidth|generic:0|weight:System.Int32
+method|SharpTui.ColumnWidth|op_Equality|System.Boolean|generic:0|left:SharpTui.ColumnWidth,right:SharpTui.ColumnWidth
+method|SharpTui.ColumnWidth|op_Inequality|System.Boolean|generic:0|left:SharpTui.ColumnWidth,right:SharpTui.ColumnWidth</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Dialog / 10 exported contract records</summary><pre>ctor|SharpTui.Dialog|
+property|SharpTui.Dialog|Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Dialog|Message|System.String|
+property|SharpTui.Dialog|OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+method|SharpTui.Dialog|get_Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|get_Message|System.String|generic:0|
+method|SharpTui.Dialog|get_OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|set_Actions|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Dialog|set_Message|System.Void|generic:0|value:System.String
+method|SharpTui.Dialog|set_OnResult|System.Void|generic:0|value:System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.DialogAction / 7 exported contract records</summary><pre>ctor|SharpTui.DialogAction|
+property|SharpTui.DialogAction|IsCancel|System.Boolean|
+property|SharpTui.DialogAction|Text|System.String|
+method|SharpTui.DialogAction|get_IsCancel|System.Boolean|generic:0|
+method|SharpTui.DialogAction|get_Text|System.String|generic:0|
+method|SharpTui.DialogAction|set_IsCancel|System.Void|generic:0|value:System.Boolean
+method|SharpTui.DialogAction|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Animation / SharpTui.Easing / 17 exported contract records</summary><pre>field|SharpTui.Easing|BackIn|SharpTui.Easing
+field|SharpTui.Easing|BackInOut|SharpTui.Easing
+field|SharpTui.Easing|BackOut|SharpTui.Easing
+field|SharpTui.Easing|BounceIn|SharpTui.Easing
+field|SharpTui.Easing|BounceInOut|SharpTui.Easing
+field|SharpTui.Easing|BounceOut|SharpTui.Easing
+field|SharpTui.Easing|CubicIn|SharpTui.Easing
+field|SharpTui.Easing|CubicInOut|SharpTui.Easing
+field|SharpTui.Easing|CubicOut|SharpTui.Easing
+field|SharpTui.Easing|ElasticIn|SharpTui.Easing
+field|SharpTui.Easing|ElasticInOut|SharpTui.Easing
+field|SharpTui.Easing|ElasticOut|SharpTui.Easing
+field|SharpTui.Easing|Linear|SharpTui.Easing
+field|SharpTui.Easing|SineIn|SharpTui.Easing
+field|SharpTui.Easing|SineInOut|SharpTui.Easing
+field|SharpTui.Easing|SineOut|SharpTui.Easing
+field|SharpTui.Easing|value__|System.Int32</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.EventResult / 4 exported contract records</summary><pre>field|SharpTui.EventResult|Continue|SharpTui.EventResult
+field|SharpTui.EventResult|Exit|SharpTui.EventResult
+field|SharpTui.EventResult|Handled|SharpTui.EventResult
+field|SharpTui.EventResult|value__|System.Int32</pre></details>
+<details class="contract"><summary>Media / SharpTui.GraphicsProtocol / 5 exported contract records</summary><pre>field|SharpTui.GraphicsProtocol|Auto|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|HalfBlock|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|Kitty|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|Sixel|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|value__|System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.HorizontalAlignment / 4 exported contract records</summary><pre>field|SharpTui.HorizontalAlignment|Center|SharpTui.HorizontalAlignment
+field|SharpTui.HorizontalAlignment|Left|SharpTui.HorizontalAlignment
+field|SharpTui.HorizontalAlignment|Right|SharpTui.HorizontalAlignment
+field|SharpTui.HorizontalAlignment|value__|System.Int32</pre></details>
+<details class="contract"><summary>Media / SharpTui.ImageFit / 4 exported contract records</summary><pre>field|SharpTui.ImageFit|Contain|SharpTui.ImageFit
+field|SharpTui.ImageFit|Cover|SharpTui.ImageFit
+field|SharpTui.ImageFit|Stretch|SharpTui.ImageFit
+field|SharpTui.ImageFit|value__|System.Int32</pre></details>
+<details class="contract"><summary>Media / SharpTui.ImageSource / 6 exported contract records</summary><pre>property|SharpTui.ImageSource|Size|SharpTui.PixelSize|
+method|SharpTui.ImageSource|Decode|SharpTui.ImageSource|generic:0|encoded:System.Byte[]
+method|SharpTui.ImageSource|FromRgba|SharpTui.ImageSource|generic:0|width:System.Int32,height:System.Int32,rgba:System.Byte[]
+method|SharpTui.ImageSource|Load|SharpTui.ImageSource|generic:0|path:System.String
+method|SharpTui.ImageSource|Update|System.Void|generic:0|rgba:System.Byte[]
+method|SharpTui.ImageSource|get_Size|SharpTui.PixelSize|generic:0|</pre></details>
+<details class="contract"><summary>Media / SharpTui.ImageView / 10 exported contract records</summary><pre>ctor|SharpTui.ImageView|
+property|SharpTui.ImageView|AltText|System.String|
+property|SharpTui.ImageView|Fit|SharpTui.ImageFit|
+property|SharpTui.ImageView|Source|SharpTui.ImageSource|
+method|SharpTui.ImageView|get_AltText|System.String|generic:0|
+method|SharpTui.ImageView|get_Fit|SharpTui.ImageFit|generic:0|
+method|SharpTui.ImageView|get_Source|SharpTui.ImageSource|generic:0|
+method|SharpTui.ImageView|set_AltText|System.Void|generic:0|value:System.String
+method|SharpTui.ImageView|set_Fit|System.Void|generic:0|value:SharpTui.ImageFit
+method|SharpTui.ImageView|set_Source|System.Void|generic:0|value:SharpTui.ImageSource</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.Key / 30 exported contract records</summary><pre>field|SharpTui.Key|BackTab|SharpTui.Key
+field|SharpTui.Key|Backspace|SharpTui.Key
+field|SharpTui.Key|Character|SharpTui.Key
+field|SharpTui.Key|Delete|SharpTui.Key
+field|SharpTui.Key|Down|SharpTui.Key
+field|SharpTui.Key|End|SharpTui.Key
+field|SharpTui.Key|Enter|SharpTui.Key
+field|SharpTui.Key|Escape|SharpTui.Key
+field|SharpTui.Key|F1|SharpTui.Key
+field|SharpTui.Key|F10|SharpTui.Key
+field|SharpTui.Key|F11|SharpTui.Key
+field|SharpTui.Key|F12|SharpTui.Key
+field|SharpTui.Key|F2|SharpTui.Key
+field|SharpTui.Key|F3|SharpTui.Key
+field|SharpTui.Key|F4|SharpTui.Key
+field|SharpTui.Key|F5|SharpTui.Key
+field|SharpTui.Key|F6|SharpTui.Key
+field|SharpTui.Key|F7|SharpTui.Key
+field|SharpTui.Key|F8|SharpTui.Key
+field|SharpTui.Key|F9|SharpTui.Key
+field|SharpTui.Key|Home|SharpTui.Key
+field|SharpTui.Key|Insert|SharpTui.Key
+field|SharpTui.Key|Left|SharpTui.Key
+field|SharpTui.Key|PageDown|SharpTui.Key
+field|SharpTui.Key|PageUp|SharpTui.Key
+field|SharpTui.Key|Right|SharpTui.Key
+field|SharpTui.Key|Tab|SharpTui.Key
+field|SharpTui.Key|Unknown|SharpTui.Key
+field|SharpTui.Key|Up|SharpTui.Key
+field|SharpTui.Key|value__|System.Int32</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.KeyGesture / 12 exported contract records</summary><pre>property|SharpTui.KeyGesture|Key|SharpTui.Key|
+property|SharpTui.KeyGesture|Modifiers|SharpTui.KeyModifiers|
+property|SharpTui.KeyGesture|Text|System.String|
+method|SharpTui.KeyGesture|Character|SharpTui.KeyGesture|generic:0|text:System.String
+method|SharpTui.KeyGesture|Ctrl|SharpTui.KeyGesture|generic:0|text:System.String
+method|SharpTui.KeyGesture|Matches|System.Boolean|generic:0|ev:SharpTui.UiEvent
+method|SharpTui.KeyGesture|get_Key|SharpTui.Key|generic:0|
+method|SharpTui.KeyGesture|get_Modifiers|SharpTui.KeyModifiers|generic:0|
+method|SharpTui.KeyGesture|get_Text|System.String|generic:0|
+method|SharpTui.KeyGesture|set_Key|System.Void|generic:0|value:SharpTui.Key
+method|SharpTui.KeyGesture|set_Modifiers|System.Void|generic:0|value:SharpTui.KeyModifiers
+method|SharpTui.KeyGesture|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.KeyModifiers / 10 exported contract records</summary><pre>field|SharpTui.KeyModifiers|Alt|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|CapsLock|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|Ctrl|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|Hyper|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|Meta|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|None|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|NumLock|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|Shift|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|Super|SharpTui.KeyModifiers
+field|SharpTui.KeyModifiers|value__|System.Int32</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.KeyPhase / 4 exported contract records</summary><pre>field|SharpTui.KeyPhase|Press|SharpTui.KeyPhase
+field|SharpTui.KeyPhase|Release|SharpTui.KeyPhase
+field|SharpTui.KeyPhase|Repeat|SharpTui.KeyPhase
+field|SharpTui.KeyPhase|value__|System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.KeyedSource`2 / 3 exported contract records</summary><pre>method|SharpTui.KeyedSource`2|Count|System.Int32|generic:0|
+method|SharpTui.KeyedSource`2|IndexOfKey|System.Int32|generic:0|key:TKey
+method|SharpTui.KeyedSource`2|ItemAt|T|generic:0|index:System.Int32</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.Keymap / 6 exported contract records</summary><pre>ctor|SharpTui.Keymap|
+property|SharpTui.Keymap|Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+method|SharpTui.Keymap|Add|SharpTui.Bind|generic:0|gesture:SharpTui.KeyGesture,phase:SharpTui.BindingPhase,handler:System.Action
+method|SharpTui.Keymap|Add|SharpTui.Bind|generic:0|id:System.String,label:System.String,gesture:SharpTui.KeyGesture,phase:SharpTui.BindingPhase,handler:System.Action
+method|SharpTui.Keymap|Offer|System.Boolean|generic:0|ev:SharpTui.UiEvent,phase:SharpTui.BindingPhase
+method|SharpTui.Keymap|get_Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.Label / 7 exported contract records</summary><pre>ctor|SharpTui.Label|
+property|SharpTui.Label|Alignment|SharpTui.HorizontalAlignment|
+property|SharpTui.Label|Text|System.String|
+method|SharpTui.Label|get_Alignment|SharpTui.HorizontalAlignment|generic:0|
+method|SharpTui.Label|get_Text|System.String|generic:0|
+method|SharpTui.Label|set_Alignment|System.Void|generic:0|value:SharpTui.HorizontalAlignment
+method|SharpTui.Label|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.ListItem / 16 exported contract records</summary><pre>ctor|SharpTui.ListItem|
+property|SharpTui.ListItem|Id|System.String|
+property|SharpTui.ListItem|IsSelectable|System.Boolean|
+property|SharpTui.ListItem|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListItem|Style|SharpTui.Style|
+property|SharpTui.ListItem|Text|System.String|
+method|SharpTui.ListItem|get_Id|System.String|generic:0|
+method|SharpTui.ListItem|get_IsSelectable|System.Boolean|generic:0|
+method|SharpTui.ListItem|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListItem|get_Style|SharpTui.Style|generic:0|
+method|SharpTui.ListItem|get_Text|System.String|generic:0|
+method|SharpTui.ListItem|set_Id|System.Void|generic:0|value:System.String
+method|SharpTui.ListItem|set_IsSelectable|System.Void|generic:0|value:System.Boolean
+method|SharpTui.ListItem|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListItem|set_Style|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.ListItem|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.ListView / 31 exported contract records</summary><pre>ctor|SharpTui.ListView|
+property|SharpTui.ListView|FirstVisibleItemIndex|System.Int32|
+property|SharpTui.ListView|FollowTail|System.Boolean|
+property|SharpTui.ListView|Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|SelectedId|System.String|
+property|SharpTui.ListView|SelectedIndex|System.Int32|
+property|SharpTui.ListView|SelectedItem|SharpTui.ListItem|
+property|SharpTui.ListView|SelectedStyle|SharpTui.Style|
+property|SharpTui.ListView|SelectionMarker|System.String|
+property|SharpTui.ListView|Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+method|SharpTui.ListView|Add|SharpTui.ListItem|generic:0|text:System.String
+method|SharpTui.ListView|Refresh|System.Void|generic:0|
+method|SharpTui.ListView|get_FirstVisibleItemIndex|System.Int32|generic:0|
+method|SharpTui.ListView|get_FollowTail|System.Boolean|generic:0|
+method|SharpTui.ListView|get_Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_SelectedId|System.String|generic:0|
+method|SharpTui.ListView|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.ListView|get_SelectedItem|SharpTui.ListItem|generic:0|
+method|SharpTui.ListView|get_SelectedStyle|SharpTui.Style|generic:0|
+method|SharpTui.ListView|get_SelectionMarker|System.String|generic:0|
+method|SharpTui.ListView|get_Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.ListView|set_FirstVisibleItemIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.ListView|set_FollowTail|System.Void|generic:0|value:System.Boolean
+method|SharpTui.ListView|set_Items|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|set_SelectedIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.ListView|set_SelectedStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.ListView|set_SelectionMarker|System.Void|generic:0|value:System.String
+method|SharpTui.ListView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.MarkdownTheme / 19 exported contract records</summary><pre>ctor|SharpTui.MarkdownTheme|
+property|SharpTui.MarkdownTheme|Body|SharpTui.Style|
+property|SharpTui.MarkdownTheme|Code|SharpTui.Style|
+property|SharpTui.MarkdownTheme|Heading|SharpTui.Style|
+property|SharpTui.MarkdownTheme|Link|SharpTui.Style|
+property|SharpTui.MarkdownTheme|Marker|SharpTui.Style|
+property|SharpTui.MarkdownTheme|Quote|SharpTui.Style|
+method|SharpTui.MarkdownTheme|get_Body|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|get_Code|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|get_Heading|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|get_Link|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|get_Marker|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|get_Quote|SharpTui.Style|generic:0|
+method|SharpTui.MarkdownTheme|set_Body|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.MarkdownTheme|set_Code|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.MarkdownTheme|set_Heading|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.MarkdownTheme|set_Link|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.MarkdownTheme|set_Marker|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.MarkdownTheme|set_Quote|System.Void|generic:0|value:SharpTui.Style</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.MarkdownView / 14 exported contract records</summary><pre>ctor|SharpTui.MarkdownView|
+property|SharpTui.MarkdownView|FirstVisibleLine|System.Int32|
+property|SharpTui.MarkdownView|MaximumLineWidth|SharpTui.CellLength|
+property|SharpTui.MarkdownView|Source|System.String|
+property|SharpTui.MarkdownView|Theme|SharpTui.MarkdownTheme|
+method|SharpTui.MarkdownView|LineCount|System.Int32|generic:0|
+method|SharpTui.MarkdownView|ScrollToLine|System.Void|generic:0|line:System.Int32
+method|SharpTui.MarkdownView|get_FirstVisibleLine|System.Int32|generic:0|
+method|SharpTui.MarkdownView|get_MaximumLineWidth|SharpTui.CellLength|generic:0|
+method|SharpTui.MarkdownView|get_Source|System.String|generic:0|
+method|SharpTui.MarkdownView|get_Theme|SharpTui.MarkdownTheme|generic:0|
+method|SharpTui.MarkdownView|set_MaximumLineWidth|System.Void|generic:0|value:SharpTui.CellLength
+method|SharpTui.MarkdownView|set_Source|System.Void|generic:0|value:System.String
+method|SharpTui.MarkdownView|set_Theme|System.Void|generic:0|value:SharpTui.MarkdownTheme</pre></details>
+<details class="contract"><summary>Media / SharpTui.MediaPlayer / 15 exported contract records</summary><pre>ctor|SharpTui.MediaPlayer|path:System.String
+ctor|SharpTui.MediaPlayer|path:System.String,maxSize:SharpTui.PixelSize
+property|SharpTui.MediaPlayer|Duration|System.TimeSpan|
+property|SharpTui.MediaPlayer|IsPlaying|System.Boolean|
+property|SharpTui.MediaPlayer|Position|System.TimeSpan|
+property|SharpTui.MediaPlayer|Source|SharpTui.ImageSource|
+method|SharpTui.MediaPlayer|Advance|System.Boolean|generic:0|
+method|SharpTui.MediaPlayer|Dispose|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Pause|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Resume|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Seek|System.Void|generic:0|position:System.TimeSpan
+method|SharpTui.MediaPlayer|get_Duration|System.TimeSpan|generic:0|
+method|SharpTui.MediaPlayer|get_IsPlaying|System.Boolean|generic:0|
+method|SharpTui.MediaPlayer|get_Position|System.TimeSpan|generic:0|
+method|SharpTui.MediaPlayer|get_Source|SharpTui.ImageSource|generic:0|</pre></details>
+<details class="contract"><summary>Media / SharpTui.MediaView / 7 exported contract records</summary><pre>ctor|SharpTui.MediaView|
+property|SharpTui.MediaView|Fit|SharpTui.ImageFit|
+property|SharpTui.MediaView|Player|SharpTui.MediaPlayer|
+method|SharpTui.MediaView|get_Fit|SharpTui.ImageFit|generic:0|
+method|SharpTui.MediaView|get_Player|SharpTui.MediaPlayer|generic:0|
+method|SharpTui.MediaView|set_Fit|System.Void|generic:0|value:SharpTui.ImageFit
+method|SharpTui.MediaView|set_Player|System.Void|generic:0|value:SharpTui.MediaPlayer</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.MemoryClipboard / 5 exported contract records</summary><pre>ctor|SharpTui.MemoryClipboard|
+property|SharpTui.MemoryClipboard|Shared|SharpTui.MemoryClipboard|
+method|SharpTui.MemoryClipboard|GetText|System.String|generic:0|
+method|SharpTui.MemoryClipboard|SetText|System.Void|generic:0|value:System.String
+method|SharpTui.MemoryClipboard|get_Shared|SharpTui.MemoryClipboard|generic:0|</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.MouseButton / 5 exported contract records</summary><pre>field|SharpTui.MouseButton|Left|SharpTui.MouseButton
+field|SharpTui.MouseButton|Middle|SharpTui.MouseButton
+field|SharpTui.MouseButton|None|SharpTui.MouseButton
+field|SharpTui.MouseButton|Right|SharpTui.MouseButton
+field|SharpTui.MouseButton|value__|System.Int32</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.MouseKind / 7 exported contract records</summary><pre>field|SharpTui.MouseKind|Move|SharpTui.MouseKind
+field|SharpTui.MouseKind|None|SharpTui.MouseKind
+field|SharpTui.MouseKind|Press|SharpTui.MouseKind
+field|SharpTui.MouseKind|Release|SharpTui.MouseKind
+field|SharpTui.MouseKind|ScrollDown|SharpTui.MouseKind
+field|SharpTui.MouseKind|ScrollUp|SharpTui.MouseKind
+field|SharpTui.MouseKind|value__|System.Int32</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.MouseTracking / 5 exported contract records</summary><pre>field|SharpTui.MouseTracking|AllMotion|SharpTui.MouseTracking
+field|SharpTui.MouseTracking|Click|SharpTui.MouseTracking
+field|SharpTui.MouseTracking|Disabled|SharpTui.MouseTracking
+field|SharpTui.MouseTracking|Drag|SharpTui.MouseTracking
+field|SharpTui.MouseTracking|value__|System.Int32</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.NumericRange / 9 exported contract records</summary><pre>property|SharpTui.NumericRange|Auto|SharpTui.NumericRange|
+property|SharpTui.NumericRange|IsAuto|System.Boolean|
+property|SharpTui.NumericRange|Maximum|System.Double|
+property|SharpTui.NumericRange|Minimum|System.Double|
+method|SharpTui.NumericRange|Fixed|SharpTui.NumericRange|generic:0|minimum:System.Double,maximum:System.Double
+method|SharpTui.NumericRange|get_Auto|SharpTui.NumericRange|generic:0|
+method|SharpTui.NumericRange|get_IsAuto|System.Boolean|generic:0|
+method|SharpTui.NumericRange|get_Maximum|System.Double|generic:0|
+method|SharpTui.NumericRange|get_Minimum|System.Double|generic:0|</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Overlay / 13 exported contract records</summary><pre>ctor|SharpTui.Overlay|
+property|SharpTui.Overlay|CancelAction|SharpTui.Box|
+property|SharpTui.Overlay|Content|SharpTui.Box|
+property|SharpTui.Overlay|DefaultAction|SharpTui.Box|
+property|SharpTui.Overlay|DimBackground|System.Boolean|
+method|SharpTui.Overlay|get_CancelAction|SharpTui.Box|generic:0|
+method|SharpTui.Overlay|get_Content|SharpTui.Box|generic:0|
+method|SharpTui.Overlay|get_DefaultAction|SharpTui.Box|generic:0|
+method|SharpTui.Overlay|get_DimBackground|System.Boolean|generic:0|
+method|SharpTui.Overlay|set_CancelAction|System.Void|generic:0|value:SharpTui.Box
+method|SharpTui.Overlay|set_Content|System.Void|generic:0|value:SharpTui.Box
+method|SharpTui.Overlay|set_DefaultAction|System.Void|generic:0|value:SharpTui.Box
+method|SharpTui.Overlay|set_DimBackground|System.Void|generic:0|value:System.Boolean</pre></details>
+<details class="contract"><summary>Media / SharpTui.PixelSize / 6 exported contract records</summary><pre>property|SharpTui.PixelSize|Height|System.Int32|
+property|SharpTui.PixelSize|Width|System.Int32|
+method|SharpTui.PixelSize|get_Height|System.Int32|generic:0|
+method|SharpTui.PixelSize|get_Width|System.Int32|generic:0|
+method|SharpTui.PixelSize|set_Height|System.Void|generic:0|value:System.Int32
+method|SharpTui.PixelSize|set_Width|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.Placement / 11 exported contract records</summary><pre>property|SharpTui.Placement|Centered|SharpTui.Placement|
+property|SharpTui.Placement|InFlow|SharpTui.Placement|
+property|SharpTui.Placement|IsCentered|System.Boolean|
+property|SharpTui.Placement|IsInFlow|System.Boolean|
+property|SharpTui.Placement|Point|SharpTui.CellPoint|
+method|SharpTui.Placement|At|SharpTui.Placement|generic:0|point:SharpTui.CellPoint
+method|SharpTui.Placement|get_Centered|SharpTui.Placement|generic:0|
+method|SharpTui.Placement|get_InFlow|SharpTui.Placement|generic:0|
+method|SharpTui.Placement|get_IsCentered|System.Boolean|generic:0|
+method|SharpTui.Placement|get_IsInFlow|System.Boolean|generic:0|
+method|SharpTui.Placement|get_Point|SharpTui.CellPoint|generic:0|</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.ProgressBar / 19 exported contract records</summary><pre>ctor|SharpTui.ProgressBar|
+property|SharpTui.ProgressBar|EmptyGlyph|System.String|
+property|SharpTui.ProgressBar|FillStyle|SharpTui.Style|
+property|SharpTui.ProgressBar|FilledGlyph|System.String|
+property|SharpTui.ProgressBar|Maximum|System.Double|
+property|SharpTui.ProgressBar|OverlayText|System.String|
+property|SharpTui.ProgressBar|Value|System.Double|
+method|SharpTui.ProgressBar|get_EmptyGlyph|System.String|generic:0|
+method|SharpTui.ProgressBar|get_FillStyle|SharpTui.Style|generic:0|
+method|SharpTui.ProgressBar|get_FilledGlyph|System.String|generic:0|
+method|SharpTui.ProgressBar|get_Maximum|System.Double|generic:0|
+method|SharpTui.ProgressBar|get_OverlayText|System.String|generic:0|
+method|SharpTui.ProgressBar|get_Value|System.Double|generic:0|
+method|SharpTui.ProgressBar|set_EmptyGlyph|System.Void|generic:0|value:System.String
+method|SharpTui.ProgressBar|set_FillStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.ProgressBar|set_FilledGlyph|System.Void|generic:0|value:System.String
+method|SharpTui.ProgressBar|set_Maximum|System.Void|generic:0|value:System.Double
+method|SharpTui.ProgressBar|set_OverlayText|System.Void|generic:0|value:System.String
+method|SharpTui.ProgressBar|set_Value|System.Void|generic:0|value:System.Double</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.RadioGroup / 9 exported contract records</summary><pre>ctor|SharpTui.RadioGroup|
+property|SharpTui.RadioGroup|OnChange|System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RadioGroup|SelectedToggle|SharpTui.Toggle|
+method|SharpTui.RadioGroup|Add|System.Void|generic:0|toggle:SharpTui.Toggle
+method|SharpTui.RadioGroup|ClearSelection|System.Void|generic:0|
+method|SharpTui.RadioGroup|Select|System.Void|generic:0|toggle:SharpTui.Toggle
+method|SharpTui.RadioGroup|get_OnChange|System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RadioGroup|get_SelectedToggle|SharpTui.Toggle|generic:0|
+method|SharpTui.RadioGroup|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.RichLineSource / 3 exported contract records</summary><pre>method|SharpTui.RichLineSource|Count|System.Int32|generic:0|
+method|SharpTui.RichLineSource|ItemAt|SharpTui.RichTextLine|generic:0|index:System.Int32
+method|SharpTui.RichLineSource|MaximumLineWidth|System.Int32|generic:0|</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.RichTextBlock / 29 exported contract records</summary><pre>ctor|SharpTui.RichTextBlock|
+property|SharpTui.RichTextBlock|FirstVisibleLine|System.Int32|
+property|SharpTui.RichTextBlock|GutterStyle|SharpTui.Style|
+property|SharpTui.RichTextBlock|HorizontalCellOffset|System.Int32|
+property|SharpTui.RichTextBlock|LineSource|SharpTui.RichLineSource|
+property|SharpTui.RichTextBlock|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RichTextBlock|ShowLineNumbers|System.Boolean|
+property|SharpTui.RichTextBlock|Wrapping|SharpTui.TextWrapping|
+method|SharpTui.RichTextBlock|AppendRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|ClearRuns|System.Void|generic:0|
+method|SharpTui.RichTextBlock|LineCount|System.Int32|generic:0|
+method|SharpTui.RichTextBlock|PrependRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|RemoveHeadRuns|System.Void|generic:0|count:System.Int32
+method|SharpTui.RichTextBlock|RemoveTailRuns|System.Void|generic:0|count:System.Int32
+method|SharpTui.RichTextBlock|ScrollToEnd|System.Void|generic:0|
+method|SharpTui.RichTextBlock|ScrollToLine|System.Void|generic:0|line:System.Int32
+method|SharpTui.RichTextBlock|get_FirstVisibleLine|System.Int32|generic:0|
+method|SharpTui.RichTextBlock|get_GutterStyle|SharpTui.Style|generic:0|
+method|SharpTui.RichTextBlock|get_HorizontalCellOffset|System.Int32|generic:0|
+method|SharpTui.RichTextBlock|get_LineSource|SharpTui.RichLineSource|generic:0|
+method|SharpTui.RichTextBlock|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RichTextBlock|get_ShowLineNumbers|System.Boolean|generic:0|
+method|SharpTui.RichTextBlock|get_Wrapping|SharpTui.TextWrapping|generic:0|
+method|SharpTui.RichTextBlock|set_GutterStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.RichTextBlock|set_HorizontalCellOffset|System.Void|generic:0|value:System.Int32
+method|SharpTui.RichTextBlock|set_LineSource|System.Void|generic:0|value:SharpTui.RichLineSource
+method|SharpTui.RichTextBlock|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|set_ShowLineNumbers|System.Void|generic:0|value:System.Boolean
+method|SharpTui.RichTextBlock|set_Wrapping|System.Void|generic:0|value:SharpTui.TextWrapping</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.RichTextLine / 5 exported contract records</summary><pre>ctor|SharpTui.RichTextLine|runs:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+property|SharpTui.RichTextLine|Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RichTextLine|WidthCells|System.Int32|
+method|SharpTui.RichTextLine|get_Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RichTextLine|get_WidthCells|System.Int32|generic:0|</pre></details>
+<details class="contract"><summary>Layout / SharpTui.Row / 1 exported contract records</summary><pre>ctor|SharpTui.Row|</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.Screen / 32 exported contract records</summary><pre>ctor|SharpTui.Screen|width:System.Int32,height:System.Int32
+property|SharpTui.Screen|CellPixels|SharpTui.PixelSize|
+property|SharpTui.Screen|ColorMode|SharpTui.TerminalColorMode|
+property|SharpTui.Screen|DefaultStyle|SharpTui.Style|
+property|SharpTui.Screen|Graphics|SharpTui.GraphicsProtocol|
+property|SharpTui.Screen|HyperlinksEnabled|System.Boolean|
+property|SharpTui.Screen|Size|SharpTui.CellSize|
+method|SharpTui.Screen|Clear|System.Void|generic:0|
+method|SharpTui.Screen|Clear|System.Void|generic:0|s:SharpTui.Style
+method|SharpTui.Screen|DrawBorder|System.Void|generic:0|r:SharpTui.CellRect,s:SharpTui.Style
+method|SharpTui.Screen|DrawImage|System.Void|generic:0|source:SharpTui.ImageSource,bounds:SharpTui.CellRect
+method|SharpTui.Screen|DrawImage|System.Void|generic:0|source:SharpTui.ImageSource,bounds:SharpTui.CellRect,clip:SharpTui.CellRect,fit:SharpTui.ImageFit
+method|SharpTui.Screen|Fill|System.Void|generic:0|r:SharpTui.CellRect,s:SharpTui.Style
+method|SharpTui.Screen|WriteCell|System.Void|generic:0|x:System.Int32,y:System.Int32,text:System.String
+method|SharpTui.Screen|WriteCell|System.Void|generic:0|x:System.Int32,y:System.Int32,text:System.String,s:SharpTui.Style
+method|SharpTui.Screen|WriteClipped|System.Void|generic:0|r:SharpTui.CellRect,dx:System.Int32,dy:System.Int32,run:SharpTui.TextRun
+method|SharpTui.Screen|WriteClipped|System.Void|generic:0|r:SharpTui.CellRect,dx:System.Int32,dy:System.Int32,text:System.String
+method|SharpTui.Screen|WriteClipped|System.Void|generic:0|r:SharpTui.CellRect,dx:System.Int32,dy:System.Int32,text:System.String,s:SharpTui.Style
+method|SharpTui.Screen|Write|System.Int32|generic:0|x:System.Int32,y:System.Int32,run:SharpTui.TextRun
+method|SharpTui.Screen|Write|System.Int32|generic:0|x:System.Int32,y:System.Int32,text:System.String
+method|SharpTui.Screen|Write|System.Int32|generic:0|x:System.Int32,y:System.Int32,text:System.String,s:SharpTui.Style
+method|SharpTui.Screen|get_CellPixels|SharpTui.PixelSize|generic:0|
+method|SharpTui.Screen|get_ColorMode|SharpTui.TerminalColorMode|generic:0|
+method|SharpTui.Screen|get_DefaultStyle|SharpTui.Style|generic:0|
+method|SharpTui.Screen|get_Graphics|SharpTui.GraphicsProtocol|generic:0|
+method|SharpTui.Screen|get_HyperlinksEnabled|System.Boolean|generic:0|
+method|SharpTui.Screen|get_Size|SharpTui.CellSize|generic:0|
+method|SharpTui.Screen|set_CellPixels|System.Void|generic:0|value:SharpTui.PixelSize
+method|SharpTui.Screen|set_ColorMode|System.Void|generic:0|value:SharpTui.TerminalColorMode
+method|SharpTui.Screen|set_DefaultStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.Screen|set_Graphics|System.Void|generic:0|value:SharpTui.GraphicsProtocol
+method|SharpTui.Screen|set_HyperlinksEnabled|System.Void|generic:0|value:System.Boolean</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.SearchDirection / 3 exported contract records</summary><pre>field|SharpTui.SearchDirection|Backward|SharpTui.SearchDirection
+field|SharpTui.SearchDirection|Forward|SharpTui.SearchDirection
+field|SharpTui.SearchDirection|value__|System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.Select / 19 exported contract records</summary><pre>ctor|SharpTui.Select|
+property|SharpTui.Select|IsOpen|System.Boolean|
+property|SharpTui.Select|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Select|Options|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.Select|Placeholder|System.String|
+property|SharpTui.Select|SelectedIndex|System.Int32|
+property|SharpTui.Select|SelectedStyle|SharpTui.Style|
+method|SharpTui.Select|Refresh|System.Void|generic:0|
+method|SharpTui.Select|get_IsOpen|System.Boolean|generic:0|
+method|SharpTui.Select|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Select|get_Options|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Select|get_Placeholder|System.String|generic:0|
+method|SharpTui.Select|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.Select|get_SelectedStyle|SharpTui.Style|generic:0|
+method|SharpTui.Select|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Select|set_Options|System.Void|generic:0|value:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Select|set_Placeholder|System.Void|generic:0|value:System.String
+method|SharpTui.Select|set_SelectedIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.Select|set_SelectedStyle|System.Void|generic:0|value:SharpTui.Style</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.SelectionChange / 7 exported contract records</summary><pre>ctor|SharpTui.SelectionChange|previousIndex:System.Int32,selectedIndex:System.Int32
+property|SharpTui.SelectionChange|PreviousIndex|System.Int32|
+property|SharpTui.SelectionChange|SelectedIndex|System.Int32|
+method|SharpTui.SelectionChange|get_PreviousIndex|System.Int32|generic:0|
+method|SharpTui.SelectionChange|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.SelectionChange|set_PreviousIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.SelectionChange|set_SelectedIndex|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Separator / 7 exported contract records</summary><pre>ctor|SharpTui.Separator|
+property|SharpTui.Separator|Glyph|System.String|
+property|SharpTui.Separator|Orientation|SharpTui.SeparatorOrientation|
+method|SharpTui.Separator|get_Glyph|System.String|generic:0|
+method|SharpTui.Separator|get_Orientation|SharpTui.SeparatorOrientation|generic:0|
+method|SharpTui.Separator|set_Glyph|System.Void|generic:0|value:System.String
+method|SharpTui.Separator|set_Orientation|System.Void|generic:0|value:SharpTui.SeparatorOrientation</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.SeparatorOrientation / 3 exported contract records</summary><pre>field|SharpTui.SeparatorOrientation|Horizontal|SharpTui.SeparatorOrientation
+field|SharpTui.SeparatorOrientation|Vertical|SharpTui.SeparatorOrientation
+field|SharpTui.SeparatorOrientation|value__|System.Int32</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Sparkline / 7 exported contract records</summary><pre>ctor|SharpTui.Sparkline|
+property|SharpTui.Sparkline|ValueRange|SharpTui.NumericRange|
+property|SharpTui.Sparkline|Values|System.Collections.Generic.List`1[[System.Double, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+method|SharpTui.Sparkline|get_ValueRange|SharpTui.NumericRange|generic:0|
+method|SharpTui.Sparkline|get_Values|System.Collections.Generic.List`1[[System.Double, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Sparkline|set_ValueRange|System.Void|generic:0|value:SharpTui.NumericRange
+method|SharpTui.Sparkline|set_Values|System.Void|generic:0|value:System.Collections.Generic.List`1[[System.Double, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Spinner / 10 exported contract records</summary><pre>ctor|SharpTui.Spinner|
+property|SharpTui.Spinner|FrameIndex|System.Int32|
+property|SharpTui.Spinner|Frames|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.Spinner|Text|System.String|
+method|SharpTui.Spinner|Advance|System.Void|generic:0|
+method|SharpTui.Spinner|get_FrameIndex|System.Int32|generic:0|
+method|SharpTui.Spinner|get_Frames|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Spinner|get_Text|System.String|generic:0|
+method|SharpTui.Spinner|set_Frames|System.Void|generic:0|value:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Spinner|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Splitter / 8 exported contract records</summary><pre>ctor|SharpTui.Splitter|target:SharpTui.Box,axis:SharpTui.SplitterAxis
+property|SharpTui.Splitter|MaximumCells|System.Int32|
+property|SharpTui.Splitter|MinimumCells|System.Int32|
+method|SharpTui.Splitter|ResizeBy|System.Boolean|generic:0|delta:System.Int32
+method|SharpTui.Splitter|get_MaximumCells|System.Int32|generic:0|
+method|SharpTui.Splitter|get_MinimumCells|System.Int32|generic:0|
+method|SharpTui.Splitter|set_MaximumCells|System.Void|generic:0|value:System.Int32
+method|SharpTui.Splitter|set_MinimumCells|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.SplitterAxis / 3 exported contract records</summary><pre>field|SharpTui.SplitterAxis|Columns|SharpTui.SplitterAxis
+field|SharpTui.SplitterAxis|Rows|SharpTui.SplitterAxis
+field|SharpTui.SplitterAxis|value__|System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.StatusBar / 19 exported contract records</summary><pre>ctor|SharpTui.StatusBar|
+property|SharpTui.StatusBar|CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|CenterText|System.String|
+property|SharpTui.StatusBar|LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|LeftText|System.String|
+property|SharpTui.StatusBar|RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|RightText|System.String|
+method|SharpTui.StatusBar|get_CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_CenterText|System.String|generic:0|
+method|SharpTui.StatusBar|get_LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_LeftText|System.String|generic:0|
+method|SharpTui.StatusBar|get_RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_RightText|System.String|generic:0|
+method|SharpTui.StatusBar|set_CenterRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_CenterText|System.Void|generic:0|value:System.String
+method|SharpTui.StatusBar|set_LeftRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_LeftText|System.Void|generic:0|value:System.String
+method|SharpTui.StatusBar|set_RightRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_RightText|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.Style / 14 exported contract records</summary><pre>ctor|SharpTui.Style|
+property|SharpTui.Style|Attributes|SharpTui.TextAttributes|
+property|SharpTui.Style|Background|SharpTui.Color|
+property|SharpTui.Style|Foreground|SharpTui.Color|
+method|SharpTui.Style|Inverted|SharpTui.Style|generic:0|
+method|SharpTui.Style|WithAttributes|SharpTui.Style|generic:0|bits:SharpTui.TextAttributes
+method|SharpTui.Style|WithBackground|SharpTui.Style|generic:0|color:SharpTui.Color
+method|SharpTui.Style|WithForeground|SharpTui.Style|generic:0|color:SharpTui.Color
+method|SharpTui.Style|get_Attributes|SharpTui.TextAttributes|generic:0|
+method|SharpTui.Style|get_Background|SharpTui.Color|generic:0|
+method|SharpTui.Style|get_Foreground|SharpTui.Color|generic:0|
+method|SharpTui.Style|set_Attributes|System.Void|generic:0|value:SharpTui.TextAttributes
+method|SharpTui.Style|set_Background|System.Void|generic:0|value:SharpTui.Color
+method|SharpTui.Style|set_Foreground|System.Void|generic:0|value:SharpTui.Color</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.SyntaxHighlighter / 4 exported contract records</summary><pre>ctor|SharpTui.SyntaxHighlighter|
+method|SharpTui.SyntaxHighlighter|CreateLineSource|SharpTui.RichLineSource|generic:0|lines:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],language:System.String,baseStyle:SharpTui.Style
+method|SharpTui.SyntaxHighlighter|HighlightLines|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|lines:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],language:System.String,baseStyle:SharpTui.Style
+method|SharpTui.SyntaxHighlighter|Supports|System.Boolean|generic:0|language:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TableCell / 11 exported contract records</summary><pre>ctor|SharpTui.TableCell|
+ctor|SharpTui.TableCell|text:System.String
+property|SharpTui.TableCell|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableCell|Style|SharpTui.Style|
+property|SharpTui.TableCell|Text|System.String|
+method|SharpTui.TableCell|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableCell|get_Style|SharpTui.Style|generic:0|
+method|SharpTui.TableCell|get_Text|System.String|generic:0|
+method|SharpTui.TableCell|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableCell|set_Style|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TableCell|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TableColumn / 13 exported contract records</summary><pre>ctor|SharpTui.TableColumn|
+property|SharpTui.TableColumn|Alignment|SharpTui.HorizontalAlignment|
+property|SharpTui.TableColumn|ColumnWidth|SharpTui.ColumnWidth|
+property|SharpTui.TableColumn|Header|System.String|
+property|SharpTui.TableColumn|HeaderAlignment|SharpTui.HorizontalAlignment|
+method|SharpTui.TableColumn|get_Alignment|SharpTui.HorizontalAlignment|generic:0|
+method|SharpTui.TableColumn|get_ColumnWidth|SharpTui.ColumnWidth|generic:0|
+method|SharpTui.TableColumn|get_HeaderAlignment|SharpTui.HorizontalAlignment|generic:0|
+method|SharpTui.TableColumn|get_Header|System.String|generic:0|
+method|SharpTui.TableColumn|set_Alignment|System.Void|generic:0|value:SharpTui.HorizontalAlignment
+method|SharpTui.TableColumn|set_ColumnWidth|System.Void|generic:0|value:SharpTui.ColumnWidth
+method|SharpTui.TableColumn|set_HeaderAlignment|System.Void|generic:0|value:SharpTui.HorizontalAlignment
+method|SharpTui.TableColumn|set_Header|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TableRow / 13 exported contract records</summary><pre>ctor|SharpTui.TableRow|
+property|SharpTui.TableRow|Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableRow|Id|System.String|
+property|SharpTui.TableRow|IsSelectable|System.Boolean|
+property|SharpTui.TableRow|Style|SharpTui.Style|
+method|SharpTui.TableRow|get_Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableRow|get_Id|System.String|generic:0|
+method|SharpTui.TableRow|get_IsSelectable|System.Boolean|generic:0|
+method|SharpTui.TableRow|get_Style|SharpTui.Style|generic:0|
+method|SharpTui.TableRow|set_Cells|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableRow|set_Id|System.Void|generic:0|value:System.String
+method|SharpTui.TableRow|set_IsSelectable|System.Void|generic:0|value:System.Boolean
+method|SharpTui.TableRow|set_Style|System.Void|generic:0|value:SharpTui.Style</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TableView / 40 exported contract records</summary><pre>ctor|SharpTui.TableView|
+property|SharpTui.TableView|ColumnGap|System.Int32|
+property|SharpTui.TableView|ColumnSeparator|System.String|
+property|SharpTui.TableView|ColumnSeparatorStyle|SharpTui.Style|
+property|SharpTui.TableView|Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|FirstVisibleColumnIndex|System.Int32|
+property|SharpTui.TableView|FirstVisibleRowIndex|System.Int32|
+property|SharpTui.TableView|HeaderStyle|SharpTui.Style|
+property|SharpTui.TableView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|SelectedRowId|System.String|
+property|SharpTui.TableView|SelectedRowIndex|System.Int32|
+property|SharpTui.TableView|SelectedRowStyle|SharpTui.Style|
+property|SharpTui.TableView|Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+method|SharpTui.TableView|Refresh|System.Void|generic:0|
+method|SharpTui.TableView|get_ColumnGap|System.Int32|generic:0|
+method|SharpTui.TableView|get_ColumnSeparatorStyle|SharpTui.Style|generic:0|
+method|SharpTui.TableView|get_ColumnSeparator|System.String|generic:0|
+method|SharpTui.TableView|get_Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_FirstVisibleColumnIndex|System.Int32|generic:0|
+method|SharpTui.TableView|get_FirstVisibleRowIndex|System.Int32|generic:0|
+method|SharpTui.TableView|get_HeaderStyle|SharpTui.Style|generic:0|
+method|SharpTui.TableView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_SelectedRowId|System.String|generic:0|
+method|SharpTui.TableView|get_SelectedRowIndex|System.Int32|generic:0|
+method|SharpTui.TableView|get_SelectedRowStyle|SharpTui.Style|generic:0|
+method|SharpTui.TableView|get_Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TableView|set_ColumnGap|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_ColumnSeparatorStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TableView|set_ColumnSeparator|System.Void|generic:0|value:System.String
+method|SharpTui.TableView|set_Columns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_FirstVisibleColumnIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_FirstVisibleRowIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_HeaderStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TableView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_Rows|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_SelectedRowIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_SelectedRowStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TableView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.Tabs / 14 exported contract records</summary><pre>ctor|SharpTui.Tabs|
+property|SharpTui.Tabs|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Tabs|SelectedIndex|System.Int32|
+property|SharpTui.Tabs|SelectedStyle|SharpTui.Style|
+property|SharpTui.Tabs|Titles|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+method|SharpTui.Tabs|Refresh|System.Void|generic:0|
+method|SharpTui.Tabs|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Tabs|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.Tabs|get_SelectedStyle|SharpTui.Style|generic:0|
+method|SharpTui.Tabs|get_Titles|System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Tabs|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Tabs|set_SelectedIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.Tabs|set_SelectedStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.Tabs|set_Titles|System.Void|generic:0|value:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.TerminalColorMode / 5 exported contract records</summary><pre>field|SharpTui.TerminalColorMode|Auto|SharpTui.TerminalColorMode
+field|SharpTui.TerminalColorMode|Palette16|SharpTui.TerminalColorMode
+field|SharpTui.TerminalColorMode|Palette256|SharpTui.TerminalColorMode
+field|SharpTui.TerminalColorMode|TrueColor|SharpTui.TerminalColorMode
+field|SharpTui.TerminalColorMode|value__|System.Int32</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.TestDriver / 15 exported contract records</summary><pre>ctor|SharpTui.TestDriver|root:SharpTui.Box,width:System.Int32,height:System.Int32
+property|SharpTui.TestDriver|App|SharpTui.App|
+property|SharpTui.TestDriver|FocusedElement|SharpTui.Box|
+property|SharpTui.TestDriver|NowMilliseconds|System.Int64|
+property|SharpTui.TestDriver|Screen|SharpTui.Screen|
+method|SharpTui.TestDriver|Advance|System.Void|generic:0|elapsed:System.TimeSpan
+method|SharpTui.TestDriver|Draw|System.String|generic:0|
+method|SharpTui.TestDriver|FrameText|System.String|generic:0|
+method|SharpTui.TestDriver|Pump|System.Void|generic:0|
+method|SharpTui.TestDriver|Resize|System.Void|generic:0|width:System.Int32,height:System.Int32
+method|SharpTui.TestDriver|Send|SharpTui.EventResult|generic:0|ev:SharpTui.UiEvent
+method|SharpTui.TestDriver|get_App|SharpTui.App|generic:0|
+method|SharpTui.TestDriver|get_FocusedElement|SharpTui.Box|generic:0|
+method|SharpTui.TestDriver|get_NowMilliseconds|System.Int64|generic:0|
+method|SharpTui.TestDriver|get_Screen|SharpTui.Screen|generic:0|</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextArea / 59 exported contract records</summary><pre>ctor|SharpTui.TextArea|
+property|SharpTui.TextArea|Caret|SharpTui.TextPosition|
+property|SharpTui.TextArea|CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextArea|Clipboard|SharpTui.Clipboard|
+property|SharpTui.TextArea|EnterBehavior|SharpTui.TextAreaEnterBehavior|
+property|SharpTui.TextArea|FirstVisibleRowIndex|System.Int32|
+property|SharpTui.TextArea|GutterStyle|SharpTui.Style|
+property|SharpTui.TextArea|HasSelection|System.Boolean|
+property|SharpTui.TextArea|HorizontalCellOffset|System.Int32|
+property|SharpTui.TextArea|IsModified|System.Boolean|
+property|SharpTui.TextArea|LineCount|System.Int32|
+property|SharpTui.TextArea|MaxLines|System.Int32|
+property|SharpTui.TextArea|OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextArea|OnSubmit|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextArea|SelectedText|System.String|
+property|SharpTui.TextArea|SelectedTextStyle|SharpTui.Style|
+property|SharpTui.TextArea|Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextArea|ShowLineNumbers|System.Boolean|
+property|SharpTui.TextArea|StyleSource|SharpTui.RichLineSource|
+property|SharpTui.TextArea|Text|System.String|
+property|SharpTui.TextArea|Wrapping|SharpTui.TextWrapping|
+method|SharpTui.TextArea|Find|System.Boolean|generic:0|needle:System.String,direction:SharpTui.SearchDirection
+method|SharpTui.TextArea|Redo|System.Boolean|generic:0|
+method|SharpTui.TextArea|ReplaceSelection|System.Boolean|generic:0|text:System.String
+method|SharpTui.TextArea|Undo|System.Boolean|generic:0|
+method|SharpTui.TextArea|get_CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|get_Caret|SharpTui.TextPosition|generic:0|
+method|SharpTui.TextArea|get_Clipboard|SharpTui.Clipboard|generic:0|
+method|SharpTui.TextArea|get_EnterBehavior|SharpTui.TextAreaEnterBehavior|generic:0|
+method|SharpTui.TextArea|get_FirstVisibleRowIndex|System.Int32|generic:0|
+method|SharpTui.TextArea|get_GutterStyle|SharpTui.Style|generic:0|
+method|SharpTui.TextArea|get_HasSelection|System.Boolean|generic:0|
+method|SharpTui.TextArea|get_HorizontalCellOffset|System.Int32|generic:0|
+method|SharpTui.TextArea|get_IsModified|System.Boolean|generic:0|
+method|SharpTui.TextArea|get_LineCount|System.Int32|generic:0|
+method|SharpTui.TextArea|get_MaxLines|System.Int32|generic:0|
+method|SharpTui.TextArea|get_OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextArea|get_OnSubmit|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextArea|get_SelectedTextStyle|SharpTui.Style|generic:0|
+method|SharpTui.TextArea|get_SelectedText|System.String|generic:0|
+method|SharpTui.TextArea|get_Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|get_ShowLineNumbers|System.Boolean|generic:0|
+method|SharpTui.TextArea|get_StyleSource|SharpTui.RichLineSource|generic:0|
+method|SharpTui.TextArea|get_Text|System.String|generic:0|
+method|SharpTui.TextArea|get_Wrapping|SharpTui.TextWrapping|generic:0|
+method|SharpTui.TextArea|set_Caret|System.Void|generic:0|value:SharpTui.TextPosition
+method|SharpTui.TextArea|set_Clipboard|System.Void|generic:0|value:SharpTui.Clipboard
+method|SharpTui.TextArea|set_EnterBehavior|System.Void|generic:0|value:SharpTui.TextAreaEnterBehavior
+method|SharpTui.TextArea|set_FirstVisibleRowIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TextArea|set_GutterStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TextArea|set_HorizontalCellOffset|System.Void|generic:0|value:System.Int32
+method|SharpTui.TextArea|set_MaxLines|System.Void|generic:0|value:System.Int32
+method|SharpTui.TextArea|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TextArea|set_OnSubmit|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TextArea|set_SelectedTextStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TextArea|set_ShowLineNumbers|System.Void|generic:0|value:System.Boolean
+method|SharpTui.TextArea|set_StyleSource|System.Void|generic:0|value:SharpTui.RichLineSource
+method|SharpTui.TextArea|set_Text|System.Void|generic:0|value:System.String
+method|SharpTui.TextArea|set_Wrapping|System.Void|generic:0|value:SharpTui.TextWrapping</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextAreaEnterBehavior / 4 exported contract records</summary><pre>field|SharpTui.TextAreaEnterBehavior|NewLine|SharpTui.TextAreaEnterBehavior
+field|SharpTui.TextAreaEnterBehavior|Submit|SharpTui.TextAreaEnterBehavior
+field|SharpTui.TextAreaEnterBehavior|SubmitOnPlainEnter|SharpTui.TextAreaEnterBehavior
+field|SharpTui.TextAreaEnterBehavior|value__|System.Int32</pre></details>
+<details class="contract"><summary>Styling and drawing / SharpTui.TextAttributes / 8 exported contract records</summary><pre>field|SharpTui.TextAttributes|Bold|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|Dim|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|Italic|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|None|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|Reverse|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|Strikethrough|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|Underline|SharpTui.TextAttributes
+field|SharpTui.TextAttributes|value__|System.Int32</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextBlock / 10 exported contract records</summary><pre>ctor|SharpTui.TextBlock|
+property|SharpTui.TextBlock|FirstVisibleLine|System.Int32|
+property|SharpTui.TextBlock|Text|System.String|
+property|SharpTui.TextBlock|Wrapping|SharpTui.TextWrapping|
+method|SharpTui.TextBlock|ScrollToLine|System.Void|generic:0|line:System.Int32
+method|SharpTui.TextBlock|get_FirstVisibleLine|System.Int32|generic:0|
+method|SharpTui.TextBlock|get_Text|System.String|generic:0|
+method|SharpTui.TextBlock|get_Wrapping|SharpTui.TextWrapping|generic:0|
+method|SharpTui.TextBlock|set_Text|System.Void|generic:0|value:System.String
+method|SharpTui.TextBlock|set_Wrapping|System.Void|generic:0|value:SharpTui.TextWrapping</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextInput / 21 exported contract records</summary><pre>ctor|SharpTui.TextInput|
+property|SharpTui.TextInput|CaretGraphemeIndex|System.Int32|
+property|SharpTui.TextInput|IsPassword|System.Boolean|
+property|SharpTui.TextInput|OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextInput|Placeholder|System.String|
+property|SharpTui.TextInput|PlaceholderStyle|SharpTui.Style|
+property|SharpTui.TextInput|Text|System.String|
+method|SharpTui.TextInput|MoveCaretToEnd|System.Boolean|generic:0|
+method|SharpTui.TextInput|MoveCaretToStart|System.Boolean|generic:0|
+method|SharpTui.TextInput|get_CaretGraphemeIndex|System.Int32|generic:0|
+method|SharpTui.TextInput|get_IsPassword|System.Boolean|generic:0|
+method|SharpTui.TextInput|get_OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextInput|get_PlaceholderStyle|SharpTui.Style|generic:0|
+method|SharpTui.TextInput|get_Placeholder|System.String|generic:0|
+method|SharpTui.TextInput|get_Text|System.String|generic:0|
+method|SharpTui.TextInput|set_CaretGraphemeIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TextInput|set_IsPassword|System.Void|generic:0|value:System.Boolean
+method|SharpTui.TextInput|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TextInput|set_PlaceholderStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TextInput|set_Placeholder|System.Void|generic:0|value:System.String
+method|SharpTui.TextInput|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextPosition / 6 exported contract records</summary><pre>property|SharpTui.TextPosition|GraphemeIndex|System.Int32|
+property|SharpTui.TextPosition|LineIndex|System.Int32|
+method|SharpTui.TextPosition|get_GraphemeIndex|System.Int32|generic:0|
+method|SharpTui.TextPosition|get_LineIndex|System.Int32|generic:0|
+method|SharpTui.TextPosition|set_GraphemeIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TextPosition|set_LineIndex|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextRun / 11 exported contract records</summary><pre>ctor|SharpTui.TextRun|text:System.String,style:SharpTui.Style
+ctor|SharpTui.TextRun|text:System.String,style:SharpTui.Style,hyperlink:System.String
+property|SharpTui.TextRun|Hyperlink|System.String|
+property|SharpTui.TextRun|Style|SharpTui.Style|
+property|SharpTui.TextRun|Text|System.String|
+method|SharpTui.TextRun|get_Hyperlink|System.String|generic:0|
+method|SharpTui.TextRun|get_Style|SharpTui.Style|generic:0|
+method|SharpTui.TextRun|get_Text|System.String|generic:0|
+method|SharpTui.TextRun|set_Hyperlink|System.Void|generic:0|value:System.String
+method|SharpTui.TextRun|set_Style|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TextRun|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextSelection / 6 exported contract records</summary><pre>property|SharpTui.TextSelection|End|SharpTui.TextPosition|
+property|SharpTui.TextSelection|Start|SharpTui.TextPosition|
+method|SharpTui.TextSelection|get_End|SharpTui.TextPosition|generic:0|
+method|SharpTui.TextSelection|get_Start|SharpTui.TextPosition|generic:0|
+method|SharpTui.TextSelection|set_End|System.Void|generic:0|value:SharpTui.TextPosition
+method|SharpTui.TextSelection|set_Start|System.Void|generic:0|value:SharpTui.TextPosition</pre></details>
+<details class="contract"><summary>Text and editing / SharpTui.TextWrapping / 3 exported contract records</summary><pre>field|SharpTui.TextWrapping|None|SharpTui.TextWrapping
+field|SharpTui.TextWrapping|Word|SharpTui.TextWrapping
+field|SharpTui.TextWrapping|value__|System.Int32</pre></details>
+<details class="contract"><summary>Controls and overlays / SharpTui.Toggle / 16 exported contract records</summary><pre>ctor|SharpTui.Toggle|
+property|SharpTui.Toggle|CheckedGlyph|System.String|
+property|SharpTui.Toggle|IsChecked|System.Boolean|
+property|SharpTui.Toggle|OnChange|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.Toggle|Text|System.String|
+property|SharpTui.Toggle|UncheckedGlyph|System.String|
+method|SharpTui.Toggle|get_CheckedGlyph|System.String|generic:0|
+method|SharpTui.Toggle|get_IsChecked|System.Boolean|generic:0|
+method|SharpTui.Toggle|get_OnChange|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Toggle|get_Text|System.String|generic:0|
+method|SharpTui.Toggle|get_UncheckedGlyph|System.String|generic:0|
+method|SharpTui.Toggle|set_CheckedGlyph|System.Void|generic:0|value:System.String
+method|SharpTui.Toggle|set_IsChecked|System.Void|generic:0|value:System.Boolean
+method|SharpTui.Toggle|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Toggle|set_Text|System.Void|generic:0|value:System.String
+method|SharpTui.Toggle|set_UncheckedGlyph|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TreeNode / 18 exported contract records</summary><pre>ctor|SharpTui.TreeNode|
+property|SharpTui.TreeNode|Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeNode|Id|System.String|
+property|SharpTui.TreeNode|IsExpanded|System.Boolean|
+property|SharpTui.TreeNode|IsLeaf|System.Boolean|
+property|SharpTui.TreeNode|Text|System.String|
+property|SharpTui.TreeNode|Value|System.String|
+method|SharpTui.TreeNode|get_Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeNode|get_Id|System.String|generic:0|
+method|SharpTui.TreeNode|get_IsExpanded|System.Boolean|generic:0|
+method|SharpTui.TreeNode|get_IsLeaf|System.Boolean|generic:0|
+method|SharpTui.TreeNode|get_Text|System.String|generic:0|
+method|SharpTui.TreeNode|get_Value|System.String|generic:0|
+method|SharpTui.TreeNode|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeNode|set_Id|System.Void|generic:0|value:System.String
+method|SharpTui.TreeNode|set_IsExpanded|System.Void|generic:0|value:System.Boolean
+method|SharpTui.TreeNode|set_Text|System.Void|generic:0|value:System.String
+method|SharpTui.TreeNode|set_Value|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TreeRow / 12 exported contract records</summary><pre>property|SharpTui.TreeRow|ChildCount|System.Int32|
+property|SharpTui.TreeRow|Depth|System.Int32|
+property|SharpTui.TreeRow|Node|SharpTui.TreeNode|
+property|SharpTui.TreeRow|ParentIndex|System.Int32|
+method|SharpTui.TreeRow|get_ChildCount|System.Int32|generic:0|
+method|SharpTui.TreeRow|get_Depth|System.Int32|generic:0|
+method|SharpTui.TreeRow|get_Node|SharpTui.TreeNode|generic:0|
+method|SharpTui.TreeRow|get_ParentIndex|System.Int32|generic:0|
+method|SharpTui.TreeRow|set_ChildCount|System.Void|generic:0|value:System.Int32
+method|SharpTui.TreeRow|set_Depth|System.Void|generic:0|value:System.Int32
+method|SharpTui.TreeRow|set_Node|System.Void|generic:0|value:SharpTui.TreeNode
+method|SharpTui.TreeRow|set_ParentIndex|System.Void|generic:0|value:System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TreeSource / 4 exported contract records</summary><pre>method|SharpTui.TreeSource|Count|System.Int32|generic:0|
+method|SharpTui.TreeSource|IndexOfKey|System.Int32|generic:0|key:System.String
+method|SharpTui.TreeSource|ItemAt|SharpTui.TreeRow|generic:0|index:System.Int32
+method|SharpTui.TreeSource|Toggle|System.Void|generic:0|index:System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.TreeView / 28 exported contract records</summary><pre>ctor|SharpTui.TreeView|
+property|SharpTui.TreeView|FirstVisibleNodeIndex|System.Int32|
+property|SharpTui.TreeView|NodeMarkerStyle|SharpTui.Style|
+property|SharpTui.TreeView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|SelectedIndex|System.Int32|
+property|SharpTui.TreeView|SelectedKey|System.String|
+property|SharpTui.TreeView|SelectedNode|SharpTui.TreeNode|
+property|SharpTui.TreeView|SelectedNodeStyle|SharpTui.Style|
+property|SharpTui.TreeView|Source|SharpTui.TreeSource|
+method|SharpTui.TreeView|Refresh|System.Void|generic:0|
+method|SharpTui.TreeView|get_FirstVisibleNodeIndex|System.Int32|generic:0|
+method|SharpTui.TreeView|get_NodeMarkerStyle|SharpTui.Style|generic:0|
+method|SharpTui.TreeView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|get_Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.TreeView|get_SelectedKey|System.String|generic:0|
+method|SharpTui.TreeView|get_SelectedNodeStyle|SharpTui.Style|generic:0|
+method|SharpTui.TreeView|get_SelectedNode|SharpTui.TreeNode|generic:0|
+method|SharpTui.TreeView|get_Source|SharpTui.TreeSource|generic:0|
+method|SharpTui.TreeView|set_FirstVisibleNodeIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TreeView|set_NodeMarkerStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TreeView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|set_Roots|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|set_SelectedIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.TreeView|set_SelectedKey|System.Void|generic:0|value:System.String
+method|SharpTui.TreeView|set_SelectedNodeStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.TreeView|set_Source|System.Void|generic:0|value:SharpTui.TreeSource</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.UiEvent / 36 exported contract records</summary><pre>property|SharpTui.UiEvent|BaseLayoutKeyCode|System.Int32|
+property|SharpTui.UiEvent|Button|SharpTui.MouseButton|
+property|SharpTui.UiEvent|IsFocused|System.Boolean|
+property|SharpTui.UiEvent|Key|SharpTui.Key|
+property|SharpTui.UiEvent|KeyCode|System.Int32|
+property|SharpTui.UiEvent|Kind|SharpTui.UiEventKind|
+property|SharpTui.UiEvent|Modifiers|SharpTui.KeyModifiers|
+property|SharpTui.UiEvent|Mouse|SharpTui.MouseKind|
+property|SharpTui.UiEvent|Phase|SharpTui.KeyPhase|
+property|SharpTui.UiEvent|Position|SharpTui.CellPoint|
+property|SharpTui.UiEvent|ShiftedKeyCode|System.Int32|
+property|SharpTui.UiEvent|Text|System.String|
+method|SharpTui.UiEvent|get_BaseLayoutKeyCode|System.Int32|generic:0|
+method|SharpTui.UiEvent|get_Button|SharpTui.MouseButton|generic:0|
+method|SharpTui.UiEvent|get_IsFocused|System.Boolean|generic:0|
+method|SharpTui.UiEvent|get_KeyCode|System.Int32|generic:0|
+method|SharpTui.UiEvent|get_Key|SharpTui.Key|generic:0|
+method|SharpTui.UiEvent|get_Kind|SharpTui.UiEventKind|generic:0|
+method|SharpTui.UiEvent|get_Modifiers|SharpTui.KeyModifiers|generic:0|
+method|SharpTui.UiEvent|get_Mouse|SharpTui.MouseKind|generic:0|
+method|SharpTui.UiEvent|get_Phase|SharpTui.KeyPhase|generic:0|
+method|SharpTui.UiEvent|get_Position|SharpTui.CellPoint|generic:0|
+method|SharpTui.UiEvent|get_ShiftedKeyCode|System.Int32|generic:0|
+method|SharpTui.UiEvent|get_Text|System.String|generic:0|
+method|SharpTui.UiEvent|set_BaseLayoutKeyCode|System.Void|generic:0|value:System.Int32
+method|SharpTui.UiEvent|set_Button|System.Void|generic:0|value:SharpTui.MouseButton
+method|SharpTui.UiEvent|set_IsFocused|System.Void|generic:0|value:System.Boolean
+method|SharpTui.UiEvent|set_KeyCode|System.Void|generic:0|value:System.Int32
+method|SharpTui.UiEvent|set_Key|System.Void|generic:0|value:SharpTui.Key
+method|SharpTui.UiEvent|set_Kind|System.Void|generic:0|value:SharpTui.UiEventKind
+method|SharpTui.UiEvent|set_Modifiers|System.Void|generic:0|value:SharpTui.KeyModifiers
+method|SharpTui.UiEvent|set_Mouse|System.Void|generic:0|value:SharpTui.MouseKind
+method|SharpTui.UiEvent|set_Phase|System.Void|generic:0|value:SharpTui.KeyPhase
+method|SharpTui.UiEvent|set_Position|System.Void|generic:0|value:SharpTui.CellPoint
+method|SharpTui.UiEvent|set_ShiftedKeyCode|System.Void|generic:0|value:System.Int32
+method|SharpTui.UiEvent|set_Text|System.Void|generic:0|value:System.String</pre></details>
+<details class="contract"><summary>Input and commands / SharpTui.UiEventKind / 8 exported contract records</summary><pre>field|SharpTui.UiEventKind|Focus|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|Key|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|Mouse|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|Paste|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|TextInput|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|Tick|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|Unknown|SharpTui.UiEventKind
+field|SharpTui.UiEventKind|value__|System.Int32</pre></details>
+<details class="contract"><summary>Layout / SharpTui.Viewport / 5 exported contract records</summary><pre>ctor|SharpTui.Viewport|
+method|SharpTui.Viewport|BringIntoView|System.Int32|generic:0|extent:System.Int32,index:System.Int32,offset:System.Int32,size:System.Int32
+method|SharpTui.Viewport|BringRangeIntoView|System.Int32|generic:0|extent:System.Int32,start:System.Int32,length:System.Int32,offset:System.Int32,size:System.Int32
+method|SharpTui.Viewport|ClampIndex|System.Int32|generic:0|count:System.Int32,index:System.Int32
+method|SharpTui.Viewport|ClampOffset|System.Int32|generic:0|extent:System.Int32,offset:System.Int32,size:System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.VirtualListItemState / 4 exported contract records</summary><pre>field|SharpTui.VirtualListItemState|Focused|SharpTui.VirtualListItemState
+field|SharpTui.VirtualListItemState|None|SharpTui.VirtualListItemState
+field|SharpTui.VirtualListItemState|Selected|SharpTui.VirtualListItemState
+field|SharpTui.VirtualListItemState|value__|System.Int32</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.VirtualListSource / 6 exported contract records</summary><pre>method|SharpTui.VirtualListSource|Count|System.Int32|generic:0|
+method|SharpTui.VirtualListSource|HeightAt|System.Int32|generic:0|index:System.Int32,width:System.Int32
+method|SharpTui.VirtualListSource|IndexOfKey|System.Int32|generic:0|key:System.String
+method|SharpTui.VirtualListSource|IsSelectable|System.Boolean|generic:0|index:System.Int32
+method|SharpTui.VirtualListSource|KeyAt|System.String|generic:0|index:System.Int32
+method|SharpTui.VirtualListSource|Render|System.Void|generic:0|index:System.Int32,screen:SharpTui.Screen,bounds:SharpTui.CellRect,clipBounds:SharpTui.CellRect,style:SharpTui.Style,state:SharpTui.VirtualListItemState</pre></details>
+<details class="contract"><summary>Collections and selection / SharpTui.VirtualListView / 22 exported contract records</summary><pre>ctor|SharpTui.VirtualListView|
+property|SharpTui.VirtualListView|FirstVisibleRowOffset|System.Int32|
+property|SharpTui.VirtualListView|FollowTail|System.Boolean|
+property|SharpTui.VirtualListView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.VirtualListView|SelectedIndex|System.Int32|
+property|SharpTui.VirtualListView|SelectedKey|System.String|
+property|SharpTui.VirtualListView|SelectedStyle|SharpTui.Style|
+property|SharpTui.VirtualListView|Source|SharpTui.VirtualListSource|
+method|SharpTui.VirtualListView|Refresh|System.Void|generic:0|
+method|SharpTui.VirtualListView|get_FirstVisibleRowOffset|System.Int32|generic:0|
+method|SharpTui.VirtualListView|get_FollowTail|System.Boolean|generic:0|
+method|SharpTui.VirtualListView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.VirtualListView|get_SelectedIndex|System.Int32|generic:0|
+method|SharpTui.VirtualListView|get_SelectedKey|System.String|generic:0|
+method|SharpTui.VirtualListView|get_SelectedStyle|SharpTui.Style|generic:0|
+method|SharpTui.VirtualListView|get_Source|SharpTui.VirtualListSource|generic:0|
+method|SharpTui.VirtualListView|set_FirstVisibleRowOffset|System.Void|generic:0|value:System.Int32
+method|SharpTui.VirtualListView|set_FollowTail|System.Void|generic:0|value:System.Boolean
+method|SharpTui.VirtualListView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.VirtualListView|set_SelectedIndex|System.Void|generic:0|value:System.Int32
+method|SharpTui.VirtualListView|set_SelectedStyle|System.Void|generic:0|value:SharpTui.Style
+method|SharpTui.VirtualListView|set_Source|System.Void|generic:0|value:SharpTui.VirtualListSource</pre></details>
+<details class="contract"><summary>Application and work / SharpTui.Worker / 3 exported contract records</summary><pre>property|SharpTui.Worker|IsRunning|System.Boolean|
+method|SharpTui.Worker|Cancel|System.Void|generic:0|
+method|SharpTui.Worker|get_IsRunning|System.Boolean|generic:0|</pre></details>
+<details class="contract"><summary>Package helpers and compiler containers</summary><pre>ctor|Default.&lt;Program&gt;|
+ctor|SharpTui.&lt;Program&gt;|</pre></details>
+<h2>Exact exported member delta</h2><details><summary>Removed records</summary><pre>ctor|SharpTui.RichTextLine|runs:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.App|Run|System.Void|generic:0|root:SharpTui.Box
+method|SharpTui.App|get_QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Box|get_Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Box|get_GapCells|System.Int32|generic:0|
+method|SharpTui.Box|get_GrowWeight|System.Int32|generic:0|
+method|SharpTui.Box|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Box|set_GapCells|System.Void|generic:0|value:System.Int32
+method|SharpTui.Box|set_GrowWeight|System.Void|generic:0|value:System.Int32
+method|SharpTui.Button|get_OnPress|System.Action|generic:0|
+method|SharpTui.Button|set_OnPress|System.Void|generic:0|value:System.Action
+method|SharpTui.CanvasSurface|Polyline|System.Void|generic:0|points:System.Collections.Generic.List`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]],style:SharpTui.Style
+method|SharpTui.Dialog|get_Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|get_OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|set_Actions|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Dialog|set_OnResult|System.Void|generic:0|value:System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Keymap|get_Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListItem|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListItem|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.ListView|set_Items|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.RichTextBlock|AppendRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|PrependRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RichTextBlock|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextLine|get_Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Select|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|set_CenterRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_LeftRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_RightRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.SyntaxHighlighter|HighlightLines|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|lines:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],language:System.String,baseStyle:SharpTui.Style
+method|SharpTui.TableCell|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableCell|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableRow|get_Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableRow|set_Cells|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_ColumnGapCells|System.Int32|generic:0|
+method|SharpTui.TableView|get_Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TableView|set_ColumnGapCells|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_Columns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_Rows|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Tabs|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|get_CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|get_OnChanged|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextArea|get_Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|set_OnChanged|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TreeNode|get_Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeNode|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|get_Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|set_Roots|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.VirtualListView|ConsumeSelectionChange|System.Nullable`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+property|SharpTui.App|QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Box|Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Box|GapCells|System.Int32|
+property|SharpTui.Box|GrowWeight|System.Int32|
+property|SharpTui.Button|OnPress|System.Action|
+property|SharpTui.Dialog|Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Dialog|OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Keymap|Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListItem|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.RichTextBlock|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RichTextLine|Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableCell|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableRow|Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|ColumnGapCells|System.Int32|
+property|SharpTui.TableView|Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextArea|CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextArea|OnChanged|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextArea|Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeNode|Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]|</pre></details><details><summary>Added records</summary><pre>ctor|SharpTui.ImageView|
+ctor|SharpTui.MediaPlayer|path:System.String
+ctor|SharpTui.MediaPlayer|path:System.String,maxSize:SharpTui.PixelSize
+ctor|SharpTui.MediaView|
+ctor|SharpTui.RichTextLine|runs:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+field|SharpTui.GraphicsProtocol|Auto|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|HalfBlock|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|Kitty|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|Sixel|SharpTui.GraphicsProtocol
+field|SharpTui.GraphicsProtocol|value__|System.Int32
+field|SharpTui.ImageFit|Contain|SharpTui.ImageFit
+field|SharpTui.ImageFit|Cover|SharpTui.ImageFit
+field|SharpTui.ImageFit|Stretch|SharpTui.ImageFit
+field|SharpTui.ImageFit|value__|System.Int32
+field|SharpTui.UiEventKind|Focus|SharpTui.UiEventKind
+method|SharpTui.App|Run|System.Void|generic:0|
+method|SharpTui.App|get_CellPixels|SharpTui.PixelSize|generic:0|
+method|SharpTui.App|get_Graphics|SharpTui.GraphicsProtocol|generic:0|
+method|SharpTui.App|get_OnFocus|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.App|get_OnTick|System.Action|generic:0|
+method|SharpTui.App|get_QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.App|get_Root|SharpTui.Box|generic:0|
+method|SharpTui.App|set_CellPixels|System.Void|generic:0|value:SharpTui.PixelSize
+method|SharpTui.App|set_Graphics|System.Void|generic:0|value:SharpTui.GraphicsProtocol
+method|SharpTui.App|set_OnFocus|System.Void|generic:0|value:System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.App|set_OnTick|System.Void|generic:0|value:System.Action
+method|SharpTui.App|set_Root|System.Void|generic:0|value:SharpTui.Box
+method|SharpTui.Box|Add|System.Void|generic:0|child:SharpTui.Box
+method|SharpTui.Box|Draw|System.Void|generic:0|screen:SharpTui.Screen,bounds:SharpTui.CellRect,clip:SharpTui.CellRect
+method|SharpTui.Box|get_Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Box|get_Gap|System.Int32|generic:0|
+method|SharpTui.Box|get_Grow|System.Int32|generic:0|
+method|SharpTui.Box|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Box|set_Gap|System.Void|generic:0|value:System.Int32
+method|SharpTui.Box|set_Grow|System.Void|generic:0|value:System.Int32
+method|SharpTui.Button|get_OnClick|System.Action|generic:0|
+method|SharpTui.Button|set_OnClick|System.Void|generic:0|value:System.Action
+method|SharpTui.CanvasSurface|Polyline|System.Void|generic:0|points:System.Collections.Generic.List`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]],style:SharpTui.Style
+method|SharpTui.CellInsets|op_Implicit|SharpTui.CellInsets|generic:0|value:System.Int32
+method|SharpTui.CellLength|op_Implicit|SharpTui.CellLength|generic:0|value:System.Int32
+method|SharpTui.Dialog|get_Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|get_OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Dialog|set_Actions|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.Dialog|set_OnResult|System.Void|generic:0|value:System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ImageSource|Decode|SharpTui.ImageSource|generic:0|encoded:System.Byte[]
+method|SharpTui.ImageSource|FromRgba|SharpTui.ImageSource|generic:0|width:System.Int32,height:System.Int32,rgba:System.Byte[]
+method|SharpTui.ImageSource|Load|SharpTui.ImageSource|generic:0|path:System.String
+method|SharpTui.ImageSource|Update|System.Void|generic:0|rgba:System.Byte[]
+method|SharpTui.ImageSource|get_Size|SharpTui.PixelSize|generic:0|
+method|SharpTui.ImageView|get_AltText|System.String|generic:0|
+method|SharpTui.ImageView|get_Fit|SharpTui.ImageFit|generic:0|
+method|SharpTui.ImageView|get_Source|SharpTui.ImageSource|generic:0|
+method|SharpTui.ImageView|set_AltText|System.Void|generic:0|value:System.String
+method|SharpTui.ImageView|set_Fit|System.Void|generic:0|value:SharpTui.ImageFit
+method|SharpTui.ImageView|set_Source|System.Void|generic:0|value:SharpTui.ImageSource
+method|SharpTui.Keymap|get_Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListItem|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListItem|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|get_Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.ListView|get_Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.ListView|set_Items|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.ListView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.MediaPlayer|Advance|System.Boolean|generic:0|
+method|SharpTui.MediaPlayer|Dispose|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Pause|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Resume|System.Void|generic:0|
+method|SharpTui.MediaPlayer|Seek|System.Void|generic:0|position:System.TimeSpan
+method|SharpTui.MediaPlayer|get_Duration|System.TimeSpan|generic:0|
+method|SharpTui.MediaPlayer|get_IsPlaying|System.Boolean|generic:0|
+method|SharpTui.MediaPlayer|get_Position|System.TimeSpan|generic:0|
+method|SharpTui.MediaPlayer|get_Source|SharpTui.ImageSource|generic:0|
+method|SharpTui.MediaView|get_Fit|SharpTui.ImageFit|generic:0|
+method|SharpTui.MediaView|get_Player|SharpTui.MediaPlayer|generic:0|
+method|SharpTui.MediaView|set_Fit|System.Void|generic:0|value:SharpTui.ImageFit
+method|SharpTui.MediaView|set_Player|System.Void|generic:0|value:SharpTui.MediaPlayer
+method|SharpTui.PixelSize|get_Height|System.Int32|generic:0|
+method|SharpTui.PixelSize|get_Width|System.Int32|generic:0|
+method|SharpTui.PixelSize|set_Height|System.Void|generic:0|value:System.Int32
+method|SharpTui.PixelSize|set_Width|System.Void|generic:0|value:System.Int32
+method|SharpTui.RadioGroup|get_OnChange|System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RadioGroup|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|AppendRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|PrependRuns|System.Void|generic:0|added:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextBlock|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.RichTextBlock|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.RichTextLine|get_Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Screen|DrawImage|System.Void|generic:0|source:SharpTui.ImageSource,bounds:SharpTui.CellRect
+method|SharpTui.Screen|DrawImage|System.Void|generic:0|source:SharpTui.ImageSource,bounds:SharpTui.CellRect,clip:SharpTui.CellRect,fit:SharpTui.ImageFit
+method|SharpTui.Screen|get_CellPixels|SharpTui.PixelSize|generic:0|
+method|SharpTui.Screen|get_Graphics|SharpTui.GraphicsProtocol|generic:0|
+method|SharpTui.Screen|set_CellPixels|System.Void|generic:0|value:SharpTui.PixelSize
+method|SharpTui.Screen|set_Graphics|System.Void|generic:0|value:SharpTui.GraphicsProtocol
+method|SharpTui.Select|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Select|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|get_CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|get_RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.StatusBar|set_CenterRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_LeftRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.StatusBar|set_RightRuns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.SyntaxHighlighter|HighlightLines|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|lines:System.Collections.Generic.List`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]],language:System.String,baseStyle:SharpTui.Style
+method|SharpTui.TableCell|get_Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableCell|set_Runs|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableRow|get_Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableRow|set_Cells|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|get_ColumnGap|System.Int32|generic:0|
+method|SharpTui.TableView|get_Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TableView|get_Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TableView|set_ColumnGap|System.Void|generic:0|value:System.Int32
+method|SharpTui.TableView|set_Columns|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_Rows|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TableView|set_Source|System.Void|generic:0|value:SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Tabs|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.Tabs|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TextArea|get_CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|get_OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextArea|get_Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TextArea|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TextInput|get_OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.TextInput|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.Toggle|get_OnChange|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|generic:0|
+method|SharpTui.Toggle|set_OnChange|System.Void|generic:0|value:System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+method|SharpTui.TreeNode|get_Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeNode|set_Children|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|get_Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.TreeView|get_SelectedKey|System.String|generic:0|
+method|SharpTui.TreeView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|set_Roots|System.Void|generic:0|value:System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+method|SharpTui.TreeView|set_SelectedKey|System.Void|generic:0|value:System.String
+method|SharpTui.UiEvent|get_IsFocused|System.Boolean|generic:0|
+method|SharpTui.UiEvent|set_IsFocused|System.Void|generic:0|value:System.Boolean
+method|SharpTui.VirtualListView|get_OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|generic:0|
+method|SharpTui.VirtualListView|set_OnChange|System.Void|generic:0|value:System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]
+property|SharpTui.App|CellPixels|SharpTui.PixelSize|
+property|SharpTui.App|Graphics|SharpTui.GraphicsProtocol|
+property|SharpTui.App|OnFocus|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.App|OnTick|System.Action|
+property|SharpTui.App|QuitGestures|System.Collections.Generic.List`1[[SharpTui.KeyGesture, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.App|Root|SharpTui.Box|
+property|SharpTui.Box|Children|System.Collections.Generic.List`1[[SharpTui.Box, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Box|Gap|System.Int32|
+property|SharpTui.Box|Grow|System.Int32|
+property|SharpTui.Button|OnClick|System.Action|
+property|SharpTui.Dialog|Actions|System.Collections.Generic.List`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Dialog|OnResult|System.Action`1[[SharpTui.DialogAction, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ImageSource|Size|SharpTui.PixelSize|
+property|SharpTui.ImageView|AltText|System.String|
+property|SharpTui.ImageView|Fit|SharpTui.ImageFit|
+property|SharpTui.ImageView|Source|SharpTui.ImageSource|
+property|SharpTui.Keymap|Bindings|System.Collections.Generic.List`1[[SharpTui.Bind, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListItem|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|Items|System.Collections.Generic.List`1[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.ListView|Source|SharpTui.KeyedSource`2[[SharpTui.ListItem, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.MediaPlayer|Duration|System.TimeSpan|
+property|SharpTui.MediaPlayer|IsPlaying|System.Boolean|
+property|SharpTui.MediaPlayer|Position|System.TimeSpan|
+property|SharpTui.MediaPlayer|Source|SharpTui.ImageSource|
+property|SharpTui.MediaView|Fit|SharpTui.ImageFit|
+property|SharpTui.MediaView|Player|SharpTui.MediaPlayer|
+property|SharpTui.PixelSize|Height|System.Int32|
+property|SharpTui.PixelSize|Width|System.Int32|
+property|SharpTui.RadioGroup|OnChange|System.Action`1[[SharpTui.Toggle, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RichTextBlock|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.RichTextLine|Runs|System.Collections.Generic.IReadOnlyList`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.Screen|CellPixels|SharpTui.PixelSize|
+property|SharpTui.Screen|Graphics|SharpTui.GraphicsProtocol|
+property|SharpTui.Select|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|CenterRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|LeftRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.StatusBar|RightRuns|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableCell|Runs|System.Collections.Generic.List`1[[SharpTui.TextRun, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableRow|Cells|System.Collections.Generic.List`1[[SharpTui.TableCell, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|ColumnGap|System.Int32|
+property|SharpTui.TableView|Columns|System.Collections.Generic.List`1[[SharpTui.TableColumn, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|Rows|System.Collections.Generic.List`1[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TableView|Source|SharpTui.KeyedSource`2[[SharpTui.TableRow, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null],[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.Tabs|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextArea|CaretScreenPosition|System.Nullable`1[[SharpTui.CellPoint, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextArea|OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TextArea|Selection|System.Nullable`1[[SharpTui.TextSelection, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TextInput|OnChange|System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.Toggle|OnChange|System.Action`1[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]|
+property|SharpTui.TreeNode|Children|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|Roots|System.Collections.Generic.List`1[[SharpTui.TreeNode, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|
+property|SharpTui.TreeView|SelectedKey|System.String|
+property|SharpTui.UiEvent|IsFocused|System.Boolean|
+property|SharpTui.VirtualListView|OnChange|System.Action`1[[SharpTui.SelectionChange, SharpTui.Framework, Version=0.2.0.0, Culture=neutral, PublicKeyToken=null]]|</pre></details>
+<h2>Integration</h2><p>The sibling <a href="../../discordo-sharptui/README.md">discordo-sharptui</a> client is GPL-3.0-only with upstream attribution and IBM Plex Mono under OFL. SharpTUI remains MIT. Its networking, password/MFA/token/QR authentication, gateway state and UI are G#. Loopback fixtures validate heartbeat/resume, RSA QR proof, rate limits, multipart upload, message operations, auth rejection and cancellation. Real account compatibility is not validated. Real Kitty and xterm Sixel checks cover popup clipping/restoration, resize, video pause/seek/resume, and exit. Screenshot restoration differences are exactly zero for Kitty and Sixel. The engine fixture also verifies WebP decoding, chained read ACK tokens and credential-free media HTTP.</p><script>q.oninput=()=>{const term=q.value.toLowerCase();document.querySelectorAll(".contract").forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(term))}</script>

@@ -202,7 +202,7 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
 
 <span class="w">  </span><span class="k">public</span><span class="w"> </span><span class="k">init</span>()<span class="w"> </span>{
 <span class="w">    </span>status<span class="w"> </span>=<span class="w"> </span><span class="nc">Label</span>{<span class="w"> </span><span class="nc">Text</span>:<span class="w"> </span><span class="s2">"ready"</span><span class="w"> </span>}
-<span class="w">    </span><span class="nc">Padding</span><span class="w"> </span>=<span class="w"> </span><span class="nc">CellInsets</span>.<span class="nf">All</span>(<span class="m">1</span>)
+<span class="w">    </span><span class="nc">Padding</span><span class="w"> </span>=<span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nc">Children</span>.<span class="nf">Add</span>(status)
 <span class="w">  </span>}
 
@@ -230,7 +230,8 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
 <span class="w">  </span><span class="k">let</span><span class="w"> </span>app<span class="w"> </span>=<span class="w"> </span><span class="nf">App</span>()
 <span class="w">  </span><span class="k">let</span><span class="w"> </span>root<span class="w"> </span>=<span class="w"> </span><span class="nf">InputRoot</span>()
 <span class="w">  </span>root.<span class="nf">Configure</span>(app)
-<span class="w">  </span>app.<span class="nf">Run</span>(root)
+<span class="w">  </span>app.<span class="nc">Root</span><span class="w"> </span>=<span class="w"> </span>root
+<span class="w">  </span>app.<span class="nf">Run</span>()
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 }
 </code></pre></figure>
@@ -379,7 +380,7 @@ open<span class="w"> </span><span class="k">class</span><span class="w"> </span>
 </tr>
 </tbody>
 </table></div>
-<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App.Run(root)</code></a> routes the tree directly. A custom root control receives fallback input through its <code>Accept</code> override after focused descendants decline it.</p>
+<p><a class="api-ref" href="https://github.com/obselate/sharptui/blob/main/docs/api/reference.html#sharptuiapp"><code>App{ Root: root }.Run()</code></a> routes the tree directly. A custom root control receives fallback input through its <code>Accept</code> override after focused descendants decline it.</p>
 <p>Use <code>BeforeWidgets</code> only for a command that must preempt all controls. Use <code>AfterWidgets</code> for application shortcuts that must not interrupt text entry.</p>
     </div>
   </div>

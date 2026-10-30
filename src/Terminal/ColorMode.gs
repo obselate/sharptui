@@ -6,6 +6,7 @@ internal class TerminalColors {
   shared {
     internal func Resolve(mode TerminalColorMode) TerminalColorMode {
       if mode != TerminalColorMode.Auto { return mode }
+      if (Environment.GetEnvironmentVariable("NO_COLOR") ?? "") != "" { return TerminalColorMode.NoColor }
       let colorTerm = Environment.GetEnvironmentVariable("COLORTERM") ?? ""
       if colorTerm.Equals("truecolor", StringComparison.OrdinalIgnoreCase)
           || colorTerm.Equals("24bit", StringComparison.OrdinalIgnoreCase) {

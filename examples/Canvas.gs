@@ -10,7 +10,7 @@ open class CanvasDemo : Column {
 
   public init(animations AnimationController) {
     let canvas = CanvasView(1, 1, CanvasMode.Braille)
-    canvas.GrowWeight = 1
+    canvas.Grow = 1
     canvas.ShowBorder = true
     canvas.Title = "canvas / braille"
     canvas.Style = Style{ Foreground: Ink.Accent, Background: Color.Inherit }
@@ -65,6 +65,7 @@ open class CanvasDemo : Column {
 func canvas() int32 {
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
-  app.Run(CanvasDemo(app.Animations))
+  app.Root = CanvasDemo(app.Animations)
+  app.Run()
   return 0
 }

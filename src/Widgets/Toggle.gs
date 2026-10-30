@@ -11,6 +11,9 @@ public open class Toggle : Box {
   private var isChecked bool
   private var checkedGlyph string
   private var uncheckedGlyph string
+  /// Receives the checked value after this toggle is activated. Programmatic changes are silent.
+  public prop OnChange Action[bool]? { get; set; }
+
   private var owner RadioGroup?
 
   /// The label drawn after the checkbox glyph.
@@ -112,16 +115,24 @@ public open class Toggle : Box {
 
   private func activate() {
     if let group = owner {
-      if !isChecked { group.Select(this) }
+      if isChecked { return }
+      group.Select(this)
+      if let callback = OnChange { callback(true) }
+      group.NotifySelection(this)
       return
     }
     isChecked = !isChecked
+    if let callback = OnChange { callback(isChecked) }
   }
+
 }
 
 /// Owns Toggle children and keeps at most one checked at a time, radio-button style.
 public open class RadioGroup : Box {
   private var toggles List[Toggle]
+  /// Receives the activated radio choice. Programmatic selection is silent.
+  public prop OnChange Action[Toggle]? { get; set; }
+
   private var selectedToggle Toggle?
 
   /// The currently selected toggle, or nil when none is selected.
@@ -171,6 +182,10 @@ public open class RadioGroup : Box {
       i = i + 1
     }
     selectedToggle = nil
+  }
+
+  internal func NotifySelection(toggle Toggle) {
+    if let callback = OnChange { callback(toggle) }
   }
 
   internal func SetSelection(toggle Toggle, value bool) {

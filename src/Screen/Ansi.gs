@@ -162,10 +162,10 @@ internal class Ansi {
 
     private func appendColor(sb StringBuilder, color int32, background bool,
         colorMode TerminalColorMode) {
-      if color < 0 { return }
+      let mode = TerminalColors.Resolve(colorMode)
+      if color < 0 || mode == TerminalColorMode.NoColor { return }
       let indexed = color >= 0x01000000
       var index = indexed ? TerminalColors.PaletteIndex(color) : -1
-      let mode = TerminalColors.Resolve(colorMode)
       if mode == TerminalColorMode.Palette16 {
         index = indexed ? TerminalColors.IndexedTo16(index) : TerminalColors.To16(color)
         sb.Append(Ansi.Csi)
@@ -206,10 +206,10 @@ internal class Ansi {
 
     private func appendColor(output TerminalBuffer, color int32, background bool,
         colorMode TerminalColorMode) {
-      if color < 0 { return }
+      let mode = TerminalColors.Resolve(colorMode)
+      if color < 0 || mode == TerminalColorMode.NoColor { return }
       let indexed = color >= 0x01000000
       var index = indexed ? TerminalColors.PaletteIndex(color) : -1
-      let mode = TerminalColors.Resolve(colorMode)
       if mode == TerminalColorMode.Palette16 {
         index = indexed ? TerminalColors.IndexedTo16(index) : TerminalColors.To16(color)
         output.AppendByte(uint8(27))

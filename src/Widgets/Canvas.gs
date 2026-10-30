@@ -112,6 +112,84 @@ public class CanvasSurface {
     styles[index] = style
   }
 
+  /// Replaces a terminal cell with independently colored upper and lower halves.
+  /// Requires HalfBlock mode. Coordinates outside the surface are ignored.
+  /// @param column The horizontal terminal-cell coordinate.
+  /// @param row The vertical terminal-cell coordinate, not a subcell coordinate.
+  /// @param upper The upper pixel color, encoded as the foreground of an upper-half glyph.
+  /// @param lower The lower pixel color, encoded as the cell background.
+  public func HalfBlock(column int32, row int32, upper Color, lower Color) {
+    if mode != CanvasMode.HalfBlock {
+      throw InvalidOperationException("HalfBlock requires a HalfBlock canvas surface.")
+    }
+    if column < 0 || row < 0 || column >= widthCells || row >= heightRows { return }
+    let index = row * widthCells + column
+    masks[index] = 1
+    styles[index] = Style{ Foreground: upper, Background: lower }
+  }
+
+  /// Replaces a terminal cell with the closest two-color encoding of four RGB quadrants.
+  /// Requires Quadrant mode. Coordinates outside the surface are ignored.
+  /// @param column The horizontal terminal-cell coordinate.
+  /// @param row The vertical terminal-cell coordinate, not a subcell coordinate.
+  /// @param topLeft The upper-left RGB sample.
+  /// @param topRight The upper-right RGB sample.
+  /// @param bottomLeft The lower-left RGB sample.
+  /// @param bottomRight The lower-right RGB sample.
+  public func Quadrant(column int32, row int32, topLeft Color, topRight Color, bottomLeft Color, bottomRight Color) {
+    if mode != CanvasMode.Quadrant {
+      throw InvalidOperationException("Quadrant requires a Quadrant canvas surface.")
+    }
+    if column < 0 || row < 0 || column >= widthCells || row >= heightRows { return }
+    requireRgb(topLeft, "topLeft")
+    requireRgb(topRight, "topRight")
+    requireRgb(bottomLeft, "bottomLeft")
+    requireRgb(bottomRight, "bottomRight")
+    let index = row * widthCells + column
+    if topLeft == topRight && topLeft == bottomLeft && topLeft == bottomRight {
+      masks[index] = 0
+      styles[index] = Style{ Foreground: topLeft, Background: topLeft }
+      return
+    }
+    var bestMask = 1
+    var bestForeground = quadrantMean(1, true, topLeft, topRight, bottomLeft, bottomRight)
+    var bestBackground = quadrantMean(1, false, topLeft, topRight, bottomLeft, bottomRight)
+    var bestError = quadrantError(1, bestForeground, bestBackground,
+      topLeft, topRight, bottomLeft, bottomRight)
+    for candidate in 2 ... 8 {
+      let foreground = quadrantMean(candidate, true, topLeft, topRight, bottomLeft, bottomRight)
+      let background = quadrantMean(candidate, false, topLeft, topRight, bottomLeft, bottomRight)
+      let error = quadrantError(candidate, foreground, background,
+        topLeft, topRight, bottomLeft, bottomRight)
+      if error < bestError {
+        bestMask = candidate
+        bestForeground = foreground
+        bestBackground = background
+        bestError = error
+      }
+    }
+    masks[index] = bestMask
+    styles[index] = Style{ Foreground: bestForeground, Background: bestBackground }
+  }
+
+  /// Replaces a terminal cell with a packed Braille dot mask and two colors.
+  /// Requires Braille mode. Coordinates outside the surface are ignored.
+  /// @param column The horizontal terminal-cell coordinate.
+  /// @param row The vertical terminal-cell coordinate, not a subcell coordinate.
+  /// @param dots The Braille dot mask, from 0 through 255.
+  /// @param foreground The color used by set dots.
+  /// @param background The color used behind unset dots.
+  public func BrailleCell(column int32, row int32, dots int32, foreground Color, background Color) {
+    if mode != CanvasMode.Braille {
+      throw InvalidOperationException("BrailleCell requires a Braille canvas surface.")
+    }
+    if dots < 0 || dots > 255 { throw ArgumentOutOfRangeException("dots") }
+    if column < 0 || row < 0 || column >= widthCells || row >= heightRows { return }
+    let index = row * widthCells + column
+    masks[index] = dots
+    styles[index] = Style{ Foreground: foreground, Background: background }
+  }
+
   /// Draws a clipped Bresenham line in subcell coordinates.
   /// @param x0 The starting horizontal subcell coordinate.
   /// @param y0 The starting vertical subcell coordinate.
@@ -360,6 +438,53 @@ public class CanvasSurface {
     return "█"
   }
 
+  private func requireRgb(color Color, name string) {
+    if color.Packed < 0 || color.Packed > 0x00ffffff {
+      throw ArgumentException("Quadrant colors must be RGB colors.", name)
+    }
+  }
+
+  private func quadrantMean(mask int32, foreground bool, topLeft Color, topRight Color,
+      bottomLeft Color, bottomRight Color) Color {
+    var red = 0
+    var green = 0
+    var blue = 0
+    var count = 0
+    for position in 0 ... 4 {
+      let selected = (mask & (1 << position)) != 0
+      if selected == foreground {
+        let packed = quadrantColor(position, topLeft, topRight, bottomLeft, bottomRight).Packed
+        red = red + ((packed >> 16) & 255)
+        green = green + ((packed >> 8) & 255)
+        blue = blue + (packed & 255)
+        count = count + 1
+      }
+    }
+    return Color.Rgb((red + count / 2) / count, (green + count / 2) / count, (blue + count / 2) / count)
+  }
+
+  private func quadrantError(mask int32, foreground Color, background Color, topLeft Color,
+      topRight Color, bottomLeft Color, bottomRight Color) int32 {
+    var error = 0
+    for position in 0 ... 4 {
+      let sample = quadrantColor(position, topLeft, topRight, bottomLeft, bottomRight).Packed
+      let mean = ((mask & (1 << position)) != 0 ? foreground : background).Packed
+      let red = ((sample >> 16) & 255) - ((mean >> 16) & 255)
+      let green = ((sample >> 8) & 255) - ((mean >> 8) & 255)
+      let blue = (sample & 255) - (mean & 255)
+      error = error + red * red + green * green + blue * blue
+    }
+    return error
+  }
+
+  private func quadrantColor(position int32, topLeft Color, topRight Color,
+      bottomLeft Color, bottomRight Color) Color {
+    if position == 0 { return topLeft }
+    if position == 1 { return topRight }
+    if position == 2 { return bottomLeft }
+    return bottomRight
+  }
+
   private func abs(value int32) int32 -> value < 0 ? -value : value
 }
 
@@ -400,7 +525,8 @@ public open class CanvasView : Box {
     return CellSize{ WidthCells: surface.WidthCells, HeightRows: surface.HeightRows }
   }
 
-  protected override func Render(screen Screen, bounds CellRect, style Style) {
+  /// Paints the retained surface; subclasses may call base.Render before drawing clipped overlays.
+  protected open override func Render(screen Screen, bounds CellRect, style Style) {
     surface.Draw(screen, bounds, style)
   }
 }

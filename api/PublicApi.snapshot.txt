@@ -7,6 +7,7 @@ type|SharpTui.App|class
 type|SharpTui.Badge|class
 type|SharpTui.Bind|class
 type|SharpTui.BindingPhase|enum
+type|SharpTui.BorderGlyphs|enum
 type|SharpTui.Box|class
 type|SharpTui.Button|class
 type|SharpTui.CanvasMode|enum
@@ -26,7 +27,11 @@ type|SharpTui.Dialog|class
 type|SharpTui.DialogAction|class
 type|SharpTui.Easing|enum
 type|SharpTui.EventResult|enum
+type|SharpTui.GraphicsProtocol|enum
 type|SharpTui.HorizontalAlignment|enum
+type|SharpTui.ImageFit|enum
+type|SharpTui.ImageSource|class
+type|SharpTui.ImageView|class
 type|SharpTui.Key|enum
 type|SharpTui.KeyGesture|struct
 type|SharpTui.KeyModifiers|enum
@@ -38,12 +43,15 @@ type|SharpTui.ListItem|class
 type|SharpTui.ListView|class
 type|SharpTui.MarkdownTheme|class
 type|SharpTui.MarkdownView|class
+type|SharpTui.MediaPlayer|class
+type|SharpTui.MediaView|class
 type|SharpTui.MemoryClipboard|class
 type|SharpTui.MouseButton|enum
 type|SharpTui.MouseKind|enum
 type|SharpTui.MouseTracking|enum
 type|SharpTui.NumericRange|struct
 type|SharpTui.Overlay|class
+type|SharpTui.PixelSize|struct
 type|SharpTui.Placement|struct
 type|SharpTui.ProgressBar|class
 type|SharpTui.RadioGroup|class

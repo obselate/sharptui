@@ -187,25 +187,27 @@ open class Chores : Column {
 
     list = ListView{ Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Accent }, SelectionMarker: "" }
-    preview = ListView{ GrowWeight: 1, SelectionMarker: "", Style: Style{ Foreground: Ink.Warm, Background: Color.Inherit },
+    preview = ListView{ Grow: 1, SelectionMarker: "", Style: Style{ Foreground: Ink.Warm, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Back, Background: Ink.Warm } }
-    tabs = Tabs{ Height: CellLength.Cells(1), Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit },
+    tabs = Tabs{ Height: 1, Style: Style{ Foreground: Ink.Dim, Background: Color.Inherit },
       SelectedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
-    filter = TextInput{ GrowWeight: 1, Placeholder: "a tag or any word in the marker",
+    filter = TextInput{ Grow: 1, Placeholder: "a tag or any word in the marker",
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit } }
     bar = dimStatusBar()
 
-    pane = Box{ GrowWeight: 1, ShowBorder: true, Title: "source", ShowScrollbar: true,
+    pane = Box{ Grow: 1, ShowBorder: true, Title: "source", ShowScrollbar: true,
       Style: Style{ Foreground: Ink.Text, Background: Color.Inherit }, Children: { preview } }
 
-    filterBox = Box{ Height: CellLength.Cells(3), ShowBorder: true, Title: "filter", Children: { filter } }
+    filterBox = Box{ Height: 3, ShowBorder: true, Title: "filter", Children: { filter } }
 
     Children.Add(tabs)
-    Children.Add(Box{ GrowWeight: 2, ShowBorder: true, ShowScrollbar: true, Title: "tag    where",
+    Children.Add(Box{ Grow: 2, ShowBorder: true, ShowScrollbar: true, Title: "tag    where",
       Style: Style{ Foreground: Ink.Good, Background: Color.Inherit }, FocusedStyle: Style{ Foreground: Ink.Accent, Background: Color.Inherit }, Children: { list } })
     Children.Add(pane)
     Children.Add(filterBox)
     Children.Add(bar)
+    tabs.OnChange = change -> apply()
+    list.OnChange = change -> refreshPreview()
     Focus(list)
     reload()
   }
@@ -304,8 +306,6 @@ open class Chores : Column {
   }
 
   protected override func Render(screen Screen, bounds CellRect, style Style) {
-    if tabs.ConsumeSelectionChange() != nil { apply() }
-    if list.ConsumeSelectionChange() != nil { refreshPreview() }
     bar.LeftText = shown.Count.ToString() + " of " + all.Count.ToString()
       + " markers in " + scanned.ToString() + " files under " + dir
     var hint = "/ filters - t edits tags - left and right swap tags - r rereads - q quits"

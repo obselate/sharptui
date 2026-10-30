@@ -184,35 +184,37 @@ open class Git : Box {
     historyBranches = List[string]()
     historyCommits = List[string]()
 
-    unstagedList = ListView{ GrowWeight: 1, SelectionMarker: "" }
-    stagedList = ListView{ GrowWeight: 1, SelectionMarker: "" }
-    diffList = ListView{ GrowWeight: 1, SelectionMarker: "" }
-    historyList = ListView{ GrowWeight: 1, SelectionMarker: "" }
+    unstagedList = ListView{ Grow: 1, SelectionMarker: "" }
+    unstagedList.OnChange = change -> updateDiffView()
+    stagedList = ListView{ Grow: 1, SelectionMarker: "" }
+    stagedList.OnChange = change -> updateDiffView()
+    diffList = ListView{ Grow: 1, SelectionMarker: "" }
+    historyList = ListView{ Grow: 1, SelectionMarker: "" }
 
-    unstagedBox = Box{ GrowWeight: 1, ShowBorder: true, Children: { unstagedList } }
-    stagedBox = Box{ GrowWeight: 1, ShowBorder: true, Children: { stagedList } }
-    diffBox = Box{ GrowWeight: 1, ShowBorder: true, ShowScrollbar: true, Children: { diffList } }
-    historyBox = Box{ Height: CellLength.Cells(8), ShowBorder: true, ShowScrollbar: true, Children: { historyList } }
+    unstagedBox = Box{ Grow: 1, ShowBorder: true, Children: { unstagedList } }
+    stagedBox = Box{ Grow: 1, ShowBorder: true, Children: { stagedList } }
+    diffBox = Box{ Grow: 1, ShowBorder: true, ShowScrollbar: true, Children: { diffList } }
+    historyBox = Box{ Height: 8, ShowBorder: true, ShowScrollbar: true, Children: { historyList } }
     bar = StatusBar{}
     unstagedTitle = ""
     stagedTitle = ""
     diffTitle = "file diff [changes view]"
     historyTitle = "history & branches [workstreams]"
 
-    let mainCol = Column{ GrowWeight: 1, Children: {
-      Row{ GrowWeight: 1, GapCells: 1, Children: {
-        Column{ GrowWeight: 1, Children: { unstagedBox, stagedBox } },
+    let mainCol = Column{ Grow: 1, Children: {
+      Row{ Grow: 1, Gap: 1, Children: {
+        Column{ Grow: 1, Children: { unstagedBox, stagedBox } },
         diffBox,
       }},
       historyBox,
       bar,
     }}
 
-    settingsTabs = Tabs{ Height: CellLength.Cells(1), Titles: List[string]{ "preset themes [github pages]", "keybinds & help" } }
-    presetListView = ListView{ Height: CellLength.Cells(12), GrowWeight: 1, Title: "select github pages theme preset", ShowBorder: true, ShowScrollbar: true }
+    settingsTabs = Tabs{ Height: 1, Titles: List[string]{ "preset themes [github pages]", "keybinds & help" } }
+    presetListView = ListView{ Height: 12, Grow: 1, Title: "select github pages theme preset", ShowBorder: true, ShowScrollbar: true }
     for p in presets { presetListView.Add(p.Name) }
 
-    helpList = ListView{ GrowWeight: 1, SelectionMarker: "" }
+    helpList = ListView{ Grow: 1, SelectionMarker: "" }
     helpList.Add("[space]    - Stage or unstage the selected file")
     helpList.Add("[A] / [U]  - Stage all changed files / Unstage everything")
     helpList.Add("[c]        - Save a snapshot (git commit)")
@@ -223,17 +225,26 @@ open class Git : Box {
     helpList.Add("[i]        - Create a repository when none exists (git init)")
     helpList.Add("[r]        - Refresh the repository state")
     helpList.Add("[tab]      - Move focus between panes, [s] settings, [q] quit")
-    helpBox = Box{ Height: CellLength.Cells(12), GrowWeight: 1, Title: "beginner keybinds & git guidance", ShowBorder: true, Children: { helpList } }
+    helpBox = Box{ Height: 12, Grow: 1, Title: "beginner keybinds & git guidance", ShowBorder: true, Children: { helpList } }
     helpBox.IsVisible = false
 
     let applySettingsButton = Button{ Text: "apply" }
-    applySettingsButton.OnPress = () -> applySettings()
+    settingsTabs.OnChange = change -> {
+      if settingsOverlay.IsVisible { updateSettingsTab() }
+    }
+    presetListView.OnChange = change -> {
+      if settingsOverlay.IsVisible && settingsTabs.SelectedIndex == 0 {
+        applyPreset(change.SelectedIndex)
+        note = "previewing theme: " + palette.Name
+      }
+    }
+    applySettingsButton.OnClick = () -> applySettings()
     let closeSettingsButton = Button{ Text: "close" }
-    closeSettingsButton.OnPress = () -> closeSettings()
-    settingsBox = Box{ Width: CellLength.Cells(78), Height: CellLength.Cells(18), ShowBorder: true, Title: "settings & theme",
-      Children: { Column{ GrowWeight: 1, GapCells: 1, Children: {
+    closeSettingsButton.OnClick = () -> closeSettings()
+    settingsBox = Box{ Width: 78, Height: 18, ShowBorder: true, Title: "settings & theme",
+      Children: { Column{ Grow: 1, Gap: 1, Children: {
         settingsTabs, presetListView, helpBox,
-        Row{ GapCells: 2, Children: { applySettingsButton, closeSettingsButton } },
+        Row{ Gap: 2, Children: { applySettingsButton, closeSettingsButton } },
       } } } }
     settingsOverlay = Overlay{ Content: settingsBox, DimBackground: true }
     settingsOverlay.DefaultAction = applySettingsButton
@@ -241,15 +252,15 @@ open class Git : Box {
     settingsOverlay.IsVisible = false
 
     promptHeader = Label{ Text: "" }
-    promptInput = TextInput{ Placeholder: "", Height: CellLength.Cells(1) }
+    promptInput = TextInput{ Placeholder: "", Height: 1 }
     let acceptPromptButton = Button{ Text: "accept" }
-    acceptPromptButton.OnPress = () -> executePrompt()
+    acceptPromptButton.OnClick = () -> executePrompt()
     let cancelPromptButton = Button{ Text: "cancel" }
-    cancelPromptButton.OnPress = () -> closePrompt()
-    promptBox = Box{ Width: CellLength.Cells(64), Height: CellLength.Cells(7), ShowBorder: true, Title: "",
-      Children: { Column{ GapCells: 1, Children: {
+    cancelPromptButton.OnClick = () -> closePrompt()
+    promptBox = Box{ Width: 64, Height: 7, ShowBorder: true, Title: "",
+      Children: { Column{ Gap: 1, Children: {
         promptHeader, promptInput,
-        Row{ GapCells: 2, Children: { acceptPromptButton, cancelPromptButton } },
+        Row{ Gap: 2, Children: { acceptPromptButton, cancelPromptButton } },
       } } } }
     promptOverlay = Overlay{ Content: promptBox, DimBackground: true }
     promptOverlay.DefaultAction = acceptPromptButton
@@ -739,23 +750,10 @@ open class Git : Box {
   }
 
   protected override func Render(screen Screen, bounds CellRect, style Style) {
-    // The diff target depends on which file pane holds focus, so a focus
-    // flip must refresh it just like a selection change does.
     let focusFlip = stagedList.IsFocused != lastStagedFocus
-    if focusFlip { lastStagedFocus = stagedList.IsFocused }
-    let unChanged = unstagedList.ConsumeSelectionChange()
-    let stChanged = stagedList.ConsumeSelectionChange()
-    if unChanged != nil || stChanged != nil || focusFlip { updateDiffView() }
-
-    // Consume unconditionally so a change from a closing overlay cannot fire later.
-    let tabChanged = settingsTabs.ConsumeSelectionChange()
-    let presetChanged = presetListView.ConsumeSelectionChange()
-    if settingsOverlay.IsVisible {
-      if tabChanged != nil { updateSettingsTab() }
-      if presetChanged != nil && settingsTabs.SelectedIndex == 0 {
-        applyPreset(presetListView.SelectedIndex)
-        note = "previewing theme: " + palette.Name
-      }
+    if focusFlip {
+      lastStagedFocus = stagedList.IsFocused
+      updateDiffView()
     }
 
     markPane(unstagedBox, unstagedList.IsFocused, unstagedTitle, palette.Warm)

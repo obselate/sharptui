@@ -6,6 +6,14 @@ import Facebook.Yoga
 
 internal enum Axis { Row, Column }
 
+/// The corner glyphs a border uses.
+public enum BorderGlyphs {
+  /// Square corners: ┌┐└┘.
+  Square;
+  /// Rounded corners: ╭╮╰╯.
+  Rounded
+}
+
 /// The base element. Everything drawable is a Box, so everything nests.
 public open class Box {
   private var axis Axis
@@ -19,6 +27,7 @@ public open class Box {
   private var style Style
   private var focusedStyle Style
   private var showBorder bool
+  private var borderGlyphs BorderGlyphs
   private var placement Placement
   private var showScrollbar bool
   private var canFocus bool
@@ -43,10 +52,10 @@ public open class Box {
   public prop Bounds CellRect -> bounds
 
   /// Cells of gap inserted between children along the layout axis. Must be non-negative; defaults to 0.
-  public prop GapCells int32 {
+  public prop Gap int32 {
     get -> gapCells
     set {
-      if value < 0 { throw ArgumentOutOfRangeException("GapCells") }
+      if value < 0 { throw ArgumentOutOfRangeException("Gap") }
       gapCells = value
       layoutStyleDirty = true
     }
@@ -63,12 +72,12 @@ public open class Box {
 
   /// Flex-grow weight used by the immediate in-flow parent to distribute leftover space among
   /// siblings. It does not make this box's ancestors grow: each auto-sized ancestor on a path
-  /// that should receive spare width or height needs its own GrowWeight (or an explicit size).
+  /// that should receive spare width or height needs its own Grow (or an explicit size).
   /// Must be non-negative; defaults to 0.
-  public prop GrowWeight int32 {
+  public prop Grow int32 {
     get -> growWeight
     set {
-      if value < 0 { throw ArgumentOutOfRangeException("GrowWeight") }
+      if value < 0 { throw ArgumentOutOfRangeException("Grow") }
       growWeight = value
       layoutStyleDirty = true
     }
@@ -128,6 +137,12 @@ public open class Box {
     }
   }
 
+  /// The corner glyphs of the border drawn when ShowBorder is set. Defaults to BorderGlyphs.Square.
+  public prop BorderGlyphs BorderGlyphs {
+    get -> borderGlyphs
+    set -> borderGlyphs = value
+  }
+
   /// Text drawn along the top edge, inside the border if ShowBorder is set or on its own row
   /// otherwise. Empty string draws nothing.
   public prop Title string {
@@ -137,6 +152,13 @@ public open class Box {
       layoutStyleDirty = true
     }
   }
+
+  /// Text drawn right-aligned on the top border when ShowBorder is set. Title keeps priority, so
+  /// this text is truncated first. Empty string draws nothing.
+  public prop RightTitle string { get; set; }
+
+  /// Text drawn right-aligned on the bottom border when ShowBorder is set. Empty string draws nothing.
+  public prop BottomTitle string { get; set; }
 
   /// Whether this box lays out in flow with siblings or is positioned absolutely. Defaults to
   /// Placement.InFlow.
@@ -246,6 +268,10 @@ public open class Box {
     }
   }
 
+  /// Adds a child at the end of the retained tree. Also supports nested initializer syntax.
+  /// @param child The child to add.
+  public func Add(child Box) { Children.Add(child) }
+
   /// The box's bounds after border, padding, scrollbar gutter, and title row are subtracted, in
   /// that order. What Render and children draw into.
   public prop ContentBounds CellRect -> contentBounds()
@@ -264,7 +290,10 @@ public open class Box {
     style = Style()
     focusedStyle = Style()
     showBorder = false
+    borderGlyphs = BorderGlyphs.Square
     title = ""
+    RightTitle = ""
+    BottomTitle = ""
     placement = Placement.InFlow
     showScrollbar = false
     canFocus = false
@@ -294,6 +323,11 @@ public open class Box {
 
   /// Lays the tree out in a cell rectangle and fills every Bounds.
   internal func Compute(width int32, height int32) {
+    computeRegion(CellRect{ WidthCells: width, HeightRows: height },
+      CellRect{ WidthCells: width, HeightRows: height })
+  }
+
+  private func computeRegion(bounds CellRect, clip CellRect) {
     if !IsVisible {
       clearBounds()
       return
@@ -310,8 +344,8 @@ public open class Box {
     prepareTree(nil)
     build(cfg)
     guard let root = yoga else { return }
-    YGNodeAPI.YGNodeCalculateLayout(root, float32(width), float32(height), YGDirection.LTR)
-    read(0.0F, 0.0F, CellRect{ WidthCells: width, HeightRows: height })
+    YGNodeAPI.YGNodeCalculateLayout(root, float32(bounds.WidthCells), float32(bounds.HeightRows), YGDirection.LTR)
+    read(float32(bounds.Column), float32(bounds.Row), clip)
   }
 
   /// Lays out and draws the whole tree.
@@ -320,6 +354,18 @@ public open class Box {
     if !IsVisible { return }
     Compute(screen.Size.WidthCells, screen.Size.HeightRows)
     paintTree(screen, screen.DefaultStyle)
+  }
+
+  /// Lays out and draws an independent subtree inside a clipped virtual row.
+  /// @param screen The target screen.
+  /// @param bounds The full subtree rectangle, including rows outside the viewport.
+  /// @param clip The visible part of the subtree.
+  public func Draw(screen Screen, bounds CellRect, clip CellRect) {
+    if !IsVisible || bounds.WidthCells <= 0 || bounds.HeightRows <= 0 { return }
+    computeRegion(bounds, clip)
+    let previous = screen.PushClip(clip)
+    try { paintTree(screen, screen.DefaultStyle) }
+    finally { screen.RestoreClip(previous) }
   }
 
   /// Routes one event through the tree. Call this on the root.
@@ -417,6 +463,19 @@ public open class Box {
   internal open func ScopeFallback(ev UiEvent) EventResult -> EventResult.Continue
 
   internal open func PrepareInputScope() {
+  }
+
+  /// A repaint interval for visible live content. Zero disables this box's frame requests.
+  protected open prop FrameInterval TimeSpan -> TimeSpan.Zero
+
+  internal func FrameMilliseconds() int32 {
+    if !IsVisible { return 0 }
+    var interval = int32(FrameInterval.TotalMilliseconds)
+    for i in 0 ... Children.Count {
+      let next = Children[i].FrameMilliseconds()
+      if next > 0 && (interval <= 0 || next < interval) { interval = next }
+    }
+    return interval
   }
 
   /// Draws this box's own content. Containers draw nothing.
@@ -713,22 +772,32 @@ public open class Box {
       screen.Fill(frame, resolvedStyle)
     }
     if ShowBorder {
-      screen.DrawBorder(frame, chrome)
-    }
-    if Title != "" {
-      if ShowBorder {
-        screen.WriteCell(frame.Column + 1, frame.Row, " ", chrome)
-        screen.WriteClipped(frame, 2, 0, Title, chrome)
-        let after = 2 + Glyph.WidthOf(Title)
-        if after < frame.WidthCells { screen.WriteCell(frame.Column + after, frame.Row, " ", chrome) }
-      } else {
-        screen.WriteClipped(frame, 1, 0, Title, chrome)
+      screen.DrawBorder(frame, chrome, BorderGlyphs)
+      let right = frame.Column + frame.WidthCells - 3
+      var used = 1
+      if Title != "" {
+        let cells = Glyph.FitWidth(Title, frame.WidthCells - 4)
+        borderTitle(screen, frame.Column + 2, frame.Row, Title, cells, chrome)
+        used = cells + 3
       }
+      let rightCells = Glyph.FitWidth(RightTitle, frame.WidthCells - 5 - used)
+      borderTitle(screen, right - rightCells, frame.Row, RightTitle, rightCells, chrome)
+      let bottomCells = Glyph.FitWidth(BottomTitle, frame.WidthCells - 6)
+      borderTitle(screen, right - bottomCells, frame.Row + frame.HeightRows - 1, BottomTitle, bottomCells, chrome)
+    } else if Title != "" {
+      screen.WriteClipped(frame, 1, 0, Title, chrome)
     }
 
     Render(screen, ContentBounds, resolvedStyle)
     if ShowScrollbar { bar(screen, chrome) }
     paintChildren(screen, resolvedStyle)
+  }
+
+  private func borderTitle(screen Screen, column int32, row int32, text string, cells int32, s Style) {
+    if cells <= 0 { return }
+    screen.WriteCell(column - 1, row, " ", s)
+    screen.WriteClipped(CellRect{ Column: column, Row: row, WidthCells: cells, HeightRows: 1 }, 0, 0, text, s)
+    screen.WriteCell(column + cells, row, " ", s)
   }
 
   private func paintChildren(screen Screen, inherited Style) {
@@ -833,9 +902,9 @@ public open class Box {
         absolute ? YGPositionType.Absolute : YGPositionType.Relative)
       YGNodeStyleAPI.YGNodeStyleSetFlexDirection(node,
         LayoutAxis == Axis.Row ? YGFlexDirection.Row : YGFlexDirection.Column)
-      YGNodeStyleAPI.YGNodeStyleSetFlexGrow(node, float32(GrowWeight))
+      YGNodeStyleAPI.YGNodeStyleSetFlexGrow(node, float32(Grow))
       YGNodeStyleAPI.YGNodeStyleSetFlexShrink(node, flexShrink)
-      YGNodeStyleAPI.YGNodeStyleSetGap(node, YGGutter.All, float32(GapCells))
+      YGNodeStyleAPI.YGNodeStyleSetGap(node, YGGutter.All, float32(Gap))
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Left, float32(left))
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Top, float32(top))
       YGNodeStyleAPI.YGNodeStyleSetPadding(node, YGEdge.Right, float32(right))

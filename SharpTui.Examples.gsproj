@@ -1,4 +1,4 @@
-<Project Sdk="Gsharp.NET.Sdk/0.4.59">
+<Project Sdk="Gsharp.NET.Sdk/0.5.212">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -16,6 +16,7 @@
     <Compile Remove="agent-testing/**/*.gs" />
     <Compile Remove="showcases/**/*.gs" />
     <Compile Remove="archive/**/*.gs" />
+    <Compile Remove="bonsai-apps/**/*.gs" />
     <ProjectReference Include="SharpTui.Framework.gsproj" />
   </ItemGroup>
 

@@ -14,6 +14,9 @@ public open class TextInput : Box {
   private var caretGraphemeIndex int32
   private var isPassword bool
   private var placeholderStyle Style
+  /// Receives current text after each user edit. Setting Text and moving the caret are silent.
+  public prop OnChange Action[string]? { get; set; }
+
   private var clusters List[string]
 
   /// The current text content. Setting it rebuilds the grapheme index and clamps the caret.
@@ -142,6 +145,15 @@ public open class TextInput : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected override func Accept(ev UiEvent) EventResult {
+    let previous = text
+    let outcome = acceptEdit(ev)
+    if text != previous {
+      if let callback = OnChange { callback(text) }
+    }
+    return outcome
+  }
+
+  private func acceptEdit(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     clampCaret(clusters.Count)

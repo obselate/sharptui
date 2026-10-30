@@ -8,6 +8,8 @@ internal class Checks {
       var failed = 0
       failed = failed + MarkdownCheck.Run()
       failed = failed + WidgetCheck.Run()
+      failed = failed + ApiCheck.Run()
+      failed = failed + MediaCheck.Run()
       failed = failed + MoreCheck.Run()
       failed = failed + DataCheck.Run()
       failed = failed + ColorCheck.Run()

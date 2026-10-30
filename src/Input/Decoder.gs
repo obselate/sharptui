@@ -18,7 +18,7 @@ internal class InputText {
 
 internal class InputDecoder {
   private var state InputState
-  private var utf8 [4]uint8
+  private var utf8 []uint8
   private var utf8Count int32
   private var utf8Need int32
   private var utf8Modifiers KeyModifiers
@@ -31,7 +31,7 @@ internal class InputDecoder {
 
   internal init() {
     state = InputState.Ground
-    utf8 = [4]uint8{}
+    utf8 = [4]uint8
     utf8Count = 0
     utf8Need = 0
     utf8Modifiers = KeyModifiers.None
@@ -218,6 +218,10 @@ internal class InputDecoder {
       state = InputState.Paste
       paste.Begin()
       csi.Clear()
+      return
+    }
+    if csi.Count == 0 && (final == 73 || final == 79) {
+      emit(UiEvent{ Kind: UiEventKind.Focus, IsFocused: final == 73 })
       return
     }
     var ev = UiEvent{}

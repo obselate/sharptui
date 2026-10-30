@@ -4,7 +4,7 @@ Canvas keeps pixels. Animation changes retained state. Workers deliver terminal 
 
 ## Canvas
 
-`CanvasSurface` is retained. Draw into it outside `Draw`, then display it through `CanvasView`. Coordinates are subcells, not terminal cells.
+`CanvasSurface` is retained. Draw into it outside `Draw`, then display it through `CanvasView`. Shape coordinates are subcells; `HalfBlock`, `Quadrant`, and `BrailleCell` use terminal-cell coordinates.
 
 | `CanvasMode` | Packing per terminal cell | Use |
 | --- | --- | --- |
@@ -29,6 +29,27 @@ surface.Line(2, surface.SubcellHeight - 3, surface.SubcellWidth - 3, 2, ink)
 
 `CanvasView(width, height, mode)` owns its surface. Call `Surface.Resize(width, height)` to change dimensions and clear retained content. Construct and assign a separate `CanvasSurface` only when several views or application components must share it.
 
+### Truecolor raster images
+
+Weather radar and other raster images need two independently colored pixels per cell. Shape methods retain one style per cell, so drawing two differently colored `Point` calls overwrites the first style. `HalfBlock(column, row, upper, lower)` addresses this gap by replacing the cell with an upper-half glyph, using its foreground for the upper pixel and its background for the lower pixel. It requires `CanvasMode.HalfBlock`, clips terminal-cell coordinates, and reuses the existing retained mask and style storage.
+
+```gsharp
+let raster = CanvasView(80, 24, CanvasMode.HalfBlock)
+raster.Surface.HalfBlock(0, 0, Color.Rgb(12, 34, 56), Color.Rgb(78, 90, 123))
+```
+
+`Quadrant(column, row, topLeft, topRight, bottomLeft, bottomRight)` accepts four RGB samples in `CanvasMode.Quadrant`. A terminal cell can display only two colors. The surface evaluates all seven distinct two-group partitions, averages the RGB channels in each group, and retains the partition with the lowest total squared RGB error. Four equal samples use one background-colored space.
+
+```gsharp
+let pixels = CanvasView(80, 24, CanvasMode.Quadrant)
+pixels.Surface.Quadrant(0, 0, Color.Rgb(255, 0, 0), Color.Rgb(255, 128, 0),
+  Color.Rgb(0, 128, 255), Color.Rgb(0, 0, 255))
+```
+
+`BrailleCell(column, row, dots, foreground, background)` replaces one cell in `CanvasMode.Braille`. The low eight bits in `dots` use the Unicode Braille dot layout. Use it when a rasterizer already chose a two-color dot partition and needs retained cell replacement.
+
+Sample image rows `row * 2` and `row * 2 + 1` for each terminal row. Decode, resample, and composite transparency before passing colors; the canvas does not own image formats or geographic projections. Update the surface outside `Draw`. An application-specific `CanvasView` subclass can draw clipped labels after its base `Render` call. Existing retained layout, resize, keyboard, and mouse routing support map pan and zoom without another framework widget.
+
 ## Indicators
 
 `ProgressBar` is one row. `Value` is clamped to the displayed range from zero through `Maximum`. A non-positive maximum leaves the bar empty. `OverlayText` is centered over the fill.
@@ -38,7 +59,7 @@ let progress = ProgressBar{
   Value: 3.0,
   Maximum: 5.0,
   OverlayText: "3/5",
-  Width: CellLength.Cells(20),
+  Width: 20,
   FillStyle: Style{ Foreground: Color.Rgb("16A34A"), Background: Color.Inherit },
 }
 

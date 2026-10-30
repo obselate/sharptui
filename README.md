@@ -5,20 +5,20 @@
 <p>
   <a href="https://github.com/obselate/sharptui/actions/workflows/ci.yml"><img src="https://github.com/obselate/sharptui/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4" alt=".NET 10">
-  <a href="https://github.com/DavidOBando/gsharp"><img src="https://img.shields.io/badge/G%23-0.4.59-8A2BE2" alt="G#"></a>
+  <a href="https://github.com/DavidOBando/gsharp"><img src="https://img.shields.io/badge/G%23-0.5.26-8A2BE2" alt="G#"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-97CA00" alt="MIT"></a>
 </p>
 
-A small retained-tree TUI framework for G#.
+A small retained-tree TUI framework for G#. The 0.2 API uses `App.Root`, `OnClick`, `OnChange`, `Gap` and `Grow`, with Kitty/Sixel images and media playback.
 
 ## Install
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Version 0.2.0 is built from this checkout. Use a project reference until the package is published.
 
 ```sh
-dotnet new install Gsharp.Templates@0.4.59
+dotnet new install Gsharp.Templates@0.5.26
 dotnet new gsharp-console -n MyApp
-dotnet add MyApp/MyApp.gsproj package SharpTui.Framework --version 0.1.1
+dotnet add MyApp/MyApp.gsproj reference /path/to/sharptui/SharpTui.Framework.gsproj
 dotnet run --project MyApp/MyApp.gsproj
 ```
 
@@ -32,22 +32,20 @@ package Demo
 import SharpTui
 
 func Main(args []string) int32 {
-  let root = Column{
-    Padding: CellInsets.All(1),
-    GapCells: 1,
+  App{ Root: Column{
+    Padding: 1,
+    Gap: 1,
     Children: {
       Label{ Text: "sharptui" },
       Row{
-        GrowWeight: 1,
+        Grow: 1,
         Children: {
-          Box{ Width: CellLength.Cells(24), ShowBorder: true, Title: "Files" },
-          MarkdownView{ GrowWeight: 1, Source: "# Hello" },
+          Box{ Width: 24, ShowBorder: true, Title: "Files" },
+          MarkdownView{ Grow: 1, Source: "# Hello" },
         },
       },
     },
-  }
-  let app = App()
-  app.Run(root)
+  } }.Run()
   return 0
 }
 ```

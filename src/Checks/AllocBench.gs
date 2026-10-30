@@ -193,7 +193,7 @@ public class AllocBench {
       uiBenchSelectOpenMove()
       uiBenchSelectChange()
       uiBenchCleanRedraw("button unchanged redraw", uiBenchButton(w), w, h)
-      uiBenchButtonPress()
+      uiBenchButtonClick()
       uiBenchCleanRedraw("dialog unchanged redraw", uiBenchDialogScene(uiBenchDialog()), w, h)
       uiBenchDialogNavigation()
       uiBenchCleanRedraw("overlay unchanged redraw", uiBenchOverlayScene(), w, h)
@@ -345,6 +345,8 @@ func uiBenchPresentedListSelection10k() {
   let w = 200
   let h = 50
   let list = uiBenchPresentedList(10000, w, h)
+  let changes = SelectionProbe()
+  list.OnChange = changes.Record
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
@@ -353,12 +355,12 @@ func uiBenchPresentedListSelection10k() {
 
   let warmupStep = func(i int32) {
     list.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
-    if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection warmup failed") }
+    if changes.Take() == nil { Console.WriteLine("SharpTUI presented list selection warmup failed") }
     uiBenchDraw(list, screen, sink)
   }
   let measureStep = func(i int32) {
     list.Handle(keyEv((i % 2) == 0 ? Key.Down : Key.Up))
-    if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection measurement failed") }
+    if changes.Take() == nil { Console.WriteLine("SharpTUI presented list selection measurement failed") }
     uiBenchDraw(list, screen, sink)
   }
   uiBenchRun("list presented 10k selection move", 64, 500, warmupStep, measureStep,
@@ -367,7 +369,7 @@ func uiBenchPresentedListSelection10k() {
         Console.WriteLine("SharpTUI presented list selection allocation validation failed")
       }
       list.Handle(keyEv(Key.Down))
-      if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list selection final consume failed") }
+      if changes.Take() == nil { Console.WriteLine("SharpTUI presented list selection final callback failed") }
       return uiBenchDraw(list, screen, sink)
     })
 }
@@ -376,6 +378,8 @@ func uiBenchPresentedListCleanRedraw10k() {
   let w = 200
   let h = 50
   let list = uiBenchPresentedList(10000, w, h)
+  let changes = SelectionProbe()
+  list.OnChange = changes.Record
   list.SelectedIndex = 20
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
@@ -389,7 +393,7 @@ func uiBenchPresentedListCleanRedraw10k() {
         Console.WriteLine("SharpTUI presented list clean redraw allocation validation failed")
       }
       list.Handle(keyEv(Key.Down))
-      if list.ConsumeSelectionChange() == nil { Console.WriteLine("SharpTUI presented list clean redraw final consume failed") }
+      if changes.Take() == nil { Console.WriteLine("SharpTUI presented list clean redraw final callback failed") }
       if uiBenchDraw(list, screen, sink) == 0 { Console.WriteLine("SharpTUI presented list clean redraw change failed") }
       let bytes = uiBenchDrawClean(list, screen, sink)
       if bytes != 0 { Console.WriteLine("SharpTUI presented list clean redraw final validation failed") }
@@ -1071,14 +1075,14 @@ func uiBenchLayoutReflow() {
   uiBenchDraw(root, screen, sink)
 
   let step = func(i int32) {
-    root.GapCells = (i % 2) == 0 ? 1 : 2
+    root.Gap = (i % 2) == 0 ? 1 : 2
     uiBenchDraw(root, screen, sink)
   }
   uiBenchRun("box row column gap reflow", 64, 500, step, step, func(before int64, after int64, genBefore int32, genAfter int32) int32 {
-    if root.GapCells != 2 { Console.WriteLine("SharpTUI layout reflow validation failed") }
-    root.GapCells = 1
+    if root.Gap != 2 { Console.WriteLine("SharpTUI layout reflow validation failed") }
+    root.Gap = 1
     let bytes = uiBenchDraw(root, screen, sink)
-    if bytes == 0 || root.GapCells != 1 { Console.WriteLine("SharpTUI layout reflow final validation failed") }
+    if bytes == 0 || root.Gap != 1 { Console.WriteLine("SharpTUI layout reflow final validation failed") }
     return bytes
   })
 }
@@ -1222,14 +1226,14 @@ func uiBenchSelectMove(picker Select, forward bool) {
   picker.Handle(keyEv(Key.Enter))
 }
 
-func uiBenchButtonPress() {
+func uiBenchButtonClick() {
   let w = 200
   let h = 50
   let button = uiBenchButton(w)
   let screen = uiBenchScreen(w, h)
   let sink = uiBenchSink()
   var presses = 0
-  button.OnPress = () -> presses = presses + 1
+  button.OnClick = () -> presses = presses + 1
   button.Focus(button)
   uiBenchDraw(button, screen, sink)
 
@@ -1483,9 +1487,9 @@ func uiBenchSplitterChangedVsDirect() {
       target,
       splitter,
       Column{
-        GrowWeight: 1,
+        Grow: 1,
         Height: CellLength.Cells(h),
-        Children: { Label{ Text: "direct comparison", GrowWeight: 1 } },
+        Children: { Label{ Text: "direct comparison", Grow: 1 } },
       },
     },
   }
@@ -1527,9 +1531,9 @@ func uiBenchSplitterChangedVsDirect() {
       directTarget,
       directDivider,
       Column{
-        GrowWeight: 1,
+        Grow: 1,
         Height: CellLength.Cells(h),
-        Children: { Label{ Text: "direct comparison", GrowWeight: 1 } },
+        Children: { Label{ Text: "direct comparison", Grow: 1 } },
       },
     },
   }
@@ -1559,7 +1563,7 @@ func uiBenchBoxLayout(width int32, height int32) Box {
   root.Width = CellLength.Cells(width)
   root.Height = CellLength.Cells(height)
   root.Padding = CellInsets.All(1)
-  root.GapCells = 1
+  root.Gap = 1
   root.ShowBorder = true
   root.Title = "Box"
   root.Children.Add(Label{ Text: "box layout benchmark", Width: CellLength.Cells(80) })
@@ -1572,7 +1576,7 @@ func uiBenchRowLayout(width int32, height int32) Row {
   root.Width = CellLength.Cells(width)
   root.Height = CellLength.Cells(height)
   root.Padding = CellInsets.All(1)
-  root.GapCells = 2
+  root.Gap = 2
   root.ShowBorder = true
   root.Title = "Row"
   root.Children.Add(Label{ Text: "name", Width: CellLength.Cells(32) })
@@ -1586,7 +1590,7 @@ func uiBenchColumnLayout(width int32, height int32) Column {
   root.Width = CellLength.Cells(width)
   root.Height = CellLength.Cells(height)
   root.Padding = CellInsets.All(1)
-  root.GapCells = 1
+  root.Gap = 1
   root.ShowBorder = true
   root.Title = "Column"
   root.Children.Add(Label{ Text: "top", Width: CellLength.Cells(80) })
@@ -1600,14 +1604,14 @@ func uiBenchNestedLayout(width int32, height int32) Column {
   root.Width = CellLength.Cells(width)
   root.Height = CellLength.Cells(height)
   root.Padding = CellInsets.All(1)
-  root.GapCells = 2
+  root.Gap = 2
   root.ShowBorder = true
   root.Title = "Layout"
   var i = 0
   while i < 4 {
-    let row = Row{ Height: CellLength.Cells(3), GapCells: 1 }
+    let row = Row{ Height: CellLength.Cells(3), Gap: 1 }
     row.Children.Add(Label{ Text: "row-" + i.ToString(), Width: CellLength.Cells(24) })
-    row.Children.Add(Label{ Text: "alpha bravo charlie", GrowWeight: 1 })
+    row.Children.Add(Label{ Text: "alpha bravo charlie", Grow: 1 })
     row.Children.Add(Label{ Text: "ready", Width: CellLength.Cells(16) })
     root.Children.Add(row)
     i = i + 1
@@ -1747,14 +1751,14 @@ func uiBenchOverlayScene() Box {
 func uiBenchVisibilityChange() {
   let w = 200
   let h = 50
-  let optional = Label{ Text: "optional pane", GrowWeight: 1 }
+  let optional = Label{ Text: "optional pane", Grow: 1 }
   let root = Row{
     Width: CellLength.Cells(w),
     Height: CellLength.Cells(h),
     Children: {
-      Label{ Text: "fixed pane", GrowWeight: 1 },
+      Label{ Text: "fixed pane", Grow: 1 },
       optional,
-      Label{ Text: "detail pane", GrowWeight: 1 },
+      Label{ Text: "detail pane", Grow: 1 },
     },
   }
   let screen = uiBenchScreen(w, h)

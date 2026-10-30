@@ -16,7 +16,11 @@ public class MoreCheck {
       root.Children.Add(c1)
       root.Children.Add(c2)
 
+      let treeChanges = SelectionProbe()
+
       let tree = TreeView{}
+
+      tree.OnChange = treeChanges.Record
       tree.Roots.Add(root)
       let troot = Box{ Children: { tree } }
       let treeScreen = Screen(40, 10)
@@ -35,15 +39,16 @@ public class MoreCheck {
       troot.Handle(keyEv(Key.Down))
       failed = failed + Checks.Expect(tree.SelectedNode?.Text == "c1", "down selects the first child in flattened order")
       failed = failed + Checks.Expect(tree.SelectedNode?.Value == "tag-c1", "Value travels with the selected node")
-      if let moved = tree.ConsumeSelectionChange() {
+      if let moved = treeChanges.Take() {
         failed = failed + Checks.Expect(moved.PreviousIndex == 0 && moved.SelectedIndex == 1,
-          "TreeView exposes and consumes user selection changes")
+          "TreeView delivers user selection changes")
       } else {
-        failed = failed + Checks.Expect(false, "TreeView exposes user selection changes")
+        failed = failed + Checks.Expect(false, "TreeView delivers user selection changes")
       }
+      treeChanges.Clear()
       tree.SelectedIndex = 1
-      failed = failed + Checks.Expect(tree.ConsumeSelectionChange() == nil,
-        "programmatic TreeView selection clears pending output")
+      failed = failed + Checks.Expect(treeChanges.Take() == nil,
+        "programmatic TreeView selection does not emit a user change")
 
       troot.Handle(keyEv(Key.Down))
       failed = failed + Checks.Expect(tree.SelectedNode?.Text == "c2", "a second down selects the second child")
@@ -80,23 +85,34 @@ public class MoreCheck {
       failed = failed + Checks.Expect(lateScreen.Probe(4, 1) == "l",
         "TreeView.Refresh exposes direct child-list changes")
 
+      let replacementTreeChanges = SelectionProbe()
+
       let replacementTree = TreeView{ Roots: { TreeNode{ Text: "first" }, TreeNode{ Text: "second" } } }
+
+      replacementTree.OnChange = replacementTreeChanges.Record
       let replacementTreeRoot = Box{ Children: { replacementTree } }
       replacementTreeRoot.Draw(Screen(20, 4))
       replacementTreeRoot.Focus(replacementTree)
       replacementTreeRoot.Handle(keyEv(Key.Down))
+      replacementTreeChanges.Clear()
       replacementTree.Roots = List[TreeNode]{ TreeNode{ Text: "replacement" } }
       failed = failed + Checks.Expect(replacementTree.SelectedIndex == 0
-          && replacementTree.ConsumeSelectionChange() == nil,
-        "TreeView Roots replacement normalizes selection and clears pending output")
+          && replacementTreeChanges.Take() == nil,
+        "TreeView Roots replacement normalizes selection and does not emit a user change")
+      replacementTreeChanges.Clear()
       replacementTree.Roots = List[TreeNode]{ TreeNode{ Text: "first" }, TreeNode{ Text: "second" } }
       replacementTreeRoot.Handle(keyEv(Key.Down))
       replacementTree.Roots.Add(TreeNode{ Text: "third" })
+      replacementTreeChanges.Clear()
       replacementTree.Refresh()
-      failed = failed + Checks.Expect(replacementTree.ConsumeSelectionChange() == nil,
-        "TreeView.Refresh clears pending output after direct Roots mutation")
+      failed = failed + Checks.Expect(replacementTreeChanges.Take() == nil,
+        "TreeView.Refresh does not emit a user change after direct Roots mutation")
+
+      let pickerChanges = SelectionProbe()
 
       let picker = Select{ Options: { "aa", "bb", "cc" } }
+
+      picker.OnChange = pickerChanges.Record
       let mroot = Box{ Children: { picker } }
       let mscr = Screen(20, 10)
       mroot.Draw(mscr)
@@ -112,15 +128,16 @@ public class MoreCheck {
       mroot.Handle(keyEv(Key.Enter))
       failed = failed + Checks.Expect(picker.SelectedIndex == 1, "Enter commits the internal highlight")
       failed = failed + Checks.Expect(!picker.IsOpen, "committing closes the Select")
-      if let moved = picker.ConsumeSelectionChange() {
+      if let moved = pickerChanges.Take() {
         failed = failed + Checks.Expect(moved.PreviousIndex == 0 && moved.SelectedIndex == 1,
-          "Select exposes and consumes committed selection changes")
+          "Select delivers committed selection changes")
       } else {
         failed = failed + Checks.Expect(false, "Select exposes committed selection changes")
       }
+      pickerChanges.Clear()
       picker.SelectedIndex = 1
-      failed = failed + Checks.Expect(picker.ConsumeSelectionChange() == nil,
-        "programmatic Select selection clears pending output")
+      failed = failed + Checks.Expect(pickerChanges.Take() == nil,
+        "programmatic Select selection does not emit a user change")
 
       mroot.Handle(keyEv(Key.Enter))
       mroot.Handle(keyEv(Key.Down))
@@ -133,26 +150,32 @@ public class MoreCheck {
       mroot.Handle(mouseEv(0, 9))
       failed = failed + Checks.Expect(!picker.IsOpen, "a press outside the open list closes it")
 
+      let replacementPickerChanges = SelectionProbe()
+
       let replacementPicker = Select{ Options: { "first", "second" } }
+
+      replacementPicker.OnChange = replacementPickerChanges.Record
       let replacementPickerRoot = Box{ Children: { replacementPicker } }
       replacementPickerRoot.Draw(Screen(20, 4))
       replacementPickerRoot.Focus(replacementPicker)
       replacementPickerRoot.Handle(keyEv(Key.Enter))
       replacementPickerRoot.Handle(keyEv(Key.Down))
       replacementPickerRoot.Handle(keyEv(Key.Enter))
+      replacementPickerChanges.Clear()
       replacementPicker.Options = List[string]{ "replacement" }
       failed = failed + Checks.Expect(replacementPicker.SelectedIndex == 0
-          && replacementPicker.ConsumeSelectionChange() == nil,
-        "Select Options replacement normalizes selection and clears pending output")
+          && replacementPickerChanges.Take() == nil,
+        "Select Options replacement normalizes selection and does not emit a user change")
       replacementPicker.Options.Add("second")
       replacementPickerRoot.Handle(keyEv(Key.Enter))
       replacementPickerRoot.Handle(keyEv(Key.Down))
       replacementPickerRoot.Handle(keyEv(Key.Enter))
       replacementPicker.Options.Clear()
+      replacementPickerChanges.Clear()
       replacementPicker.Refresh()
       failed = failed + Checks.Expect(replacementPicker.SelectedIndex == 0
-          && replacementPicker.ConsumeSelectionChange() == nil,
-        "Select.Refresh clears pending output after direct Options mutation")
+          && replacementPickerChanges.Take() == nil,
+        "Select.Refresh does not emit a user change after direct Options mutation")
 
       let longSelect = Select{}
       var oi = 0

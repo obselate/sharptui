@@ -58,10 +58,10 @@ open class AnimationGallery : Column {
       EasingSpec{ Curve: Easing.ElasticOut, Name: "ELASTIC OUT", DurationMilliseconds: 1800.0 },
       EasingSpec{ Curve: Easing.ElasticInOut, Name: "ELASTIC IN-OUT", DurationMilliseconds: 1800.0 },
     }
-    title = Label{ Style: paint(Ink.Text), Height: CellLength.Cells(1) }
-    caption = Label{ Style: paint(Ink.Dim), Height: CellLength.Cells(1) }
+    title = Label{ Style: paint(Ink.Text), Height: 1 }
+    caption = Label{ Style: paint(Ink.Dim), Height: 1 }
     canvas = CanvasView(1, 1, CanvasMode.Braille)
-    canvas.GrowWeight = 1
+    canvas.Grow = 1
     canvas.ShowBorder = true
     canvas.Style = paint(Ink.Accent)
     surface = canvas.Surface
@@ -452,6 +452,7 @@ open class AnimationGallery : Column {
 func animationGallery() int32 {
   let app = App()
   app.DefaultStyle = Style{ Foreground: Ink.Text, Background: Ink.Back }
-  app.Run(AnimationGallery(app.Animations))
+  app.Root = AnimationGallery(app.Animations)
+  app.Run()
   return 0
 }

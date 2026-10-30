@@ -27,7 +27,7 @@ public open class TextArea : Box {
   private var enterBehavior TextAreaEnterBehavior
   private var maxLines int32
   private var clipboard Clipboard
-  private var onChanged Action[string]?
+  private var onChange Action[string]?
   private var onSubmit Action[string]?
 
   /// The full text content, joined with '\n'. Setting it replaces all lines, resets the caret, and clears undo history.
@@ -128,9 +128,9 @@ public open class TextArea : Box {
     }
   }
 
-  public prop OnChanged Action[string]? {
-    get -> onChanged
-    set -> onChanged = value
+  public prop OnChange Action[string]? {
+    get -> onChange
+    set -> onChange = value
   }
 
   /// Invoked with the current text when EnterBehavior submits the editor.
@@ -170,7 +170,7 @@ public open class TextArea : Box {
     enterBehavior = TextAreaEnterBehavior.NewLine
     maxLines = 0
     clipboard = MemoryClipboard.Shared
-    onChanged = nil
+    onChange = nil
     onSubmit = nil
     undos = List[Snapshot]()
     redos = List[Snapshot]()
@@ -184,7 +184,7 @@ public open class TextArea : Box {
     lineNumberCount = -1
     lineNumberDigits = -1
     CanFocus = true
-    GrowWeight = 1
+    Grow = 1
   }
 
   private func loadText(text string) {
@@ -390,7 +390,7 @@ public open class TextArea : Box {
   /// Handles editing, navigation, selection, clipboard, undo/redo, and mouse input. A paste inserts its text preserving line breaks as one undo step.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
@@ -944,7 +944,7 @@ public open class TextArea : Box {
   }
 
   private func notifyChanged() {
-    let action = OnChanged
+    let action = OnChange
     if action != nil { action(Text) }
   }
 

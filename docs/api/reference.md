@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `9ea9e81c64d3630c6a4911e8e4cecf64db5a2a1e0f6a3b8f647bf7614accd5b8`.
+Public-symbol SHA-256: `9d08bf9ffd180d895e73d8d1055bc9e432ba4cb5767d11ca53b6874aa3950554`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -35,7 +35,11 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.DialogAction](#sharptuidialogaction)
 - [SharpTui.Easing](#sharptuieasing)
 - [SharpTui.EventResult](#sharptuieventresult)
+- [SharpTui.GraphicsProtocol](#sharptuigraphicsprotocol)
 - [SharpTui.HorizontalAlignment](#sharptuihorizontalalignment)
+- [SharpTui.ImageFit](#sharptuiimagefit)
+- [SharpTui.ImageSource](#sharptuiimagesource)
+- [SharpTui.ImageView](#sharptuiimageview)
 - [SharpTui.Key](#sharptuikey)
 - [SharpTui.KeyGesture](#sharptuikeygesture)
 - [SharpTui.KeyModifiers](#sharptuikeymodifiers)
@@ -47,12 +51,15 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.ListView](#sharptuilistview)
 - [SharpTui.MarkdownTheme](#sharptuimarkdowntheme)
 - [SharpTui.MarkdownView](#sharptuimarkdownview)
+- [SharpTui.MediaPlayer](#sharptuimediaplayer)
+- [SharpTui.MediaView](#sharptuimediaview)
 - [SharpTui.MemoryClipboard](#sharptuimemoryclipboard)
 - [SharpTui.MouseButton](#sharptuimousebutton)
 - [SharpTui.MouseKind](#sharptuimousekind)
 - [SharpTui.MouseTracking](#sharptuimousetracking)
 - [SharpTui.NumericRange](#sharptuinumericrange)
 - [SharpTui.Overlay](#sharptuioverlay)
+- [SharpTui.PixelSize](#sharptuipixelsize)
 - [SharpTui.Placement](#sharptuiplacement)
 - [SharpTui.ProgressBar](#sharptuiprogressbar)
 - [SharpTui.RadioGroup](#sharptuiradiogroup)
@@ -233,13 +240,18 @@ G# kind: `class`.
 ### Properties
 
 - `prop Animations AnimationController { get; }` — Owns animations and their shared frame deadline.
+- `prop CellPixels PixelSize { get; set; }` — Physical pixels per terminal cell. Leave zero to query the terminal, with an 8 by 16 fallback.
 - `prop Clipboard Clipboard { get; }` — A clipboard that stores text locally and publishes writes through OSC 52 while the app runs.
 - `prop ColorMode TerminalColorMode { get; set; }` — The terminal color encoding. Auto detects a mode from the terminal environment when Run starts.
 - `prop DefaultStyle Style { get; set; }` — The style used for unstyled drawing in the application.
+- `prop Graphics GraphicsProtocol { get; set; }` — The image backend. Auto probes Kitty, then Sixel, then uses colored half blocks.
 - `prop HyperlinksEnabled bool { get; set; }` — Whether semantic TextRun hyperlinks are emitted with OSC 8.
 - `prop Keys Keymap { get; set; }` — Application bindings offered before and after tree event handling.
 - `prop MouseTracking MouseTracking { get; set; }` — Terminal mouse reporting selected when Run enters the terminal.
+- `prop OnFocus Action[bool] { get; set; }` — Receives terminal focus changes on the UI thread, including while an overlay owns input focus.
+- `prop OnTick Action { get; set; }` — Runs on the UI thread at TickInterval, including while an overlay owns input focus.
 - `prop QuitGestures List[KeyGesture] { get; }` — Fallback quit gestures. The tree receives each event before these are tested.
+- `prop Root Box { get; set; }` — The retained tree run by this app. Changing it takes effect on the next Run.
 - `prop TickInterval TimeSpan { get; set; }` — The interval between tick events. TimeSpan.Zero disables ticks.
 
 ### Methods
@@ -247,8 +259,7 @@ G# kind: `class`.
 - `func Post(work Action)` — Posts no-argument UI work for execution on the application loop. Repeated pending posts share one wakeup and one repaint.
   - `work`: The callback to run on the loop thread.
 - `func RequestDraw()` — Wakes the app for one repaint. Repeated pending calls coalesce.
-- `func Run(root Box)` — Runs a retained tree. Escape and Ctrl+C quit.
-  - `root`: The root box of the tree to run.
+- `func Run()` — Runs Root. Escape and Ctrl+C quit. Throws when Root has not been set.
 - `func StartWorker(work Func[CancellationToken, T], completed Action[T], failed Action[Exception], cancelled Action) Worker` — Starts one app-owned background operation and delivers its terminal callback on the app loop.
   - `work`: The operation to run with a cooperative cancellation token.
   - `completed`: Work invoked with the completed result.
@@ -316,8 +327,8 @@ G# kind: `class`.
 - `prop ContentBounds CellRect { get; }` — The box's bounds after border, padding, scrollbar gutter, and title row are subtracted, in that order. What Render and children draw into.
 - `prop FocusedElement Box { get; }` — The visible focusable descendant that currently holds focus, or nil if none.
 - `prop FocusedStyle Style { get; set; }` — The style merged over Style while this exact box is focused. Focus held by a descendant does not activate an ancestor's FocusedStyle; use FocusedElement to observe descendant focus when pane chrome must reflect which nested control is active. Foreground and background marked IsInherited fall back to the unfocused resolved style.
-- `prop GapCells int32 { get; set; }` — Cells of gap inserted between children along the layout axis. Must be non-negative; defaults to 0.
-- `prop GrowWeight int32 { get; set; }` — Flex-grow weight used by the immediate in-flow parent to distribute leftover space among siblings. It does not make this box's ancestors grow: each auto-sized ancestor on a path that should receive spare width or height needs its own GrowWeight (or an explicit size). Must be non-negative; defaults to 0.
+- `prop Gap int32 { get; set; }` — Cells of gap inserted between children along the layout axis. Must be non-negative; defaults to 0.
+- `prop Grow int32 { get; set; }` — Flex-grow weight used by the immediate in-flow parent to distribute leftover space among siblings. It does not make this box's ancestors grow: each auto-sized ancestor on a path that should receive spare width or height needs its own Grow (or an explicit size). Must be non-negative; defaults to 0.
 - `prop Height CellLength { get; set; }` — The box's height. CellLength.Auto sizes it from content; defaults to Auto.
 - `prop IsFocused bool { get; }` — Whether this box currently holds keyboard focus.
 - `prop IsVisible bool { get; set; }` — Whether this box and descendants participate in layout, drawing, input, and scrollbars.
@@ -331,8 +342,14 @@ G# kind: `class`.
 
 ### Methods
 
+- `func Add(child Box)` — Adds a child at the end of the retained tree. Also supports nested initializer syntax.
+  - `child`: The child to add.
 - `func Draw(screen Screen)` — Lays out and draws the whole tree.
   - `screen`: The screen to paint into.
+- `func Draw(screen Screen, bounds CellRect, clip CellRect)` — Lays out and draws an independent subtree inside a clipped virtual row.
+  - `screen`: The target screen.
+  - `bounds`: The full subtree rectangle, including rows outside the viewport.
+  - `clip`: The visible part of the subtree.
 - `func FocusNext() bool` — Moves focus to the next focusable box in tree order, wrapping around. Returns false if no box can take focus.
   - Returns: True when a focusable box was found.
 - `func FocusPrevious() bool` — Moves focus to the previous focusable box in tree order, wrapping around. Returns false if no box can take focus.
@@ -356,7 +373,7 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
-- `prop OnPress Action { get; set; }` — Work invoked when the button is activated.
+- `prop OnClick Action { get; set; }` — Work invoked when the button is activated.
 - `prop Text string { get; set; }` — The label centred within the button.
 
 ## SharpTui.CanvasMode
@@ -395,6 +412,12 @@ G# kind: `class`.
 
 ### Methods
 
+- `func BrailleCell(column int32, row int32, dots int32, foreground Color, background Color)` — Replaces a terminal cell with a packed Braille dot mask and two colors. Requires Braille mode. Coordinates outside the surface are ignored.
+  - `column`: The horizontal terminal-cell coordinate.
+  - `row`: The vertical terminal-cell coordinate, not a subcell coordinate.
+  - `dots`: The Braille dot mask, from 0 through 255.
+  - `foreground`: The color used by set dots.
+  - `background`: The color used behind unset dots.
 - `func Circle(cx int32, cy int32, radius int32)` — Draws a clipped midpoint circle in subcell coordinates.
   - `cx`: The circle center's horizontal subcell coordinate.
   - `cy`: The circle center's vertical subcell coordinate.
@@ -427,6 +450,11 @@ G# kind: `class`.
   - `width`: The rectangle width in subcells.
   - `height`: The rectangle height in subcells.
   - `style`: The style stored for the affected terminal cells.
+- `func HalfBlock(column int32, row int32, upper Color, lower Color)` — Replaces a terminal cell with independently colored upper and lower halves. Requires HalfBlock mode. Coordinates outside the surface are ignored.
+  - `column`: The horizontal terminal-cell coordinate.
+  - `row`: The vertical terminal-cell coordinate, not a subcell coordinate.
+  - `upper`: The upper pixel color, encoded as the foreground of an upper-half glyph.
+  - `lower`: The lower pixel color, encoded as the cell background.
 - `func Line(x0 int32, y0 int32, x1 int32, y1 int32)` — Draws a clipped Bresenham line in subcell coordinates.
   - `x0`: The starting horizontal subcell coordinate.
   - `y0`: The starting vertical subcell coordinate.
@@ -448,6 +476,13 @@ G# kind: `class`.
 - `func Polyline(points List[CellPoint], style Style)` — Draws connected clipped line segments through the given subcell points.
   - `points`: The ordered vertices of the polyline.
   - `style`: The style stored for the affected terminal cells.
+- `func Quadrant(column int32, row int32, topLeft Color, topRight Color, bottomLeft Color, bottomRight Color)` — Replaces a terminal cell with the closest two-color encoding of four RGB quadrants. Requires Quadrant mode. Coordinates outside the surface are ignored.
+  - `column`: The horizontal terminal-cell coordinate.
+  - `row`: The vertical terminal-cell coordinate, not a subcell coordinate.
+  - `topLeft`: The upper-left RGB sample.
+  - `topRight`: The upper-right RGB sample.
+  - `bottomLeft`: The lower-left RGB sample.
+  - `bottomRight`: The lower-right RGB sample.
 - `func Rect(x int32, y int32, width int32, height int32)` — Draws a clipped rectangle outline in subcell coordinates.
   - `x`: The left subcell coordinate.
   - `y`: The top subcell coordinate.
@@ -503,6 +538,9 @@ G# kind: `struct`.
 - `shared func All(cells int32) CellInsets` — Creates equal padding on all four sides.
   - `cells`: The padding to apply to each side. Must be non-negative.
   - Returns: Insets with the given padding on all four sides.
+- `shared func op_Implicit(value int32) CellInsets` — Converts a non-negative cell count to equal padding on all sides.
+  - `value`: The padding in cells.
+  - Returns: Equal cell insets.
 
 ## SharpTui.CellLength
 
@@ -521,6 +559,9 @@ G# kind: `struct`.
 - `shared func Cells(count int32) CellLength` — Creates a fixed length of the given non-negative cell count.
   - `count`: The fixed cell count. Must be non-negative.
   - Returns: A cell length with the given fixed count.
+- `shared func op_Implicit(value int32) CellLength` — Converts a non-negative cell count to a fixed length.
+  - `value`: The cell count.
+  - Returns: A fixed length in terminal cells.
 
 ## SharpTui.CellPoint
 
@@ -759,6 +800,19 @@ G# kind: `enum`.
 - `Handled` — Marks the event consumed and stops later routing stages.
 - `Exit` — Requests that the application event loop stop.
 
+## SharpTui.GraphicsProtocol
+
+Selects the terminal image transport. Auto probes support before choosing a backend.
+
+G# kind: `enum`.
+
+### Values
+
+- `Auto` — Probe Kitty and Sixel, then use colored half blocks.
+- `Kitty` — Use the Kitty image protocol.
+- `Sixel` — Use DEC Sixel images with an adaptive palette.
+- `HalfBlock` — Use colored half blocks on terminals without native graphics.
+
 ## SharpTui.HorizontalAlignment
 
 Horizontal placement of content within its box.
@@ -770,6 +824,61 @@ G# kind: `enum`.
 - `Left` — Places content against the left edge.
 - `Center` — Centers content between the left and right edges.
 - `Right` — Places content against the right edge.
+
+## SharpTui.ImageFit
+
+Controls image scaling inside its cell rectangle.
+
+G# kind: `enum`.
+
+### Values
+
+- `Contain` — Fit the full image inside the bounds, preserving its proportions.
+- `Cover` — Fill the bounds with a cropped image, preserving its proportions.
+- `Stretch` — Fill the bounds without preserving image proportions.
+
+## SharpTui.ImageSource
+
+Owns a bounded RGBA raster. Create or decode off the UI thread, then publish it to the UI.
+
+G# kind: `class`.
+
+### Properties
+
+- `prop Size PixelSize { get; }` — The raster dimensions in pixels.
+
+### Methods
+
+- `shared func Decode(encoded []uint8) ImageSource` — Decodes at most 16 MiB of image data after checking the declared raster size.
+  - `encoded`: The complete encoded image.
+  - Returns: The decoded image source.
+- `shared func FromRgba(width int32, height int32, rgba []uint8) ImageSource` — Copies an RGBA raster into an owned image. Maximum 8192 per dimension and 64 MiB decoded.
+  - `width`: The positive pixel width.
+  - `height`: The positive pixel height.
+  - `rgba`: Straight alpha pixels in row order.
+  - Returns: The owned image source.
+- `shared func Load(path string) ImageSource` — Loads an image file of at most 16 MiB. PNG, JPEG, GIF first frame, BMP, TGA and PSD are supported.
+  - `path`: The local file to decode.
+  - Returns: The decoded image with straight alpha RGBA pixels.
+- `func Update(rgba []uint8)` — Copies a replacement RGBA frame into the existing raster without allocating. Call on the UI thread.
+  - `rgba`: Straight alpha pixels in row order, exactly Width * Height * 4 bytes.
+
+## SharpTui.ImageView
+
+A retained image that follows layout, clipping and overlay order.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty image view with contain scaling.
+
+### Properties
+
+- `prop AltText string { get; set; }` — Text shown when there is no source.
+- `prop Fit ImageFit { get; set; }` — The scaling rule. Contain preserves the complete image by default.
+- `prop Source ImageSource { get; set; }` — The owned image to display. Nil displays AltText.
 
 ## SharpTui.Key
 
@@ -963,6 +1072,7 @@ Inherits `Box`; see that type for inherited members.
 - `prop FirstVisibleItemIndex int32 { get; set; }` — Index of the first item visible in the viewport.
 - `prop FollowTail bool { get; set; }` — When true the list pins to its tail: every render selects the last selectable item and scrolls the viewport to the end, so appended items are always in view. Navigating or scrolling away from the tail (Up, PageUp, Home, wheel-up, or a click) turns it off; it never re-engages on its own.
 - `prop Items List[ListItem] { get; set; }` — The rows shown by this list; setting it replaces all items and preserves selection by stable Id when possible.
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop SelectedId string { get; }` — Id of the currently selected item, or empty when nothing is selected.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected item. Setting it selects programmatically and does not emit a SelectionChange.
 - `prop SelectedItem ListItem { get; }` — The currently selected item, or nil when SelectedIndex is out of range or the active source is empty.
@@ -975,8 +1085,6 @@ Inherits `Box`; see that type for inherited members.
 - `func Add(text string) ListItem` — Appends a new item with the given text and returns it.
   - `text`: The text for the new item.
   - Returns: The newly appended item.
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  - Returns: The pending selection change, or nil when none is pending.
 - `func Refresh()` — Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
 
 ## SharpTui.MarkdownTheme
@@ -1012,6 +1120,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop FirstVisibleLine int32 { get; }` — The index of the topmost visible wrapped line. Negative values clamp to zero.
+- `prop InlineImages Func[string, ImageSource] { get; set; }` — Resolves a rendered link span to a borrowed inline raster. Return nil to keep its text. Called only for visible spans. Resolve from a cache without blocking or allocating. The raster occupies the span's text width and one row. Its owner handles loading and redraws.
 - `prop MaximumLineWidth CellLength { get; set; }` — The maximum width a wrapped line may occupy before centering; Auto uses the full available width.
 - `prop Source string { get; set; }` — The raw markdown text. Setting it invalidates the parsed and laid-out cache.
 - `prop Theme MarkdownTheme { get; set; }` — The styles applied to parsed markdown elements. Setting it invalidates the cache.
@@ -1022,6 +1131,57 @@ Inherits `Box`; see that type for inherited members.
   - Returns: The wrapped line count.
 - `func ScrollToLine(line int32)` — Scrolls so that the given wrapped line index becomes the topmost visible line.
   - `line`: The wrapped line index to scroll to.
+
+## SharpTui.MediaPlayer
+
+Plays local video, animated images and audio using FFmpeg and mpv. Dispose closes owned processes.
+
+G# kind: `class`.
+
+### Constructors
+
+- `init(path string)` — Opens a local file and starts playback with a video raster bounded to 640 by 360 pixels at 15 FPS.
+  - `path`: The local media file. FFmpeg, ffprobe and mpv for audio must be installed.
+- `init(path string, maxSize PixelSize)` — Opens a local file with an explicit maximum video raster, up to 2048 by 2048 pixels.
+  - `path`: The local media file.
+  - `maxSize`: The positive pixel limits for the video decoder.
+- `init(path string, maxSize PixelSize, loop bool)` — Opens local media with bounded decoding and optional continuous looping.
+  - `path`: The local media file.
+  - `maxSize`: Positive pixel limits up to 2048 by 2048.
+  - `loop`: Whether the decoder repeats the file without restarting a process.
+
+### Properties
+
+- `prop Duration TimeSpan { get; }` — The duration reported by the media container. Zero means unknown.
+- `prop IsPlaying bool { get; }` — Whether playback is active.
+- `prop Position TimeSpan { get; }` — The current playback position.
+- `prop Source ImageSource { get; }` — The current video raster, or nil for an audio-only file. Advance updates it on the UI thread.
+
+### Methods
+
+- `func Advance() bool` — Publishes the newest complete video frame without blocking or allocating. Call on the UI thread.
+  - Returns: True when the image raster changed.
+- `func Dispose()` — Stops playback, joins the frame reader and releases all owned processes and buffers.
+- `func Pause()` — Pauses playback and keeps the current raster and position.
+- `func Resume()` — Resumes from the saved position. Decoder buffers are owned until Pause or Dispose.
+- `func Seek(position TimeSpan)` — Seeks to a non-negative position, preserving playback state and publishing one preview frame when paused.
+  - `position`: The new position, clamped to a known duration.
+
+## SharpTui.MediaView
+
+Displays a borrowed MediaPlayer and requests frames only while it is playing.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty media view with contain scaling.
+
+### Properties
+
+- `prop Fit ImageFit { get; set; }` — The video scaling rule. Contain is the default.
+- `prop Player MediaPlayer { get; set; }` — The player to display. The caller owns and disposes it.
 
 ## SharpTui.MemoryClipboard
 
@@ -1124,6 +1284,17 @@ Inherits `Box`; see that type for inherited members.
 - `prop DefaultAction Box { get; set; }` — The descendant offered Enter after focused content declines it.
 - `prop DimBackground bool { get; set; }` — Whether Render dims everything outside the overlay's bounds while it is open. Defaults to false.
 
+## SharpTui.PixelSize
+
+A size measured in physical pixels.
+
+G# kind: `struct`.
+
+### Properties
+
+- `prop Height int32 { get; init; }` — The vertical pixel count. Zero requests detection for App.CellPixels.
+- `prop Width int32 { get; init; }` — The horizontal pixel count. Zero requests detection for App.CellPixels.
+
 ## SharpTui.Placement
 
 Controls whether an element participates in flex layout or is positioned over it.
@@ -1177,6 +1348,7 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop OnChange Action[Toggle] { get; set; }` — Receives the activated radio choice. Programmatic selection is silent.
 - `prop SelectedToggle Toggle { get; }` — The currently selected toggle, or nil when none is selected.
 
 ### Methods
@@ -1282,8 +1454,10 @@ G# kind: `class`.
 
 ### Properties
 
+- `prop CellPixels PixelSize { get; set; }` — The physical size of one terminal cell. Defaults to 8 by 16 pixels outside an App.
 - `prop ColorMode TerminalColorMode { get; set; }` — The terminal color encoding used by Flush and terminal presentation.
 - `prop DefaultStyle Style { get; set; }` — The style used by draw calls that do not receive an explicit style.
+- `prop Graphics GraphicsProtocol { get; set; }` — The image backend. A standalone screen resolves Auto to HalfBlock.
 - `prop HyperlinksEnabled bool { get; set; }` — Whether semantic TextRun hyperlinks are emitted with OSC 8.
 - `prop Size CellSize { get; }` — The screen dimensions measured in terminal cells and rows.
 
@@ -1295,6 +1469,14 @@ G# kind: `class`.
 - `func DrawBorder(r CellRect, s Style)` — Draws a border around a cell rectangle.
   - `r`: The cell rectangle to draw the border around.
   - `s`: The style to apply to the border.
+- `func DrawImage(source ImageSource, bounds CellRect)` — Draws an image with contain scaling inside a cell rectangle.
+  - `source`: The decoded, owned raster.
+  - `bounds`: The destination rectangle before clipping.
+- `func DrawImage(source ImageSource, bounds CellRect, clip CellRect, fit ImageFit)` — Draws an image with explicit scaling and clipping, including partially scrolled virtual rows.
+  - `source`: The decoded, owned raster.
+  - `bounds`: The full destination rectangle before clipping.
+  - `clip`: The visible cell rectangle.
+  - `fit`: The scaling rule.
 - `func Fill(r CellRect, s Style)` — Fills a cell rectangle with a background color.
   - `r`: The cell rectangle to fill.
   - `s`: The style whose background color is applied.
@@ -1365,6 +1547,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop IsOpen bool { get; }` — Whether the floating option list is currently shown.
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop Options List[string] { get; set; }` — Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.
 - `prop Placeholder string { get; set; }` — Text shown in the closed control when Options is empty.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.
@@ -1372,13 +1555,11 @@ Inherits `Box`; see that type for inherited members.
 
 ### Methods
 
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  - Returns: The pending selection change, or nil when none is pending.
 - `func Refresh()` — Re-resolves selection after direct Options mutation.
 
 ## SharpTui.SelectionChange
 
-A snapshot of a selection transition, produced by user navigation and retrieved with ConsumeSelectionChange.
+A snapshot of a selection transition, delivered to OnChange after user navigation.
 
 G# kind: `struct`.
 
@@ -1633,13 +1814,14 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
-- `prop ColumnGapCells int32 { get; set; }` — Cells inserted between displayed columns.
+- `prop ColumnGap int32 { get; set; }` — Cells inserted between displayed columns.
 - `prop ColumnSeparator string { get; set; }` — Text drawn at the start of each inter-column gap; empty leaves the gap blank.
 - `prop ColumnSeparatorStyle Style { get; set; }` — Style merged over the current header or row style for column separators.
 - `prop Columns List[TableColumn] { get; set; }` — Column definitions in display order.
 - `prop FirstVisibleColumnIndex int32 { get; set; }` — Index of the first visible column in the horizontal viewport.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — Index of the first data row visible in the viewport.
 - `prop HeaderStyle Style { get; set; }` — Style applied to the header row.
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop Rows List[TableRow] { get; set; }` — Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.
 - `prop SelectedRowId string { get; }` — Id of the selected row, or empty when no row is selected.
 - `prop SelectedRowIndex int32 { get; set; }` — Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
@@ -1648,8 +1830,6 @@ Inherits `Box`; see that type for inherited members.
 
 ### Methods
 
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedRowIndex does not produce one.
-  - Returns: The pending SelectionChange, or nil when none is pending.
 - `func Refresh()` — Forces selection reconciliation, including same-count eligibility changes away from the selected row. Identity, count, and selected-row eligibility reconcile automatically before observation, input, and rendering.
 
 ## SharpTui.Tabs
@@ -1665,14 +1845,13 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop SelectedIndex int32 { get; set; }` — Index of the active tab. Setting it selects programmatically and does not emit a SelectionChange; the value must not be negative.
 - `prop SelectedStyle Style { get; set; }` — Style merged over the active tab's inherited style.
 - `prop Titles List[string] { get; set; }` — Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.
 
 ### Methods
 
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  - Returns: The pending SelectionChange, or nil when none is pending.
 - `func Refresh()` — Re-resolves selection after direct Titles mutation.
 
 ## SharpTui.TerminalColorMode
@@ -1748,7 +1927,7 @@ Inherits `Box`; see that type for inherited members.
 - `prop IsModified bool { get; }` — True once the text has changed since it was last loaded via the Text setter.
 - `prop LineCount int32 { get; }` — The current physical line count.
 - `prop MaxLines int32 { get; set; }` — The maximum editable physical line count. Zero means unlimited. Existing loaded text is not truncated.
-- `prop OnChanged Action[string] { get; set; }` — Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.
+- `prop OnChange Action[string] { get; set; }` — Invoked once with the current text after each successful user edit, replacement, undo, or redo. Text assignment does not invoke it.
 - `prop OnSubmit Action[string] { get; set; }` — Invoked with the current text when EnterBehavior submits the editor.
 - `prop SelectedText string { get; }` — The text within the current selection, or an empty string when nothing is marked.
 - `prop SelectedTextStyle Style { get; set; }` — The style applied to the highlighted selection background.
@@ -1837,6 +2016,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop CaretGraphemeIndex int32 { get; set; }` — The caret position as a grapheme-cluster index. Setting it clamps to the text bounds.
 - `prop IsPassword bool { get; set; }` — When true, characters render as bullets instead of the underlying text.
+- `prop OnChange Action[string] { get; set; }` — Receives current text after each user edit. Setting Text and moving the caret are silent.
 - `prop Placeholder string { get; set; }` — Text shown in place of an empty, unfocused field.
 - `prop PlaceholderStyle Style { get; set; }` — The style applied to Placeholder text.
 - `prop Text string { get; set; }` — The current text content. Setting it rebuilds the grapheme index and clamps the caret.
@@ -1918,6 +2098,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop CheckedGlyph string { get; set; }` — The glyph drawn when IsChecked is true.
 - `prop IsChecked bool { get; set; }` — The checked state, flipped by activation.
+- `prop OnChange Action[bool] { get; set; }` — Receives the checked value after this toggle is activated. Programmatic changes are silent.
 - `prop Text string { get; set; }` — The label drawn after the checkbox glyph.
 - `prop UncheckedGlyph string { get; set; }` — The glyph drawn when IsChecked is false.
 
@@ -1987,16 +2168,16 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop FirstVisibleNodeIndex int32 { get; set; }` — Index of the first visible tree node.
 - `prop NodeMarkerStyle Style { get; set; }` — Style applied to the expand/collapse marker on unselected rows.
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop Roots List[TreeNode] { get; set; }` — Top-level nodes of the tree; setting it replaces the roots and calls Refresh.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected row among the currently visible (expanded) nodes. Setting it selects programmatically and does not emit a SelectionChange.
+- `prop SelectedKey string { get; set; }` — The selected visible node's stable Id. Assigning an unknown Id leaves selection unchanged and never emits OnChange.
 - `prop SelectedNode TreeNode { get; }` — The currently selected node among visible rows, or nil when there are none.
 - `prop SelectedNodeStyle Style { get; set; }` — Style merged over the selected row's inherited style.
 - `prop Source TreeSource { get; set; }` — An optional indexed visible-row source. When set, the source supplies rows instead of Roots.
 
 ### Methods
 
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending SelectionChange from user navigation; programmatic selection via SelectedIndex does not produce one.
-  - Returns: The pending selection change, or nil when none is pending.
 - `func Refresh()` — Rebuilds visible rows after direct mutation of the active Roots or Source data.
 
 ## SharpTui.UiEvent
@@ -2009,6 +2190,7 @@ G# kind: `struct`.
 
 - `prop BaseLayoutKeyCode int32 { get; init; }` — The codepoint this key would produce under the standard PC-101 layout, from Kitty's alternate-key reporting; zero when not reported.
 - `prop Button MouseButton { get; init; }` — The mouse button involved in a Mouse event; None when not applicable.
+- `prop IsFocused bool { get; init; }` — Whether a Focus event reports the terminal gaining focus.
 - `prop Key Key { get; init; }` — The logical key for a Key event; Character for text input, Unknown when not applicable.
 - `prop KeyCode int32 { get; init; }` — The Kitty keyboard protocol codepoint for the key, including private-use codes for named keys without a Unicode codepoint.
 - `prop Kind UiEventKind { get; init; }` — Which variant of input this event represents.
@@ -2033,6 +2215,7 @@ G# kind: `enum`.
 - `Mouse` — Carries a mouse action, button, and terminal-cell position.
 - `Tick` — Signals an application timer tick.
 - `Unknown` — Indicates that no recognized event variant is present.
+- `Focus` — A terminal focus change. IsFocused reports whether focus was gained.
 
 ## SharpTui.Viewport
 
@@ -2127,6 +2310,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop FirstVisibleRowOffset int32 { get; set; }` — First visible content row measured from the start of the source.
 - `prop FollowTail bool { get; set; }` — When true, rendering selects the last selectable item and pins the viewport to the end.
+- `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop SelectedIndex int32 { get; set; }` — Index of the selected item. Programmatic changes do not emit SelectionChange.
 - `prop SelectedKey string { get; }` — Stable key of the selected item, or empty when the source is empty.
 - `prop SelectedStyle Style { get; set; }` — Style merged over the item style when the item is selected.
@@ -2134,8 +2318,6 @@ Inherits `Box`; see that type for inherited members.
 
 ### Methods
 
-- `func ConsumeSelectionChange() SelectionChange?` — Returns and clears the pending user selection change.
-  - Returns: The pending change, or nil.
 - `func Refresh()` — Invalidates cached heights and reconciles source selection state.
 
 ## SharpTui.Worker
