@@ -178,14 +178,14 @@ internal class FormCheck {
         }
         for i in 0 ... 64 {
           root.Draw(screen)
-          root.Handle(wheel)
-          root.Handle(wheelDown)
+          form.DeliverTo(form, wheel)
+          form.DeliverTo(form, wheelDown)
         }
         let before = GC.GetAllocatedBytesForCurrentThread()
         for i in 0 ... 64 {
           root.Draw(screen)
-          root.Handle(wheel)
-          root.Handle(wheelDown)
+          form.DeliverTo(form, wheel)
+          form.DeliverTo(form, wheelDown)
         }
         let allocated = GC.GetAllocatedBytesForCurrentThread() - before
         failed = failed + Checks.Expect(allocated == 0,
