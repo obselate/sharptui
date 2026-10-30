@@ -528,6 +528,42 @@ public class WidgetCheck {
       buttonRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter, Phase: KeyPhase.Release })
       failed = failed + Checks.Expect(buttonClickes == 1,
         "Button ignores Enter release callbacks")
+      let buttonTexts = List[string]{ "◂", "[ Next ]", "日本" }
+      for text in buttonTexts {
+        let compact = Button{ Text: text, HorizontalPadding: 0 }
+        let row = Row{ Children: { compact, Label{ Text: "|" } } }
+        let screen = Screen(40, 12)
+        row.Draw(screen)
+        let width = Glyph.WidthOf(text)
+        failed = failed + Checks.Expect(compact.Bounds.WidthCells == width && screen.Probe(0, 0) != " "
+          && screen.Probe(width, 0) == "|", "Button zero padding measures and paints only its text")
+        let expected = Screen(width, 1)
+        expected.Write(0, 0, text)
+        for x in 0 ... width {
+          failed = failed + Checks.Expect(screen.Probe(x, 0) == expected.Probe(x, 0),
+            "Button zero padding preserves every text cell")
+        }
+        compact.HorizontalPadding = 1
+        screen.Clear()
+        row.Draw(screen)
+        failed = failed + Checks.Expect(compact.Bounds.WidthCells == width + 2
+          && screen.Probe(0, 0) == " " && screen.Probe(width + 1, 0) == " "
+          && screen.Probe(width + 2, 0) == "|", "Button padding changes invalidate layout and keep default spacing")
+        compact.HorizontalPadding = 2
+        screen.Clear()
+        row.Draw(screen)
+        failed = failed + Checks.Expect(compact.Bounds.WidthCells == width + 4
+          && screen.Probe(1, 0) == " " && screen.Probe(width + 2, 0) == " "
+          && screen.Probe(width + 4, 0) == "|", "Button uses the requested padding on both sides")
+        compact.HorizontalPadding = 0
+        for i in 0 ... 64 { row.Draw(screen) }
+        let before = GC.GetAllocatedBytesForCurrentThread()
+        for i in 0 ... 64 { row.Draw(screen) }
+        let allocated = GC.GetAllocatedBytesForCurrentThread() - before
+        failed = failed + Checks.Expect(allocated == 0,
+          "Button compact paint allocates zero bytes: " + allocated.ToString())
+      }
+      failed = failed + Checks.Expect(button.HorizontalPadding == 1, "Button defaults to one padding cell per side")
 
       let half = ProgressBar{ Value: 5.0, Maximum: 10.0, Width: CellLength.Cells(10) }
       let hroot = Box{ Children: { half } }

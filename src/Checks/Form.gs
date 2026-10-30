@@ -33,6 +33,36 @@ internal class FormCheck {
       var failed = 0
       failed = failed + Checks.Expect(constrainedWidth == 32 && constrained.Bounds.WidthCells == 64,
         "Disabling a form width constraint restores the editor's requested width")
+      let modes = List[TerminalColorMode]{ TerminalColorMode.TrueColor, TerminalColorMode.NoColor }
+      for mode in modes {
+        let markerStyle = Style{ Foreground: Color.Rgb("FF9900"), Attributes: TextAttributes.Bold }
+        let markerField = FormField{ IsModified: true, ModifiedText: "●", ModifiedStyle: markerStyle }
+        let markerScreen = Screen(40, 12)
+        markerScreen.ColorMode = mode
+        markerField.Draw(markerScreen)
+        let marker = markerField.Children[1].Children[0]
+        let expected = Screen(40, 12)
+        expected.ColorMode = mode
+        expected.Fill(CellRect{ WidthCells: 40, HeightRows: 12 }, Style())
+        expected.Write(marker.Bounds.Column, marker.Bounds.Row, "●", markerStyle)
+        failed = failed + Checks.Expect(markerScreen.Flush() == expected.Flush(),
+          "FormField paints custom modified text and style in color and NoColor")
+        markerField.IsModified = false
+        markerScreen.Clear()
+        markerField.Draw(markerScreen)
+        failed = failed + Checks.Expect(!markerScreen.FrameText().Contains("●"),
+          "FormField hides the custom marker when not modified")
+        markerField.ModifiedText = "*"
+        markerField.ModifiedStyle = Style()
+        markerField.IsModified = true
+        markerScreen.Clear()
+        markerField.Draw(markerScreen)
+        let defaultOutput = markerScreen.Flush()
+        failed = failed + Checks.Expect(markerScreen.FrameText().Contains("*")
+          && !defaultOutput.Contains("[1m") && !defaultOutput.Contains("38;2;255;153;0"),
+          "FormField keeps the default inherited asterisk after marker changes")
+      }
+      failed = failed + Checks.Expect(FormField().ModifiedText == "*", "FormField defaults to an asterisk")
       let first = TextInput{ Text: "保留文本", Width: CellLength.Cells(32), CaretGraphemeIndex: 2 }
       let probe = FormEditorProbe{}
       let last = TextInput{ Text: "末行", CaretGraphemeIndex: 1 }
@@ -178,6 +208,8 @@ internal class FormCheck {
         "Form modified and state symbols remain visible without color")
       field.Editor = Label{ Text: "保留文本" }
       lastField.Editor = Label{ Text: "末行" }
+      field.ModifiedText = "●"
+      field.ModifiedStyle = Style{ Foreground: Color.Rgb("FF9900"), Attributes: TextAttributes.Bold }
       let allocationWidths = List[int32]{ 40, 160 }
       for width in allocationWidths {
         screen.Resize(width, 12)

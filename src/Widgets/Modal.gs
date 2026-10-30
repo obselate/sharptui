@@ -3,10 +3,11 @@ package SharpTui
 import System
 import System.Collections.Generic
 
-/// A push button: " Text " centred, flips ink when focused.
+/// A push button with a centred label, flips ink when focused.
 public open class Button : Box {
   private var text string
   private var onClick Action?
+  private var horizontalPadding int32
 
   /// The label centred within the button.
   public prop Text string {
@@ -14,6 +15,17 @@ public open class Button : Box {
     set {
       if text == value { return }
       text = value
+      MarkMeasureDirty()
+    }
+  }
+
+  /// Padding in cells on each side of the label. Defaults to one. Must not be negative.
+  public prop HorizontalPadding int32 {
+    get -> horizontalPadding
+    set {
+      if value < 0 { throw ArgumentOutOfRangeException("HorizontalPadding") }
+      if horizontalPadding == value { return }
+      horizontalPadding = value
       MarkMeasureDirty()
     }
   }
@@ -28,21 +40,21 @@ public open class Button : Box {
   public init() {
     text = ""
     onClick = nil
+    horizontalPadding = 1
     CanFocus = true
   }
 
   /// Always true, so this button sizes itself via MeasureIntrinsic.
   protected override prop MeasuresIntrinsic bool -> true
 
-  /// Measures the button as the text width plus one cell of padding on each side.
+  /// Measures the button as the text width plus horizontal padding.
   /// @param availableWidth The available width in cells, or nil when unconstrained.
   /// @param availableHeight The available height in rows, or nil when unconstrained.
   /// @returns The measured size in cells.
-  protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
-    return CellSize{ WidthCells: Glyph.WidthOf(Text) + 2, HeightRows: 1 }
-  }
+  protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize
+    -> CellSize{ WidthCells: Glyph.WidthOf(Text) + horizontalPadding * 2, HeightRows: 1 }
 
-  /// Paints " Text " centred within the box, with ink flipped when focused.
+  /// Paints the padded label centred within the box, with ink flipped when focused.
   /// @param screen The screen to paint into.
   /// @param r The rect to paint within.
   /// @param ink The inherited style.
@@ -50,11 +62,13 @@ public open class Button : Box {
     if r.HeightRows <= 0 { return }
     let style = IsFocused ? ink.WithAttributes(TextAttributes.Reverse) : ink
     let textWidth = Glyph.WidthOf(Text)
-    var x = (r.WidthCells - textWidth - 2) / 2
+    var x = (r.WidthCells - textWidth - horizontalPadding * 2) / 2
     if x < 0 { x = 0 }
-    screen.WriteClipped(r, x, 0, " ", style)
-    screen.WriteClipped(r, x + 1, 0, Text, style)
-    screen.WriteClipped(r, x + textWidth + 1, 0, " ", style)
+    for i in 0 ... horizontalPadding {
+      screen.WriteClipped(r, x + i, 0, " ", style)
+      screen.WriteClipped(r, x + horizontalPadding + textWidth + i, 0, " ", style)
+    }
+    screen.WriteClipped(r, x + horizontalPadding, 0, Text, style)
   }
 
   /// Invokes OnClick on Enter, space, or a click within its bounds.

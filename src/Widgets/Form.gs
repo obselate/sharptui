@@ -36,10 +36,25 @@ public class FormField : Box {
     }
   }
 
-  /// Whether a visible asterisk is drawn beside the editor. The caller owns modified state.
+  /// Whether the modified marker is drawn beside the editor. The caller owns modified state.
   public prop IsModified bool {
     get -> modified.IsVisible
     set -> modified.IsVisible = value
+  }
+
+  /// The modified marker text. Defaults to an asterisk.
+  public prop ModifiedText string {
+    get -> modified.Text
+    set {
+      modified.Text = value
+      modified.MarkMeasureDirty()
+    }
+  }
+
+  /// The style applied to ModifiedText. Defaults to the inherited style.
+  public prop ModifiedStyle Style {
+    get -> modified.Style
+    set -> modified.Style = value
   }
 
   /// A short state symbol or value beside the editor. Empty text hides it.
