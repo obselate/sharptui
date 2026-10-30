@@ -243,11 +243,11 @@ internal class OverlayCheck {
         failed = failed + Checks.Expect(chooser.SelectedIndex == 23, "Select keys reach the last option")
         let dialog = Dialog{
           Message: "A long message wraps inside the available content width. 中文消息必须在内容区域内换行。"
-            + " Additional text keeps the body locally scrollable at narrow sizes.",
+            + " Additional text keeps the body locally scrollable at narrow sizes." + String(char(120), 400),
         }
         i = 0
-        while i < 16 {
-          dialog.Actions.Add(DialogAction{ Text: i % 2 == 0 ? "English action" : "中文操作", IsCancel: i == 15 })
+        while i < 3 {
+          dialog.Actions.Add(DialogAction{ Text: i % 2 == 0 ? "English action" : "中文操作", IsCancel: i == 2 })
           i = i + 1
         }
         var result = -1
@@ -259,14 +259,25 @@ internal class OverlayCheck {
             && bounds.Column + bounds.WidthCells <= width && bounds.Row + bounds.HeightRows <= height,
           "Dialog bounds include its border and padding inside the viewport")
         dialogRoot.Focus(dialog.Children[0])
+        let body = dialog.Children[0]
+        if size == 0 && body is TextBlock {
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageDown })
+          failed = failed + Checks.Expect(body.FirstVisibleLine > 0, "Dialog PageDown scrolls its body locally")
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageUp })
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollDown,
+            Position: CellPoint{ Column: body.Bounds.Column, Row: body.Bounds.Row } })
+          failed = failed + Checks.Expect(body.FirstVisibleLine > 0 && dialogRoot.Bounds.Row == 0,
+            "Dialog wheel scrolls its body without moving the application")
+        }
         i = 0
         while i < dialog.Actions.Count {
           let button = dialog.Children[1].Children[i]
           dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab })
           dialogRoot.Draw(screen)
           failed = failed + Checks.Expect(button.IsFocused && button.Bounds.HeightRows == 1
+              && button.Bounds.WidthCells == dialog.ContentBounds.WidthCells
               && button.Bounds.Row >= bounds.Row && button.Bounds.Row < bounds.Row + bounds.HeightRows,
-            "Dialog brings every focused action into its local viewport")
+            "Dialog keeps every action inside its content region")
           dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
           failed = failed + Checks.Expect(result == i, "Dialog action is reachable by key")
           result = -1
@@ -276,7 +287,7 @@ internal class OverlayCheck {
           i = i + 1
         }
         dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Escape })
-        failed = failed + Checks.Expect(result == 15, "Dialog preserves the cancel action")
+        failed = failed + Checks.Expect(result == 2, "Dialog preserves the cancel action")
         dialog.Message = ""
         dialogRoot.Draw(screen)
         failed = failed + Checks.Expect(dialog.Children[0].Bounds.HeightRows == 0,

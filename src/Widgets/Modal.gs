@@ -98,6 +98,7 @@ public class DialogAction {
 }
 
 /// A centered, dimmed modal overlay with a wrapped message and adaptive action buttons.
+/// Stacked actions that exceed the available content rows are clipped.
 public open class Dialog : Overlay {
   private var message string
   private var actions List[DialogAction]
@@ -110,10 +111,6 @@ public open class Dialog : Overlay {
   private var wrappedWidth int32
   private var wrappedMessage string
   private var messageRows int32
-  private var actionTop int32
-  private var actionRows int32
-  private var stacked bool
-  private var lastFocused Button?
 
   /// The wrapped body text. Setting it rebuilds the dialog's children.
   public prop Message string {
@@ -152,10 +149,6 @@ public open class Dialog : Overlay {
     wrappedWidth = -1
     wrappedMessage = ""
     messageRows = 0
-    actionTop = 0
-    actionRows = 0
-    stacked = false
-    lastFocused = nil
     DimBackground = true
     Placement = Placement.Centered
     ShowBorder = true
@@ -163,6 +156,7 @@ public open class Dialog : Overlay {
     Padding = CellInsets.All(1)
     compose()
   }
+  internal override prop ClipChildren bool -> true
 
   /// Rebuilds the message and action buttons if Actions changed shape, otherwise refreshes the default/cancel button assignment.
   protected override func PrepareLayout() {
@@ -188,11 +182,12 @@ public open class Dialog : Overlay {
       actionIndex = actionIndex + 1
     }
     if actionButtons.Count > 1 { totalWidth = totalWidth + (actionButtons.Count - 1) * 2 }
-    let wasStacked = stacked
-    let previousRows = actionRows
-    stacked = totalWidth > contentWidth
-    let wantedActions = stacked ? actionButtons.Count : (actionButtons.Count > 0 ? 1 : 0)
-    actionRows = Math.Min(wantedActions, Math.Max(0, availableRows - (messageRows > 0 ? 1 : 0)))
+    let stacked = totalWidth > contentWidth
+    let axis = stacked ? Axis.Column : Axis.Row
+    let gap = stacked ? 0 : 2
+    if actionHost.LayoutAxis != axis { actionHost.LayoutAxis = axis }
+    if actionHost.Gap != gap { actionHost.Gap = gap }
+    let actionRows = Math.Min(availableRows, stacked ? actionButtons.Count : (actionButtons.Count > 0 ? 1 : 0))
     let bodyRows = Math.Min(messageRows, Math.Max(0, availableRows - actionRows))
     if body.Height.IsAuto || body.Height.CellCount != bodyRows { body.Height = CellLength.Cells(bodyRows) }
     if body.Width.IsAuto || body.Width.CellCount != contentWidth { body.Width = CellLength.Cells(contentWidth) }
@@ -200,47 +195,13 @@ public open class Dialog : Overlay {
     if actionHost.Width.IsAuto || actionHost.Width.CellCount != contentWidth { actionHost.Width = CellLength.Cells(contentWidth) }
     let height = bodyRows + actionRows + edges + Padding.TopRows + Padding.BottomRows
     if Height.IsAuto || Height.CellCount != height { Height = CellLength.Cells(height) }
-    var i = 0
-    while i < actionButtons.Count {
-      let button = actionButtons[i]
-      if button.IsFocused && (!Object.ReferenceEquals(lastFocused, button) || previousRows != actionRows || wasStacked != stacked) {
-        actionTop = Selection.ScrollIntoView(actionButtons.Count, i, actionTop, actionRows)
-        lastFocused = button
-      }
-      i = i + 1
-    }
-    actionTop = Selection.ClampScroll(actionButtons.Count, actionTop, actionRows)
-    var column = 0
-    i = 0
-    while i < actionButtons.Count {
-      let button = actionButtons[i]
-      let row = stacked ? i - actionTop : 0
-      let x = stacked ? 0 : column
-      let y = row >= 0 && row < actionRows ? row : 0
-      if button.Placement.IsInFlow || button.Placement.Point.Column != x || button.Placement.Point.Row != y {
-        button.Placement = Placement.At(CellPoint{ Column: x, Row: y })
-      }
-      let buttonWidth = stacked ? contentWidth : Glyph.WidthOf(button.Text) + 2
-      let buttonHeight = row >= 0 && row < actionRows ? 1 : 0
-      if button.Width.IsAuto || button.Width.CellCount != buttonWidth { button.Width = CellLength.Cells(buttonWidth) }
-      if button.Height.IsAuto || button.Height.CellCount != buttonHeight { button.Height = CellLength.Cells(buttonHeight) }
-      column = column + Glyph.WidthOf(button.Text) + 4
-      i = i + 1
-    }
   }
 
-  /// Scrolls the message or stacked actions within this dialog.
+  /// Scrolls the message within this dialog.
   /// @param ev The input event to handle.
   /// @returns Handled when a local scroll was requested.
   protected override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
-    if ev.Kind == UiEventKind.Mouse && stacked && actionHost.Bounds.Contains(ev.Position) {
-      if ev.Mouse == MouseKind.ScrollUp || ev.Mouse == MouseKind.ScrollDown {
-        actionTop = Selection.ClampScroll(actionButtons.Count,
-          actionTop + (ev.Mouse == MouseKind.ScrollUp ? -Selection.WheelStep : Selection.WheelStep), actionRows)
-        return EventResult.Handled
-      }
-    }
     if ev.Kind == UiEventKind.Key && (ev.Key == Key.PageUp || ev.Key == Key.PageDown) {
       body.ScrollToLine(Selection.ClampScroll(messageRows,
         body.FirstVisibleLine + (ev.Key == Key.PageUp ? -body.ContentBounds.HeightRows : body.ContentBounds.HeightRows),
@@ -265,8 +226,6 @@ public open class Dialog : Overlay {
     }
     Children.Add(actionHost)
     wrappedWidth = -1
-    actionTop = 0
-    lastFocused = nil
     configureActions()
   }
 
