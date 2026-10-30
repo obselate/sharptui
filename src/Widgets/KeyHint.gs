@@ -32,6 +32,8 @@ public class KeyHint {
   public prop Priority int32 { get; set; }
   /// Whether the command can run. Disabled hints remain visible.
   public prop IsEnabled bool { get; set; }
+  /// Style merged over the bar styles for key text and description. DisabledStyle takes precedence.
+  public prop Style Style { get; set; }
   /// Command to run on a left click. Assign the same command used by the key binding.
   public prop OnClick Action? { get; set; }
 
@@ -40,6 +42,7 @@ public class KeyHint {
     keyText = ""
     text = ""
     IsEnabled = true
+    Style = SharpTui.Style()
   }
 }
 
@@ -139,8 +142,12 @@ public open class KeyHintBar : Box {
       entry.Start = x
       layout[i - 1] = entry
       let item = entry.Item
-      let labelStyle = item.IsEnabled ? ink : DisabledStyle.MergedOver(ink)
-      let keyStyle = KeyStyle.MergedOver(labelStyle)
+      var labelStyle = item.Style.MergedOver(ink)
+      var keyStyle = item.Style.MergedOver(KeyStyle.MergedOver(ink))
+      if !item.IsEnabled {
+        labelStyle = DisabledStyle.MergedOver(labelStyle)
+        keyStyle = DisabledStyle.MergedOver(keyStyle)
+      }
       screen.WriteClipped(bounds, x, 0, item.KeyText, keyStyle)
       screen.WriteClipped(bounds, x + entry.TextOffset, 0, item.Text, labelStyle)
       x = x + entry.Width

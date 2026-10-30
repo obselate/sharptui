@@ -9,6 +9,35 @@ internal class KeyHintBarCheck : KeyHintBar {
 
 func checkKeyHints() int32 {
   var failed = 0
+  let itemStyle = Style{ Foreground: Color.Rgb("FF9900"), Attributes: TextAttributes.Italic }
+  let modes = List[TerminalColorMode]{ TerminalColorMode.TrueColor, TerminalColorMode.NoColor }
+  for mode in modes {
+    let baseStyle = Style{ Foreground: Color.Rgb("FFFFFF") }
+    let keyStyle = Style{ Foreground: Color.Rgb("00FF00"), Attributes: TextAttributes.Bold }
+    let disabledStyle = Style{ Foreground: Color.Rgb("888888"), Attributes: TextAttributes.Dim }
+    let bar = KeyHintBar{
+      Style: baseStyle, KeyStyle: keyStyle, DisabledStyle: disabledStyle,
+      Items: {
+        KeyHint{ KeyText: "A", Text: "打开", Style: itemStyle },
+        KeyHint{ KeyText: "B", Text: "保存" },
+        KeyHint{ KeyText: "C", Text: "退出", Style: itemStyle, IsEnabled: false },
+      },
+    }
+    let screen = Screen(40, 12)
+    screen.ColorMode = mode
+    bar.Draw(screen)
+    let expected = Screen(40, 12)
+    expected.ColorMode = mode
+    expected.Fill(CellRect{ WidthCells: 40, HeightRows: 12 }, baseStyle)
+    expected.Write(0, 0, "A", itemStyle.MergedOver(keyStyle.MergedOver(baseStyle)))
+    expected.Write(2, 0, "打开", itemStyle.MergedOver(baseStyle))
+    expected.Write(8, 0, "B", keyStyle.MergedOver(baseStyle))
+    expected.Write(10, 0, "保存", baseStyle)
+    expected.Write(16, 0, "C", disabledStyle.MergedOver(itemStyle.MergedOver(keyStyle.MergedOver(baseStyle))))
+    expected.Write(18, 0, "退出", disabledStyle.MergedOver(itemStyle.MergedOver(baseStyle)))
+    failed = failed + Checks.Expect(screen.Flush() == expected.Flush(),
+      "KeyHintBar merges item styles over bar styles, with disabled style last, in color and NoColor")
+  }
   let languages = List[bool]{ false, true }
   let widths = List[int32]{ 20, 40, 80, 160 }
   let buttons = List[MouseButton]{ MouseButton.None, MouseButton.Middle, MouseButton.Right }
@@ -19,9 +48,9 @@ func checkKeyHints() int32 {
       let bar = KeyHintBarCheck{ Width: CellLength.Cells(width), Height: CellLength.Cells(2) }
       let root = Box{ Children: { bar } }
       bar.Items.Add(KeyHint{ KeyText: "A", Text: chinese ? "打开" : "Open", Priority: 0, OnClick: () -> { clicked = 0 } })
-      bar.Items.Add(KeyHint{ KeyText: "B", Text: chinese ? "保存" : "Save", Priority: 5, OnClick: () -> { clicked = 1 } })
+      bar.Items.Add(KeyHint{ KeyText: "B", Text: chinese ? "保存" : "Save", Style: itemStyle, Priority: 5, OnClick: () -> { clicked = 1 } })
       bar.Items.Add(KeyHint{ KeyText: "C", Text: chinese ? "查阅" : "View", Priority: 10, OnClick: () -> { clicked = 2 } })
-      bar.Items.Add(KeyHint{ KeyText: "D", Text: chinese ? "退出" : "Quit", Priority: 5, IsEnabled: false, OnClick: () -> { clicked = 3 } })
+      bar.Items.Add(KeyHint{ KeyText: "D", Text: chinese ? "退出" : "Quit", Style: itemStyle, Priority: 5, IsEnabled: false, OnClick: () -> { clicked = 3 } })
       bar.Items.Add(KeyHint{ KeyText: "E", Text: chinese ? "帮助" : "Help", Priority: -1 })
       bar.Items.Add(KeyHint{ KeyText: "F", Text: String('x', 200), Priority: 100, OnClick: () -> { clicked = 5 } })
       let screen = Screen(width, 2)
