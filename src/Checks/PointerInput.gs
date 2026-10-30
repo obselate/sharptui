@@ -101,7 +101,7 @@ private func checkPointerCorrectness() int32 {
   areaRoot.Handle(charEv("a"))
   areaRoot.Handle(mouseEv(1, 0))
   failed = failed + Checks.Expect(area.Caret.GraphemeIndex == 1,
-    "TextArea refreshes its grapheme cache after an edit before the next click")
+    "TextArea uses current grapheme positions after an edit before the next click")
   areaRoot.Handle(splitterMouse(MouseKind.Release, MouseButton.Left, 1, 0))
   entry.IsPassword = false
   entryRoot.Handle(mouseEv(1, 0))

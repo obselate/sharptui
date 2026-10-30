@@ -1,7 +1,6 @@
 package SharpTui
 
 import System
-import System.Collections.Generic
 
 /// Horizontal placement of content within its box.
 public enum HorizontalAlignment { Left, Center, Right }
@@ -10,10 +9,9 @@ public enum HorizontalAlignment { Left, Center, Right }
 public open class Label : Box {
   private var text string
   private var alignment HorizontalAlignment
-  private var clusters List[string]
   private var textWidth int32
 
-  /// The text to display. Setting it rebuilds the grapheme cluster cache when the value changes.
+  /// The text to display.
   public prop Text string {
     get -> text
     set {
@@ -33,7 +31,6 @@ public open class Label : Box {
   public init() {
     text = ""
     alignment = HorizontalAlignment.Left
-    clusters = List[string]()
     textWidth = 0
   }
 
@@ -63,24 +60,11 @@ public open class Label : Box {
     if Alignment == HorizontalAlignment.Center { x = (r.WidthCells - w) / 2 }
     if Alignment == HorizontalAlignment.Right { x = r.WidthCells - w }
     if x < 0 { x = 0 }
-    var i = 0
-    var column = x
-    while i < clusters.Count {
-      let width = Glyph.Of(clusters[i])
-      if column + width > r.WidthCells { break }
-      screen.WriteCell(r.Column + column, r.Row, clusters[i], ink)
-      column = column + width
-      i = i + 1
-    }
+    screen.WriteClipped(r, x, 0, text, ink)
   }
 
   private func rebuild() {
     MarkMeasureDirty()
-    clusters.Clear()
-    textWidth = 0
-    for cluster in Glyph.Elements(text) {
-      clusters.Add(cluster)
-      textWidth = textWidth + Glyph.Of(cluster)
-    }
+    textWidth = Glyph.WidthOf(text)
   }
 }

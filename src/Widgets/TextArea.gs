@@ -150,8 +150,6 @@ public open class TextArea : Box {
   private var lineNumbers List[string]
   private var lineNumberCount int32
   private var lineNumberDigits int32
-  private var cachedLineText List[string]
-  private var cachedLineClusters List[List[string]]
 
   /// Creates an empty, focusable, unwrapped text area with a single blank line.
   public init() {
@@ -185,8 +183,6 @@ public open class TextArea : Box {
     lineNumbers = List[string]()
     lineNumberCount = -1
     lineNumberDigits = -1
-    cachedLineText = List[string]()
-    cachedLineClusters = List[List[string]]()
     CanFocus = true
     Grow = 1
   }
@@ -202,8 +198,6 @@ public open class TextArea : Box {
     horizontalCellOffset = 0
     isModified = false
     stamp = stamp + 1
-    cachedLineText.Clear()
-    cachedLineClusters.Clear()
     marked = false
     undos.Clear()
     redos.Clear()
@@ -264,8 +258,9 @@ public open class TextArea : Box {
         let cursorColumn = cellOf(row, col) - originOf(rows[here])
         if cursorColumn >= 0 && cursorColumn < textWidth {
           let swapped = ink.Inverted()
-          let clusters = clustersAt(row)
-          let glyph = col < clusters.Count ? clusters[col] : " "
+          let offset = graphemeOffset(lines[row], col)
+          let glyph = offset < lines[row].Length
+            ? GlyphCache.Intern(lines[row], offset, StringInfo.GetNextTextElementLength(lines[row], offset)) : " "
           screen.WriteCell(r.Column + gutterWidth + cursorColumn, r.Row + cursorRow, glyph, swapped)
         }
       }
@@ -337,7 +332,7 @@ public open class TextArea : Box {
   }
 
   private func wrapLine(line int32, width int32) {
-    let clusters = clustersAt(line)
+    let clusters = Glyph.Clusters(lines[line])
     if clusters.Count == 0 {
       rows.Add(seg(line, 0, 0))
       return
@@ -762,15 +757,19 @@ public open class TextArea : Box {
     if v < 0 { v = 0 }
     if v >= rows.Count { v = rows.Count - 1 }
     let seg = rows[v]
-    let clusters = clustersAt(seg.Line)
-    let stop = wrapping == TextWrapping.Word ? seg.To : clusters.Count
+    let stop = wrapping == TextWrapping.Word ? seg.To : graphemeCount(lines[seg.Line])
     var cell = position.Column - bounds.Column - gutterWidth + originOf(seg)
     if cell < 0 { cell = 0 }
     var targetCol = wrapping == TextWrapping.Word ? seg.From : 0
     var cells = cellOf(seg.Line, targetCol)
-    while targetCol < stop && cells < cell {
-      cells = cells + Glyph.Of(clusters[targetCol])
-      targetCol = targetCol + 1
+    var index = 0
+    for cluster in Glyph.Elements(lines[seg.Line]) {
+      if index >= stop || cells >= cell { break }
+      if index >= targetCol {
+        cells = cells + Glyph.Of(cluster)
+        targetCol = targetCol + 1
+      }
+      index = index + 1
     }
     row = seg.Line
     col = targetCol
@@ -1044,9 +1043,8 @@ public open class TextArea : Box {
     let b = markEnd()
     if line < a.LineIndex || line > b.LineIndex { return }
 
-    let clusters = clustersAt(line)
     var from = line == a.LineIndex ? a.GraphemeIndex : 0
-    var to = line == b.LineIndex ? b.GraphemeIndex : clusters.Count
+    var to = line == b.LineIndex ? b.GraphemeIndex : graphemeCount(lines[line])
     if wrapping == TextWrapping.Word {
       if from < seg.From { from = seg.From }
       if to > seg.To { to = seg.To }
@@ -1062,39 +1060,10 @@ public open class TextArea : Box {
 
   private func paintClusters(screen Screen, r CellRect, x int32, y int32,
       line int32, from int32, to int32, skip int32, ink Style) {
-    let clusters = clustersAt(line)
-    let end = to < 0 ? clusters.Count : to
-    var column = x - skip
-    for i in from ... end {
-      let width = Glyph.Of(clusters[i])
-      if column >= r.WidthCells { break }
-      if column >= x {
-        screen.WriteClippedRange(r, column, y, clusters[i], 0, -1, 0, ink)
-      } else if column + width > x {
-        screen.WriteClipped(r, x, y, " ", ink)
-      }
-      column = column + width
-    }
+    screen.WriteClippedRange(r, x, y, lines[line], from, to, skip, ink)
   }
 
-  private func clustersAt(line int32) List[string] {
-    while cachedLineText.Count <= line {
-      cachedLineText.Add("")
-      cachedLineClusters.Add(List[string]())
-    }
-    if cachedLineText[line] != lines[line] {
-      cachedLineText[line] = lines[line]
-      cachedLineClusters[line] = Glyph.Clusters(lines[line])
-    }
-    return cachedLineClusters[line]
-  }
-
-  private func cellOf(line int32, index int32) int32 {
-    let clusters = clustersAt(line)
-    var cells = 0
-    for i in 0 ... index { cells = cells + Glyph.Of(clusters[i]) }
-    return cells
-  }
+  private func cellOf(line int32, index int32) int32 -> rangeWidth(lines[line], 0, index)
 
   private func graphemeCount(text string) int32 {
     var count = 0

@@ -7,8 +7,6 @@ import System.Collections.Generic
 public class KeyHint {
   private var keyText string
   private var text string
-  internal var KeyClusters List[string]
-  internal var TextClusters List[string]
   internal var KeyWidth int32
   internal var TextWidth int32
 
@@ -18,7 +16,6 @@ public class KeyHint {
     set {
       if keyText == value { return }
       keyText = value
-      KeyClusters = Glyph.Clusters(value)
       KeyWidth = Glyph.WidthOf(value)
     }
   }
@@ -28,7 +25,6 @@ public class KeyHint {
     set {
       if text == value { return }
       text = value
-      TextClusters = Glyph.Clusters(value)
       TextWidth = Glyph.WidthOf(value)
     }
   }
@@ -43,8 +39,6 @@ public class KeyHint {
   public init() {
     keyText = ""
     text = ""
-    KeyClusters = List[string]()
-    TextClusters = List[string]()
     IsEnabled = true
   }
 }
@@ -147,19 +141,9 @@ public open class KeyHintBar : Box {
       let item = entry.Item
       let labelStyle = item.IsEnabled ? ink : DisabledStyle.MergedOver(ink)
       let keyStyle = KeyStyle.MergedOver(labelStyle)
-      drawText(screen, bounds, x, item.KeyClusters, keyStyle)
-      drawText(screen, bounds, x + entry.TextOffset, item.TextClusters, labelStyle)
+      screen.WriteClipped(bounds, x, 0, item.KeyText, keyStyle)
+      screen.WriteClipped(bounds, x + entry.TextOffset, 0, item.Text, labelStyle)
       x = x + entry.Width
-    }
-  }
-
-  private func drawText(screen Screen, bounds CellRect, start int32, clusters List[string], ink Style) {
-    var x = start
-    var i = 0
-    while i < clusters.Count {
-      screen.WriteClipped(bounds, x, 0, clusters[i], ink)
-      x = x + Glyph.Of(clusters[i])
-      i = i + 1
     }
   }
 
