@@ -85,6 +85,69 @@ internal class ScreenTextCheck {
 
       failed = failed + Checks.Expect(rejectsHyperlinkControl(accent),
         "Screen rejects control characters in hyperlink targets")
+      for i in 0 ... 100000 {
+        let text = char.ConvertFromUtf32(0x10000 + i) + "x"
+        GlyphCache.Intern(text, 0, text.Length - 1)
+        if GlyphCache.InternedCount() > GlyphCache.ClusterLimit {
+          failed = failed + Checks.Expect(false, "the grapheme cache stays within its limit")
+          break
+        }
+      }
+      let collisionA = GlyphCache.Intern("xĀa", 1, 2)
+      let collisionB = GlyphCache.Intern("xāB", 1, 2)
+      failed = failed + Checks.Expect(collisionA == "Āa" && collisionB == "āB"
+        && Object.ReferenceEquals(collisionA, GlyphCache.Intern("Āay", 0, 2)),
+        "grapheme interning compares contents and handles equal hashes")
+      let text = "中文 👩‍💻 é "
+      let table = TableView{
+        Columns: { TableColumn{ Header: text, ColumnWidth: ColumnWidth.Cells(32) } },
+        Rows: { TableRow{ Cells: { TableCell(text) } } },
+      }
+      let widgets = List[Box]{
+        Label{ Text: text },
+        TextBlock{ Text: text },
+        RichTextBlock{ Runs: List[TextRun]{ TextRun(text, accent) } },
+        table,
+        TextInput{ Text: text },
+        TextArea{ Text: text + "\n" + text, ShowLineNumbers: false },
+        KeyHintBar{ Items: { KeyHint{ KeyText: text, Text: text } } },
+        NumericDisplay{ Text: text },
+        ChartView{ HorizontalTicks: { ChartTick{ Value: 0.0, Text: text } } },
+      }
+      for widget in widgets {
+        widget.Width = CellLength.Cells(40)
+        widget.Height = CellLength.Cells(4)
+        let screen = Screen(40, 4)
+        let output = TerminalBuffer(4096)
+        widget.Focus(widget)
+        for i in 0 ... 64 {
+          screen.Clear()
+          widget.Draw(screen)
+          screen.Emit(output)
+        }
+        let before = GC.GetAllocatedBytesForCurrentThread()
+        for i in 0 ... 128 {
+          screen.Clear()
+          widget.Draw(screen)
+          screen.Emit(output)
+        }
+        let bytes = GC.GetAllocatedBytesForCurrentThread() - before
+        failed = failed + Checks.Expect(bytes == 0,
+          widget.GetType().Name + " repaints Chinese, emoji and combining text without allocations: " + bytes.ToString())
+        var chinese = false
+        var emoji = false
+        var combining = false
+        for row in 0 ... 4 {
+          for column in 0 ... 40 {
+            let glyph = screen.Probe(column, row)
+            chinese = chinese || glyph == "中"
+            emoji = emoji || glyph == "👩‍💻"
+            combining = combining || glyph == "é"
+          }
+        }
+        failed = failed + Checks.Expect(chinese && emoji && combining,
+          widget.GetType().Name + " preserves Chinese, emoji and combining clusters")
+      }
       return failed
     }
   }

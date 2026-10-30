@@ -132,6 +132,21 @@ public class AllocBench {
       after = GC.GetAllocatedBytesForCurrentThread()
       benchReport("H hyperlink invalidate+emit", sw, before, after, frames)
 
+      let clusters = List[string]()
+      for cp in 0x4E00 ... 0x5200 {
+        let source = char(cp).ToString() + "x"
+        clusters.Add(source)
+        GlyphCache.Intern(source, 0, 1)
+      }
+      before = GC.GetAllocatedBytesForCurrentThread()
+      sw.Restart()
+      for index in 0 ... 100000 {
+        GlyphCache.Intern(clusters[index % clusters.Count], 0, 1)
+      }
+      sw.Stop()
+      after = GC.GetAllocatedBytesForCurrentThread()
+      benchMicro("I intern 1024 clusters x100k", sw, before, after, 100000)
+
       return 0
     }
 

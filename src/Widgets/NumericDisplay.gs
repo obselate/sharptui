@@ -13,7 +13,6 @@ private struct NumericDisplayCell {
 public open class NumericDisplay : Box {
     private var text string
     private var preferredHeight int32
-    private var clusters List[string]
     private var points List[NumericDisplayCell]
     private var textWidth int32
     private var glyphWidth int32
@@ -56,7 +55,6 @@ public open class NumericDisplay : Box {
     public init() {
         text = ""
         preferredHeight = 1
-        clusters = List[string]()
         points = List[NumericDisplayCell]()
         supported = true
     }
@@ -103,16 +101,7 @@ public open class NumericDisplay : Box {
                 index = index + 1
             }
         } else {
-            while index < clusters.Count {
-                let cluster = clusters[index]
-                let cells = Glyph.Of(cluster)
-                if x + cells > r.WidthCells {
-                    break
-                }
-                screen.WriteCell(r.Column + x, r.Row, cluster, ink)
-                x = x + cells
-                index = index + 1
-            }
+            screen.WriteClipped(r, x, 0, text, ink)
         }
     }
 
@@ -134,12 +123,10 @@ public open class NumericDisplay : Box {
     }
 
     private func rebuild() {
-        clusters.Clear()
         points.Clear()
         textWidth = 0
         supported = true
         for cluster in Glyph.Elements(text) {
-            clusters.Add(cluster)
             textWidth = textWidth + Glyph.Of(cluster)
             if cluster.Length != 1 || pattern(cluster[0]) == "" {
                 supported = false
@@ -148,7 +135,7 @@ public open class NumericDisplay : Box {
         glyphWidth = 0
         if supported && preferredHeight > 1 {
             let scale = preferredHeight == 5 ? 2: 1
-            for cluster in clusters {
+            for cluster in Glyph.Elements(text) {
                 let shape = pattern(cluster[0])
                 let columns = (shape.Length + 1) / 5 - 1
                 for row in 0 ... preferredHeight {

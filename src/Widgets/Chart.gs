@@ -69,7 +69,7 @@ private struct ChartLabel {
     var X int32
     var Y int32
     var Width int32
-    var Clusters List[string]
+    var Text string
 }
 
 /// A retained XY chart with optional labels and a one-row block-level mode.
@@ -176,12 +176,7 @@ public open class ChartView : Box {
             )
             for index in 0 ... labels.Count {
                 let label = labels[index]
-                var x = bounds.Column + label.X
-                for clusterIndex in 0 ... label.Clusters.Count {
-                    let cluster = label.Clusters[clusterIndex]
-                    screen.WriteCell(x, bounds.Row + label.Y, cluster, AxisStyle.MergedOver(style))
-                    x = x + Glyph.Of(cluster)
-                }
+                screen.WriteClipped(bounds, label.X, label.Y, label.Text, AxisStyle.MergedOver(style))
             }
         }
     }
@@ -315,11 +310,7 @@ public open class ChartView : Box {
                 return
             }
         }
-        let clusters = List[string]()
-        for cluster in Glyph.Elements(text) {
-            clusters.Add(cluster)
-        }
-        labels.Add(ChartLabel{X: x, Y: y, Width: cells, Clusters: clusters})
+        labels.Add(ChartLabel{X: x, Y: y, Width: cells, Text: text})
     }
 
     private func segment(x0 float64, y0 float64, x1 float64, y1 float64, item ChartSeries) {

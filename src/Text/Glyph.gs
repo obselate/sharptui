@@ -48,7 +48,7 @@ internal struct GlyphEnumerator {
     } else if length == 1 && Source[start] < char(128) {
       Current = Singles[int32(Source[start])]
     } else {
-      Current = Source.Substring(start, length)
+      Current = GlyphCache.Intern(Source, start, length)
     }
     return true
   }

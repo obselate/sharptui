@@ -31,7 +31,48 @@ internal struct GlyphEntry {
   var Width int32
 }
 
+internal struct GlyphRange {
+  internal var Source string
+  internal var Start int32
+  internal var Length int32
+}
+
+internal class GlyphRangeComparer : IEqualityComparer[GlyphRange] {
+  public func Equals(left GlyphRange, right GlyphRange) bool ->
+    left.Length == right.Length
+      && String.CompareOrdinal(left.Source, left.Start, right.Source, right.Start, left.Length) == 0
+
+  public func GetHashCode(value GlyphRange) int32 {
+    var hash = 0
+    for i in value.Start ... value.Start + value.Length {
+      hash = (hash << 5) - hash + int32(value.Source[i])
+    }
+    return hash
+  }
+}
+
 internal class GlyphCache {
+  shared {
+    internal let ClusterLimit int32 = 4096
+    private let clusters Dictionary[GlyphRange, string] = Dictionary[GlyphRange, string](GlyphRangeComparer())
+
+    internal func Intern(source string, start int32, length int32) string {
+      lock clusters {
+        let key = GlyphRange{ Source: source, Start: start, Length: length }
+        var text = ""
+        if clusters.TryGetValue(key, &text) { return text }
+        if clusters.Count == ClusterLimit { clusters.Clear() }
+        text = source.Substring(start, length)
+        clusters.Add(GlyphRange{ Source: text, Length: length }, text)
+        return text
+      }
+    }
+
+    internal func InternedCount() int32 {
+      lock clusters { return clusters.Count }
+    }
+  }
+
   private var byText Dictionary[string, int32]
   private var entries List[GlyphEntry]
 
