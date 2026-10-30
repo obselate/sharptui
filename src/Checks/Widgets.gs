@@ -920,6 +920,36 @@ public class WidgetCheck {
         "TableView draws styled runs, column separators, and aligned structured cells")
       failed = failed + Checks.Expect(richTableScreen.Flush().Contains("[38;2;229;72;77m"),
         "TableView emits cell and separator colors")
+      let clippedTable = TableView{
+        Style: Style{ Foreground: Color.Rgb("E5484D"), Attributes: TextAttributes.Bold },
+      }
+      clippedTable.Columns.Add(TableColumn{ Header: "first", ColumnWidth: ColumnWidth.Cells(30) })
+      clippedTable.Columns.Add(TableColumn{ Header: "ABCDEF中文", ColumnWidth: ColumnWidth.Cells(30) })
+      clippedTable.Rows.Add(tblRow("plain", "ABCDEF中文"))
+      let clippedRuns = tblRow("runs", "")
+      clippedRuns.Cells[1] = TableCell{
+        Runs: List[TextRun]{ TextRun("ABC", Style()), TextRun("DEF中文", Style()) },
+      }
+      clippedTable.Rows.Add(clippedRuns)
+      let clippedContent = tblRow("content", "")
+      clippedContent.Cells[1] = TableCell{
+        Content: Label{ Text: "ABCDEF中文", Width: CellLength.Cells(100) },
+      }
+      clippedTable.Rows.Add(clippedContent)
+      let clippedFrame = Box{ ShowBorder: true, Children: { clippedTable } }
+      let clippedScreen = Screen(40, 12)
+      clippedScreen.ColorMode = TerminalColorMode.NoColor
+      clippedFrame.Draw(clippedScreen)
+      var clippedCells = true
+      for row in 1 ... 5 {
+        clippedCells = clippedCells && clippedScreen.Probe(32, row) == "A"
+          && clippedScreen.Probe(37, row) == "F" && clippedScreen.Probe(38, row) == " "
+          && clippedScreen.Probe(39, row) == "│"
+      }
+      let clippedWire = clippedScreen.Flush()
+      failed = failed + Checks.Expect(clippedCells && clippedWire.Contains("[1m")
+          && !clippedWire.Contains("38;2;") && !clippedWire.Contains("48;2;"),
+        "TableView clips fixed-width headers, text, runs and retained cells without splitting wide glyphs or overwriting a frame in NoColor")
 
       let tabsChanges = SelectionProbe()
 
