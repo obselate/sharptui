@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `a048408ba7002557c08380a639b45ce61ce463eadaa109ea788014a809baac4a`.
+Public-symbol SHA-256: `ceb656e8859d39421367ef34bab7b606f88a5b3e6633c28794e6ab1aff5cfa8f`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1415,6 +1415,31 @@ G# kind: `enum`.
 - `Click` — Reports button presses and releases, but not pointer motion.
 - `Drag` — Reports button events and pointer motion while a button is held.
 - `AllMotion` — Reports button events and all pointer motion.
+
+## SharpTui.NumberInput
+
+A single-line editor with an explicitly committed, bounded numeric value.
+
+G# kind: `class`.
+Inherits `TextInput`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates a numeric editor with value zero and step one.
+
+### Properties
+
+- `prop Maximum float64 { get; set; }` — The finite upper bound. Lowering it clamps Value silently.
+- `prop Minimum float64 { get; set; }` — The finite lower bound. Raising it clamps Value silently.
+- `prop OnValueChange Action[float64] { get; set; }` — Receives the committed value after a user commit or step changes it.
+- `prop Step float64 { get; set; }` — The finite, positive amount applied by Up and Down.
+- `prop Value float64 { get; set; }` — The committed value. Setting it silently restores Text. Must be finite and in range.
+
+### Methods
+
+- `func CancelEdit()` — Restores Text to the committed value without raising callbacks.
+- `func Commit() bool` — Commits finite, in-range Text using invariant numeric notation.
+  - Returns: True for valid text, otherwise false without changing Value.
 
 ## SharpTui.NumericDisplay
 
