@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `df18085c254250ce315d8261aeac59200a7c6b9a858cc721d668a918bed2038e`.
+Public-symbol SHA-256: `df0f27484761223439d7d6acfa31e96b74e76c69f42f7353da55355d42cdd5c2`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
