@@ -75,6 +75,21 @@ internal class InputDecoderCheck {
           && (int32(canonicalEvents[0].Modifiers) & int32(KeyModifiers.Ctrl)) != 0,
         "Kitty canonical navigation and F-key forms map")
 
+      for number in []int32{ 1, 4, 7, 8 } {
+        let expected = number == 1 || number == 7 ? Key.Home : Key.End
+        for modifier in []int32{ 1, 2, 3, 5, 8 } {
+          let endpoint = InputDecoder()
+          let suffix = modifier == 1 ? "~" : ";" + modifier.ToString() + "~"
+          endpoint.Feed(csi(number.ToString() + suffix))
+          let endpoints = inputEvents(endpoint)
+          failed += Checks.Expect(endpoints.Count == 1 && endpoints[0].Kind == UiEventKind.Key
+              && endpoints[0].Key == expected && endpoints[0].KeyCode == inputKeyCode(expected)
+              && endpoints[0].Modifiers == KeyModifiers(modifier - 1)
+              && endpoints[0].Phase == KeyPhase.Press,
+            "CSI tilde Home and End aliases preserve modifiers and key identity")
+        }
+      }
+
       let ss3 = InputDecoder()
       ss3.Feed([]uint8{ 27, 79 })
       ss3.Feed([]uint8{ 65, 27, 79, 66, 27, 79, 67, 27, 79, 68 })
