@@ -2547,7 +2547,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuilabel" data-search="sharptui.label a single line of text, clipped to its box. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty, left-aligned label. properties prop alignment horizontalalignment { get; set; } — how text is positioned within the box when the box is wider than the text. prop text string { get; set; } — the text to display.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty, left-aligned label. properties prop alignment horizontalalignment { get; set; } — how text is positioned within the box when the box is wider than the text. prop ellipsis bool { get; set; } — ends text with an ellipsis when it exceeds the box width. prop text string { get; set; } — the text to display.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -2571,6 +2571,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="properties-29">Properties</h3>
 <ul>
 <li><code>prop Alignment HorizontalAlignment { get; set; }</code> — How Text is positioned within the box when the box is wider than the text.</li>
+<li><code>prop Ellipsis bool { get; set; }</code> — Ends text with an ellipsis when it exceeds the box width.</li>
 <li><code>prop Text string { get; set; }</code> — The text to display.</li>
 </ul>
     </div>
@@ -3962,7 +3963,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuistatusbar" data-search="sharptui.statusbar a one row bar with a left, centred, and right segment. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates a bar with empty left, center, and right text. properties prop centerruns list[textrun] { get; set; } — styled content drawn in the center. when non-empty, this takes precedence over centertext. prop centertext string { get; set; } — text drawn centered in the bar when there is room for it and the flanking text. prop leftruns list[textrun] { get; set; } — styled content drawn at the left edge. when non-empty, this takes precedence over lefttext. prop lefttext string { get; set; } — text drawn at the left edge of the bar. prop rightruns list[textrun] { get; set; } — styled content drawn at the right edge. when non-empty, this takes precedence over righttext. prop righttext string { get; set; } — text drawn at the right edge of the bar when there is room.">
+inherits box ; see that type for inherited members. constructors init() — creates a bar with empty left, center, and right text. properties prop centerruns list[textrun] { get; set; } — styled content drawn in the center. when non-empty, this takes precedence over centertext. prop centertext string { get; set; } — text drawn centered in the bar when there is room for it and the flanking text. prop ellipsis bool { get; set; } — ends clipped segment text with an ellipsis. prop leftruns list[textrun] { get; set; } — styled content drawn at the left edge. when non-empty, this takes precedence over lefttext. prop lefttext string { get; set; } — text drawn at the left edge of the bar. prop rightruns list[textrun] { get; set; } — styled content drawn at the right edge. when non-empty, this takes precedence over righttext. prop righttext string { get; set; } — text drawn at the right edge of the bar when there is room.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -3987,6 +3988,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <ul>
 <li><code>prop CenterRuns List[TextRun] { get; set; }</code> — Styled content drawn in the center. When non-empty, this takes precedence over CenterText.</li>
 <li><code>prop CenterText string { get; set; }</code> — Text drawn centered in the bar when there is room for it and the flanking text.</li>
+<li><code>prop Ellipsis bool { get; set; }</code> — Ends clipped segment text with an ellipsis.</li>
 <li><code>prop LeftRuns List[TextRun] { get; set; }</code> — Styled content drawn at the left edge. When non-empty, this takes precedence over LeftText.</li>
 <li><code>prop LeftText string { get; set; }</code> — Text drawn at the left edge of the bar.</li>
 <li><code>prop RightRuns List[TextRun] { get; set; }</code> — Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.</li>
@@ -4270,7 +4272,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuitabs" data-search="sharptui.tabs a horizontal strip of titles; arrow keys or a click switch the active one. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty tab strip with a two-cell title gap and canfocus enabled. properties prop onchange action[selectionchange] { get; set; } — receives each user selection change after navigation completes. programmatic selection is silent. prop selectedindex int32 { get; set; } — index of the active tab. setting it selects programmatically and does not emit a selectionchange; the value must not be negative. prop selectedstyle style { get; set; } — style merged over the active tab&#x27;s inherited style. prop titles list[string] { get; set; } — tab titles in display order; setting it replaces all titles and re-resolves the selection via refresh. methods func refresh() — re-resolves selection after direct titles mutation.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty tab strip with a two-cell title gap and canfocus enabled. properties prop onchange action[selectionchange] { get; set; } — receives each user selection change after navigation completes. programmatic selection is silent. prop selectedindex int32 { get; set; } — index of the active tab. setting it selects programmatically and does not emit a selectionchange; the value must not be negative. prop selectedstyle style { get; set; } — style merged over the active tab&#x27;s inherited style. prop titleruns list[list[textrun]] { get; set; } — styled titles in display order. a non-empty list takes precedence over titles. prop titles list[string] { get; set; } — tab titles in display order; setting it replaces all titles and re-resolves the selection via refresh. methods func refresh() — re-resolves selection after direct titles or titleruns mutation.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -4296,11 +4298,12 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <li><code>prop OnChange Action[SelectionChange] { get; set; }</code> — Receives each user selection change after navigation completes. Programmatic selection is silent.</li>
 <li><code>prop SelectedIndex int32 { get; set; }</code> — Index of the active tab. Setting it selects programmatically and does not emit a SelectionChange; the value must not be negative.</li>
 <li><code>prop SelectedStyle Style { get; set; }</code> — Style merged over the active tab's inherited style.</li>
+<li><code>prop TitleRuns List[List[TextRun]] { get; set; }</code> — Styled titles in display order. A non-empty list takes precedence over Titles.</li>
 <li><code>prop Titles List[string] { get; set; }</code> — Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.</li>
 </ul>
 <h3 id="methods-35">Methods</h3>
 <ul>
-<li><code>func Refresh()</code> — Re-resolves selection after direct Titles mutation.</li>
+<li><code>func Refresh()</code> — Re-resolves selection after direct Titles or TitleRuns mutation.</li>
 </ul>
     </div>
   </div>
