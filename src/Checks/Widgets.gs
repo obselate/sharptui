@@ -116,6 +116,8 @@ public class WidgetCheck {
       failed += Checks.Expect(number.Value == 0 && number.Text == "invalid" && !number.Commit(), "NumberInput rejects invalid provisional text")
       numberRoot.Handle(keyEv(Key.Escape))
       failed += Checks.Expect(number.Text == "0", "NumberInput Escape restores committed text")
+      failed += Checks.Expect(numberRoot.Handle(keyEv(Key.Escape)) == EventResult.Continue,
+        "NumberInput leaves Escape unconsumed when there is no pending edit")
       number.Text = "4.5"
       numberRoot.Focus(numberOther)
       failed += Checks.Expect(number.Value == 0 && number.Text == "4.5", "NumberInput focus leave preserves provisional text")

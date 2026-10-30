@@ -392,6 +392,7 @@ public open class NumberInput : TextInput {
         return EventResult.Handled
       }
       if ev.Key == Key.Escape {
+        if Text == committedText { return EventResult.Continue }
         CancelEdit()
         return EventResult.Handled
       }
@@ -405,10 +406,11 @@ public open class NumberInput : TextInput {
   }
 
   private func applyValue(value float64) {
-    let changed = value != committed
-    if changed { Value = value } else { CancelEdit() }
-    if changed {
-      if let callback = OnValueChange { callback(committed) }
+    if value == committed {
+      CancelEdit()
+      return
     }
+    Value = value
+    if let callback = OnValueChange { callback(committed) }
   }
 }
