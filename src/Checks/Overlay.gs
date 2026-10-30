@@ -287,7 +287,6 @@ internal class OverlayCheck {
           failed = failed + Checks.Expect(dialogBackground.MouseCount == 0,
             "Dialog subclasses still block outside clicks")
         }
-        dialogRoot.Focus(dialog.Children[0])
         let body = dialog.Children[0]
         if size == 0 && body is TextBlock {
           dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageDown })
@@ -301,7 +300,7 @@ internal class OverlayCheck {
         i = 0
         while i < dialog.Actions.Count {
           let button = dialog.Children[1].Children[i]
-          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab })
+          if i > 0 { dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab }) }
           dialogRoot.Draw(screen)
           failed = failed + Checks.Expect(button.IsFocused && button.Bounds.HeightRows == 1
               && button.Bounds.WidthCells == dialog.ContentBounds.WidthCells
@@ -315,6 +314,12 @@ internal class OverlayCheck {
           failed = failed + Checks.Expect(result == i, "Dialog action is reachable by left click")
           i = i + 1
         }
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Up })
+        failed = failed + Checks.Expect(dialog.Children[1].Children[1].IsFocused,
+          "Stacked Dialog Up moves focus to the previous action")
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Down })
+        failed = failed + Checks.Expect(dialog.Children[1].Children[2].IsFocused,
+          "Stacked Dialog Down moves focus to the next action")
         dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Escape })
         failed = failed + Checks.Expect(result == 2, "Dialog preserves the cancel action")
         dialog.Message = ""
@@ -333,11 +338,15 @@ internal class OverlayCheck {
         root.Draw(screen)
         dialogRoot.Draw(screen)
         root.Draw(screen)
-        dialogRoot.Focus(dialog.Children[0])
+        dialogRoot.Focus(dialog.Children[1].Children[0])
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Right })
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Left })
         let before = GC.GetAllocatedBytesForCurrentThread()
         dialogRoot.Draw(screen)
         root.Draw(screen)
         dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageDown })
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Right })
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Left })
         root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
         root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollDown,
           Position: CellPoint{ Column: 1, Row: height - 8 } })
