@@ -144,12 +144,99 @@ private func runChartChecks() int32 {
     failed = failed + Checks.Expect(!chartPixels(zeroWidth, 0), "zero-width charts do not draw")
     chart.Width = CellLength.Auto
 
+    let axes = ChartView{
+        ShowAxes: true,
+        HorizontalRange: NumericRange.Fixed(0.0, 10.0),
+        VerticalRange: NumericRange.Fixed(0.0, 1.0),
+        AxisStyle: Style{Foreground: Color.Rgb(90, 160, 240), Attributes: TextAttributes.Bold}
+    }
+    let axisWidths = List[int32]{1, 2, 3, 8, 40}
+    let axisHeights = List[int32]{2, 3, 12, 48}
+    for columns in axisWidths {
+        for rows in axisHeights {
+            let sized = Screen(columns, rows)
+            sized.ColorMode = TerminalColorMode.NoColor
+            axes.Draw(sized)
+            var correct = true
+            for y in 0 ... rows {
+                for x in 0 ... columns {
+                    let expected = y == rows - 1 ? (x == 0 ? "└": "─"): (x == 0 ? "│": " ")
+                    correct = correct && sized.Probe(x, y) == expected
+                }
+            }
+            let before = GC.GetAllocatedBytesForCurrentThread()
+            axes.Draw(sized)
+            let bytes = GC.GetAllocatedBytesForCurrentThread() - before
+            let wire = sized.Flush()
+            failed = failed + Checks.Expect(
+                correct && bytes == 0L && wire.Contains(char(27).ToString() + "[1m")
+                && !wire.Contains("38;2;") && !wire.Contains("48;2;"),
+                "empty chart axes fit " + columns.ToString() + "x" + rows.ToString()
+                + " without color or frame allocation, measured " + bytes.ToString()
+            )
+        }
+    }
+    axes.HorizontalTicks = List[ChartTick]{
+        ChartTick{Value: 0.0, Text: "中文"},
+        ChartTick{Value: 0.1, Text: "hidden"},
+        ChartTick{Value: 10.0, Text: "end"}
+    }
+    axes.VerticalTicks = List[ChartTick]{
+        ChartTick{Value: 1.0, Text: "中文"},
+        ChartTick{Value: 1.0, Text: "hide"},
+        ChartTick{Value: 0.0, Text: "low"}
+    }
+    let axisSamples = ChartSeries{
+        ChartStyle: ChartStyle.Points,
+        Points: {chartSample(0.0, 0.0), chartSample(10.0, 1.0)}
+    }
+    axes.Series.Add(axisSamples)
+    axes.Refresh()
+    let labeled = Screen(16, 12)
+    axes.Draw(labeled)
+    failed = failed + Checks.Expect(
+        labeled.Probe(0, 0) == "中" && labeled.Probe(2, 0) == "文"
+        && labeled.Probe(4, 0) == " " && labeled.Probe(5, 0) == "┤"
+        && labeled.Probe(5, 1) == "│" && labeled.Probe(5, 9) == "┤"
+        && labeled.Probe(5, 10) == "└" && labeled.Probe(15, 10) == "─"
+        && labeled.Probe(6, 9) != " " && labeled.Probe(15, 0) != " "
+        && labeled.Probe(6, 11) == "中" && labeled.Probe(8, 11) == "文"
+        && labeled.Probe(10, 11) == " " && labeled.Probe(13, 11) == "e",
+        "chart axes shrink the plot and keep whole prioritized labels with ticks only at accepted vertical labels"
+    )
+    for columns in 1 ... 4 {
+        let sized = Screen(columns, 12)
+        axes.Draw(sized)
+        failed = failed + Checks.Expect(
+            sized.Probe(0, 0) == "│" && sized.Probe(0, 10) == "└",
+            "narrow chart axes omit labels that cannot fit and keep samples inside the plot"
+        )
+    }
+    let shortAxes = Screen(16, 3)
+    axes.Draw(shortAxes)
+    failed = failed + Checks.Expect(
+        shortAxes.Probe(5, 0) == "┤" && shortAxes.Probe(5, 1) == "└"
+        && shortAxes.Probe(6, 2) == "中" && shortAxes.Probe(0, 0) == "中",
+        "three-row axes retain one plot row and suppress colliding vertical labels whole"
+    )
+    axes.Draw(oneRow)
+    failed = failed + Checks.Expect(
+        oneRow.Probe(0, 0) == "▁" && oneRow.Probe(10, 0) == "█",
+        "enabled chart axes do not change one-row block mode"
+    )
+    axes.ShowAxes = false
+    axes.Draw(labeled)
+    failed = failed + Checks.Expect(
+        labeled.Probe(4, 0) == " " && labeled.Probe(6, 10) == " ",
+        "disabling chart axes rebuilds the original plot without axis cells"
+    )
+    chart.ShowAxes = true
     samples.Style = Style{Foreground: Color.Rgb(90, 160, 240)}
     chart.Refresh()
     var allocated = 0L
     var visible = true
     let widths = List[int32]{40, 60, 80, 120, 160}
-    let heights = List[int32]{1, 2, 12, 18, 24, 36, 48}
+    let heights = List[int32]{1, 2, 3, 12, 18, 24, 36, 48}
     for columns in widths {
         for rows in heights {
             let sized = Screen(columns, rows)

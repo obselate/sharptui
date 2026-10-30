@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `8cb6ae169f37aa328259b03683cc57d6de8b3335274d49fd61a7cc00abe48992`.
+Public-symbol SHA-256: `2992d55030d391c05a7e4ff0bb2049b38c695c9ec5efbaba1c53420f6e55cd0d`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -730,10 +730,11 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
-- `prop AxisStyle Style { get; set; }` — The terminal style of axis labels.
+- `prop AxisStyle Style { get; set; }` — The terminal style of axis lines and labels.
 - `prop HorizontalRange NumericRange { get; set; }` — The horizontal scale. Auto uses all finite samples. Constant samples map to the center.
 - `prop HorizontalTicks List[ChartTick] { get; set; }` — Optional horizontal labels, in priority order. Colliding labels are suppressed whole.
 - `prop Series List[ChartSeries] { get; set; }` — The ordered series. Call Refresh after changing a list or a series in place.
+- `prop ShowAxes bool { get; set; }` — Shows axis lines outside the plot. One-row charts omit axes. Defaults to false.
 - `prop VerticalRange NumericRange { get; set; }` — The vertical scale. Auto uses all finite samples. Constant samples map to the center.
 - `prop VerticalTicks List[ChartTick] { get; set; }` — Optional vertical labels, in priority order. Colliding labels are suppressed whole.
 
