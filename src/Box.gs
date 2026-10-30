@@ -36,6 +36,8 @@ public open class Box {
   private var isVisible bool
   private var children List[Box]
   private var title string
+  private var wrapChildren bool
+  private var constrainWidth bool
 
   private var yoga Facebook.Yoga.Node?
   private var config Facebook.Yoga.Config?
@@ -323,6 +325,44 @@ public open class Box {
     }
   }
 
+  internal prop WrapChildren bool {
+    get -> wrapChildren
+    set {
+      if wrapChildren == value { return }
+      wrapChildren = value
+      layoutStyleDirty = true
+    }
+  }
+
+  internal prop ConstrainWidth bool {
+    get -> constrainWidth
+    set {
+      if constrainWidth == value { return }
+      constrainWidth = value
+      layoutStyleDirty = true
+    }
+  }
+
+  internal open prop ClipChildren bool -> false
+
+  internal open func PreviewMouse(ev UiEvent) EventResult -> EventResult.Continue
+
+  internal open func LayoutCompleted() {
+  }
+
+  internal func OffsetRows(offset int32) {
+    bounds = CellRect{
+      Column: bounds.Column, Row: bounds.Row + offset,
+      WidthCells: bounds.WidthCells, HeightRows: bounds.HeightRows,
+    }
+    var index = 0
+    while index < Children.Count {
+      let child = Children[index]
+      if child.IsVisible { child.OffsetRows(offset) }
+      index = index + 1
+    }
+  }
+
   /// Lays the tree out in a cell rectangle and fills every Bounds.
   internal func Compute(width int32, height int32) {
     computeRegion(CellRect{ WidthCells: width, HeightRows: height },
@@ -533,9 +573,11 @@ public open class Box {
   private func findFocused() Box? {
     if !IsVisible { return nil }
     if IsFocused && CanFocus { return this }
-    for kid in Children {
-      let found = kid.findFocused()
+    var index = 0
+    while index < Children.Count {
+      let found = Children[index].findFocused()
       if found != nil { return found }
+      index = index + 1
     }
     return nil
   }
@@ -543,11 +585,13 @@ public open class Box {
   private func under(column int32, row int32) Box? {
     if !IsVisible { return nil }
     if !Bounds.Contains(column, row) { return nil }
-    var i = Children.Count - 1
-    while i >= 0 {
-      let found = Children[i].under(column, row)
-      if found != nil { return found }
-      i = i - 1
+    if !ClipChildren || ContentBounds.Contains(column, row) {
+      var i = Children.Count - 1
+      while i >= 0 {
+        let found = Children[i].under(column, row)
+        if found != nil { return found }
+        i = i - 1
+      }
     }
     return CanFocus || CanReceiveMouse ? this : nil
   }
@@ -607,6 +651,10 @@ public open class Box {
   }
 
   private func offerPath(target Box, ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Mouse {
+      let preview = PreviewMouse(ev)
+      if preview != EventResult.Continue { return preview }
+    }
     if Object.ReferenceEquals(this, target) { return Accept(ev) }
     var i = 0
     while i < Children.Count {
@@ -802,7 +850,11 @@ public open class Box {
 
     Render(screen, ContentBounds, resolvedStyle)
     if ShowScrollbar { bar(screen, chrome) }
-    paintChildren(screen, resolvedStyle)
+    if ClipChildren {
+      let previous = screen.PushClip(ContentBounds)
+      try { paintChildren(screen, resolvedStyle) }
+      finally { screen.RestoreClip(previous) }
+    } else { paintChildren(screen, resolvedStyle) }
   }
 
   private func borderTitle(screen Screen, column int32, row int32, text string, cells int32, s Style) {
@@ -916,6 +968,14 @@ public open class Box {
         absolute ? YGPositionType.Absolute : YGPositionType.Relative)
       YGNodeStyleAPI.YGNodeStyleSetFlexDirection(node,
         LayoutAxis == Axis.Row ? YGFlexDirection.Row : YGFlexDirection.Column)
+      YGNodeStyleAPI.YGNodeStyleSetFlexWrap(node, wrapChildren ? YGWrap.Wrap : YGWrap.NoWrap)
+      if constrainWidth {
+        YGNodeStyleAPI.YGNodeStyleSetMinWidth(node, 0.0F)
+        YGNodeStyleAPI.YGNodeStyleSetMaxWidthPercent(node, 100.0F)
+      } else {
+        YGNodeStyleAPI.YGNodeStyleSetMinWidth(node, Single.NaN)
+        YGNodeStyleAPI.YGNodeStyleSetMaxWidth(node, Single.NaN)
+      }
       YGNodeStyleAPI.YGNodeStyleSetFlexGrow(node, float32(Grow))
       YGNodeStyleAPI.YGNodeStyleSetFlexShrink(node, flexShrink)
       YGNodeStyleAPI.YGNodeStyleSetGap(node, YGGutter.All, float32(Gap))
@@ -1080,12 +1140,15 @@ public open class Box {
       else { Children[child].clearBounds() }
       child = child + 1
     }
+    LayoutCompleted()
   }
 
   private func clearBounds() {
     bounds = CellRect{}
-    for kid in Children {
-      kid.clearBounds()
+    var index = 0
+    while index < Children.Count {
+      Children[index].clearBounds()
+      index = index + 1
     }
   }
 }

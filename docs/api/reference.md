@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `a4eab08c0ba1e5a93d753f2094461c55b006cc7969e5d42354641dc79b5cadf8`.
+Public-symbol SHA-256: `cc13f45a9b03363015c0f7a69fc0ed0c2f9b69620bf05b8823aeedda927ecee1`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -41,6 +41,8 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.DialogAction](#sharptuidialogaction)
 - [SharpTui.Easing](#sharptuieasing)
 - [SharpTui.EventResult](#sharptuieventresult)
+- [SharpTui.Form](#sharptuiform)
+- [SharpTui.FormField](#sharptuiformfield)
 - [SharpTui.GraphicsProtocol](#sharptuigraphicsprotocol)
 - [SharpTui.HorizontalAlignment](#sharptuihorizontalalignment)
 - [SharpTui.ImageFit](#sharptuiimagefit)
@@ -897,6 +899,41 @@ G# kind: `enum`.
 - `Continue` — Leaves the event unconsumed so later routing stages may handle it.
 - `Handled` — Marks the event consumed and stops later routing stages.
 - `Exit` — Requests that the application event loop stop.
+
+## SharpTui.Form
+
+A retained field layout with a local, focus-aware vertical viewport.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates a form. Add FormField children in display order. Editors keep their state while scrolling.
+
+### Properties
+
+- `prop FirstVisibleRow int32 { get; set; }` — The first visible content row. Clamped to the content range during layout.
+- `prop LabelWidth int32 { get; set; }` — The label column width in cells. Zero uses each label's natural width. Defaults to zero.
+
+## SharpTui.FormField
+
+A short label, a retained editor, and optional field state.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty field. Labels wrap above editors when their combined width does not fit.
+
+### Properties
+
+- `prop Editor Box { get; set; }` — The retained editor. Any box can be used. Replacing it detaches the previous editor.
+- `prop IsModified bool { get; set; }` — Whether a visible asterisk is drawn beside the editor. The caller owns modified state.
+- `prop Label string { get; set; }` — The single-line field label. Measured in terminal cells.
+- `prop StateStyle Style { get; set; }` — The style applied to StateText.
+- `prop StateText string { get; set; }` — A short state symbol or value beside the editor. Empty text hides it.
 
 ## SharpTui.GraphicsProtocol
 
