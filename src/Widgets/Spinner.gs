@@ -6,17 +6,32 @@ import System.Collections.Generic
 /// An animated frame that advances only when the app calls Advance.
 public open class Spinner : Box {
   private var step int32
+  private var frames List[string]
+  private var text string
 
   /// The sequence of glyphs cycled through as the spinner advances.
-  public prop Frames List[string] { get; set; }
+  public prop Frames List[string] {
+    get -> frames
+    set {
+      frames = value
+      MarkMeasureDirty()
+    }
+  }
   /// The index into Frames currently shown, derived from the number of Advance calls.
   public prop FrameIndex int32 -> currentFrameIndex()
   /// Text drawn after the frame glyph, separated by one space.
-  public prop Text string { get; set; }
+  public prop Text string {
+    get -> text
+    set {
+      if text == value { return }
+      text = value
+      MarkMeasureDirty()
+    }
+  }
 
   /// Creates a spinner with the default braille frame set and no text.
   public init() {
-    Frames = List[string]()
+    frames = List[string]()
     Frames.Add(char(0x280B).ToString())
     Frames.Add(char(0x2819).ToString())
     Frames.Add(char(0x2839).ToString())

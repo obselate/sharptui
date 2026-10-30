@@ -601,12 +601,15 @@ public open class Box {
 
   private func offerPath(target Box, ev UiEvent) EventResult {
     if Object.ReferenceEquals(this, target) { return Accept(ev) }
-    for child in Children {
+    var i = 0
+    while i < Children.Count {
+      let child = Children[i]
       if child.owns(target) {
         let result = child.offerPath(target, ev)
         if result != EventResult.Continue { return result }
         return Accept(ev)
       }
+      i = i + 1
     }
     return EventResult.Continue
   }

@@ -11,7 +11,11 @@ public open class Button : Box {
   /// The label centred within the button.
   public prop Text string {
     get -> text
-    set -> text = value
+    set {
+      if text == value { return }
+      text = value
+      MarkMeasureDirty()
+    }
   }
 
   /// Work invoked when the button is activated.
@@ -67,7 +71,7 @@ public open class Button : Box {
       press()
       return EventResult.Handled
     }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
       press()
       return EventResult.Handled
     }

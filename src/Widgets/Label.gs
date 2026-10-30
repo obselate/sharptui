@@ -75,7 +75,7 @@ public open class Label : Box {
   }
 
   private func rebuild() {
-    // MarkMeasureDirty()
+    MarkMeasureDirty()
     clusters.Clear()
     textWidth = 0
     for cluster in Glyph.Elements(text) {

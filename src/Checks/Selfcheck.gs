@@ -133,10 +133,10 @@ public class Selfcheck {
       failed = failed + Checks.Expect(rows.Probe(3, 1) == "i", "the top row is the scrolled-to item")
       failed = failed + Checks.Expect(rows.Probe(1, 12) == ">", "the selected row carries the marker")
 
-      let click = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Position: CellPoint{ Column: 5, Row: 3 } }
+      let click = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Left, Position: CellPoint{ Column: 5, Row: 3 } }
       failed = failed + Checks.Expect(pane.Handle(click) == EventResult.Handled, "a click inside the rect selects")
       failed = failed + Checks.Expect(list.SelectedIndex == 5, "click maps a screen row back to its item")
-      let outsideClick = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Position: CellPoint{ Column: 5, Row: 40 } }
+      let outsideClick = UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Left, Position: CellPoint{ Column: 5, Row: 40 } }
       failed = failed + Checks.Expect(pane.Handle(outsideClick) == EventResult.Continue, "a click outside the rect is ignored")
 
       let end = UiEvent{ Kind: UiEventKind.Key, Key: Key.End }

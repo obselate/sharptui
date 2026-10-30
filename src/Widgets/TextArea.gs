@@ -150,6 +150,8 @@ public open class TextArea : Box {
   private var lineNumbers List[string]
   private var lineNumberCount int32
   private var lineNumberDigits int32
+  private var cachedLineText List[string]
+  private var cachedLineClusters List[List[string]]
 
   /// Creates an empty, focusable, unwrapped text area with a single blank line.
   public init() {
@@ -183,6 +185,8 @@ public open class TextArea : Box {
     lineNumbers = List[string]()
     lineNumberCount = -1
     lineNumberDigits = -1
+    cachedLineText = List[string]()
+    cachedLineClusters = List[List[string]]()
     CanFocus = true
     Grow = 1
   }
@@ -198,6 +202,8 @@ public open class TextArea : Box {
     horizontalCellOffset = 0
     isModified = false
     stamp = stamp + 1
+    cachedLineText.Clear()
+    cachedLineClusters.Clear()
     marked = false
     undos.Clear()
     redos.Clear()
@@ -255,10 +261,11 @@ public open class TextArea : Box {
       let here = visualOf(row, col)
       let cursorRow = here - firstVisibleRowIndex
       if cursorRow >= 0 && cursorRow < r.HeightRows {
-        let cursorColumn = cellOf(lines[row], col) - originOf(rows[here])
+        let cursorColumn = cellOf(row, col) - originOf(rows[here])
         if cursorColumn >= 0 && cursorColumn < textWidth {
           let swapped = ink.Inverted()
-          let glyph = graphemeAt(lines[row], col)
+          let clusters = clustersAt(row)
+          let glyph = col < clusters.Count ? clusters[col] : " "
           screen.WriteCell(r.Column + gutterWidth + cursorColumn, r.Row + cursorRow, glyph, swapped)
         }
       }
@@ -266,7 +273,7 @@ public open class TextArea : Box {
   }
 
   private func originOf(seg VisRow) int32 {
-    if Wrapping == TextWrapping.Word { return cellOf(lines[seg.Line], seg.From) }
+    if Wrapping == TextWrapping.Word { return cellOf(seg.Line, seg.From) }
     return horizontalCellOffset
   }
 
@@ -283,7 +290,7 @@ public open class TextArea : Box {
     let here = visualOf(row, col)
     let screenRow = here - firstVisibleRowIndex
     if screenRow < 0 || screenRow >= bounds.HeightRows { return nil }
-    let screenColumn = cellOf(lines[row], col) - originOf(rows[here])
+    let screenColumn = cellOf(row, col) - originOf(rows[here])
     if screenColumn < 0 || screenColumn >= textWidth { return nil }
     return CellPoint{
       Column: bounds.Column + gutterWidth + screenColumn,
@@ -330,7 +337,7 @@ public open class TextArea : Box {
   }
 
   private func wrapLine(line int32, width int32) {
-    let clusters = Glyph.Clusters(lines[line])
+    let clusters = clustersAt(line)
     if clusters.Count == 0 {
       rows.Add(seg(line, 0, 0))
       return
@@ -391,6 +398,10 @@ public open class TextArea : Box {
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
   protected open override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Release && HasMouseCapture {
+      ReleaseMouseCapture()
+      return EventResult.Handled
+    }
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     let bounds = ContentBounds
@@ -480,21 +491,23 @@ public open class TextArea : Box {
     }
 
     if ev.Kind == UiEventKind.Mouse {
+      if ev.Mouse == MouseKind.Move {
+        if !HasMouseCapture { return EventResult.Continue }
+        let moved = clickAt(ev.Position, bounds)
+        marked = anchorRow != row || anchorCol != col
+        return result(moved || marked)
+      }
       if !bounds.Contains(ev.Position) { return EventResult.Continue }
       if ev.Mouse == MouseKind.ScrollUp { return result(scrollBy(-Selection.WheelStep, bounds.HeightRows)) }
       if ev.Mouse == MouseKind.ScrollDown { return result(scrollBy(Selection.WheelStep, bounds.HeightRows)) }
-      if ev.Mouse == MouseKind.Press {
+      if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
+        if !CaptureMouse() { return EventResult.Continue }
         endRun()
         dropMark()
         let moved = clickAt(ev.Position, bounds)
         anchorRow = row
         anchorCol = col
         return result(moved)
-      }
-      if ev.Mouse == MouseKind.Move {
-        let moved = clickAt(ev.Position, bounds)
-        marked = anchorRow != row || anchorCol != col
-        return result(moved || marked)
       }
     }
     return EventResult.Continue
@@ -749,12 +762,12 @@ public open class TextArea : Box {
     if v < 0 { v = 0 }
     if v >= rows.Count { v = rows.Count - 1 }
     let seg = rows[v]
-    let clusters = Glyph.Clusters(lines[seg.Line])
+    let clusters = clustersAt(seg.Line)
     let stop = wrapping == TextWrapping.Word ? seg.To : clusters.Count
     var cell = position.Column - bounds.Column - gutterWidth + originOf(seg)
     if cell < 0 { cell = 0 }
     var targetCol = wrapping == TextWrapping.Word ? seg.From : 0
-    var cells = cellOf(lines[seg.Line], targetCol)
+    var cells = cellOf(seg.Line, targetCol)
     while targetCol < stop && cells < cell {
       cells = cells + Glyph.Of(clusters[targetCol])
       targetCol = targetCol + 1
@@ -954,7 +967,7 @@ public open class TextArea : Box {
     if source == nil || seg.Line >= source.Count() {
       let to = wrapping == TextWrapping.Word ? seg.To : -1
       let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
-      screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
+      paintClusters(screen, r, gutterWidth, drawRow, seg.Line, seg.From, to, skip, ink)
       return
     }
 
@@ -962,7 +975,7 @@ public open class TextArea : Box {
     if !styled.Matches(lines[seg.Line]) {
       let to = wrapping == TextWrapping.Word ? seg.To : -1
       let skip = wrapping == TextWrapping.Word ? 0 : horizontalCellOffset
-      screen.WriteClippedRange(r, gutterWidth, drawRow, lines[seg.Line], seg.From, to, skip, ink)
+      paintClusters(screen, r, gutterWidth, drawRow, seg.Line, seg.From, to, skip, ink)
       return
     }
 
@@ -1031,7 +1044,7 @@ public open class TextArea : Box {
     let b = markEnd()
     if line < a.LineIndex || line > b.LineIndex { return }
 
-    let clusters = Glyph.Clusters(lines[line])
+    let clusters = clustersAt(line)
     var from = line == a.LineIndex ? a.GraphemeIndex : 0
     var to = line == b.LineIndex ? b.GraphemeIndex : clusters.Count
     if wrapping == TextWrapping.Word {
@@ -1040,25 +1053,46 @@ public open class TextArea : Box {
     }
     if to <= from { return }
 
-    var x = cellOf(lines[line], from) - originOf(seg)
-    var run = slice(lines[line], from, to)
-    if x < 0 {
-      run = panned(run, -x, textWidth)
-      x = 0
-    }
+    let x = cellOf(line, from) - originOf(seg)
     if x >= textWidth { return }
     let selectionStyle = selectedTextStyle.MergedOver(ink.Inverted())
-    screen.WriteClipped(r, gutterWidth + x, row, CellText.Clip(run, textWidth - x), selectionStyle)
+    paintClusters(screen, r, gutterWidth + (x < 0 ? 0 : x), row,
+      line, from, to, x < 0 ? -x : 0, selectionStyle)
   }
 
-  private func cellOf(text string, index int32) int32 {
-    var cells = 0
-    var i = 0
-    for cluster in Glyph.Elements(text) {
-      if i >= index { break }
-      cells = cells + Glyph.Of(cluster)
-      i = i + 1
+  private func paintClusters(screen Screen, r CellRect, x int32, y int32,
+      line int32, from int32, to int32, skip int32, ink Style) {
+    let clusters = clustersAt(line)
+    let end = to < 0 ? clusters.Count : to
+    var column = x - skip
+    for i in from ... end {
+      let width = Glyph.Of(clusters[i])
+      if column >= r.WidthCells { break }
+      if column >= x {
+        screen.WriteClippedRange(r, column, y, clusters[i], 0, -1, 0, ink)
+      } else if column + width > x {
+        screen.WriteClipped(r, x, y, " ", ink)
+      }
+      column = column + width
     }
+  }
+
+  private func clustersAt(line int32) List[string] {
+    while cachedLineText.Count <= line {
+      cachedLineText.Add("")
+      cachedLineClusters.Add(List[string]())
+    }
+    if cachedLineText[line] != lines[line] {
+      cachedLineText[line] = lines[line]
+      cachedLineClusters[line] = Glyph.Clusters(lines[line])
+    }
+    return cachedLineClusters[line]
+  }
+
+  private func cellOf(line int32, index int32) int32 {
+    let clusters = clustersAt(line)
+    var cells = 0
+    for i in 0 ... index { cells = cells + Glyph.Of(clusters[i]) }
     return cells
   }
 
@@ -1082,39 +1116,13 @@ public open class TextArea : Box {
     return offset
   }
 
-  private func graphemeAt(text string, index int32) string {
-    var i = 0
-    for cluster in Glyph.Elements(text) {
-      if i == index { return cluster }
-      i = i + 1
-    }
-    return " "
-  }
-
-  private func panned(text string, from int32, width int32) string {
-    if from <= 0 { return CellText.Clip(text, width) }
-    let clusters = Glyph.Clusters(text)
-    var cells = 0
-    var i = 0
-    while i < clusters.Count && cells < from {
-      cells = cells + Glyph.Of(clusters[i])
-      i = i + 1
-    }
-    var out = ""
-    if cells > from { out = " " }
-    while i < clusters.Count {
-      out = out + clusters[i]
-      i = i + 1
-    }
-    return CellText.Clip(out, width)
-  }
 
   private func followPan(textWidth int32) {
     if wrapping == TextWrapping.Word {
       horizontalCellOffset = 0
       return
     }
-    let cells = cellOf(lines[row], col)
+    let cells = cellOf(row, col)
     if cells < horizontalCellOffset { horizontalCellOffset = cells }
     if cells >= horizontalCellOffset + textWidth { horizontalCellOffset = cells - textWidth + 1 }
     if horizontalCellOffset < 0 { horizontalCellOffset = 0 }

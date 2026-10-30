@@ -19,7 +19,11 @@ public open class Toggle : Box {
   /// The label drawn after the checkbox glyph.
   public prop Text string {
     get -> text
-    set -> text = value
+    set {
+      if text == value { return }
+      text = value
+      MarkMeasureDirty()
+    }
   }
 
   /// The checked state, flipped by activation.
@@ -30,20 +34,28 @@ public open class Toggle : Box {
         group.SetSelection(this, value)
         return
       }
-      isChecked = value
+      SetCheckedFromGroup(value)
     }
   }
 
   /// The glyph drawn when IsChecked is true.
   public prop CheckedGlyph string {
     get -> checkedGlyph
-    set -> checkedGlyph = value
+    set {
+      if checkedGlyph == value { return }
+      checkedGlyph = value
+      MarkMeasureDirty()
+    }
   }
 
   /// The glyph drawn when IsChecked is false.
   public prop UncheckedGlyph string {
     get -> uncheckedGlyph
-    set -> uncheckedGlyph = value
+    set {
+      if uncheckedGlyph == value { return }
+      uncheckedGlyph = value
+      MarkMeasureDirty()
+    }
   }
 
   /// Creates an unchecked, focusable toggle with default bracket glyphs.
@@ -96,7 +108,7 @@ public open class Toggle : Box {
       activate()
       return EventResult.Handled
     }
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ContentBounds.Contains(ev.Position) {
+    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
       activate()
       return EventResult.Handled
     }
@@ -110,7 +122,9 @@ public open class Toggle : Box {
   }
 
   internal func SetCheckedFromGroup(value bool) {
+    if isChecked == value { return }
     isChecked = value
+    MarkMeasureDirty()
   }
 
   private func activate() {
@@ -121,7 +135,7 @@ public open class Toggle : Box {
       group.NotifySelection(this)
       return
     }
-    isChecked = !isChecked
+    SetCheckedFromGroup(!isChecked)
     if let callback = OnChange { callback(isChecked) }
   }
 

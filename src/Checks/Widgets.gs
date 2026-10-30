@@ -14,6 +14,7 @@ func mouseEv(column int32, row int32) UiEvent {
   return UiEvent{
     Kind: UiEventKind.Mouse,
     Mouse: MouseKind.Press,
+    Button: MouseButton.Left,
     Position: CellPoint{ Column: column, Row: row },
   }
 }
@@ -70,6 +71,7 @@ public class WidgetCheck {
     public func Run() int32 {
       var failed = 0
       failed = failed + checkKeyHints()
+      failed = failed + checkPointerCorrectness()
 
       failed = failed + Checks.Expect(Viewport.ClampOffset(20, 18, 5) == 15
         && Viewport.BringIntoView(20, 12, 2, 5) == 8,

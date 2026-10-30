@@ -99,14 +99,7 @@ public open class TextInput : Box {
       return
     }
 
-    var start = CaretGraphemeIndex
-    var visibleCells = 0
-    while start > 0 {
-      let w = isPassword ? 1 : Glyph.Of(clusters[start - 1])
-      if visibleCells + w >= r.WidthCells { break }
-      visibleCells = visibleCells + w
-      start = start - 1
-    }
+    let start = pannedStart(r.WidthCells)
 
     if isPassword {
       var x = 0
@@ -117,7 +110,15 @@ public open class TextInput : Box {
         i = i + 1
       }
     } else {
-      screen.WriteClippedRange(r, 0, 0, text, start, -1, 0, ink)
+      var x = 0
+      var i = start
+      while i < clusters.Count {
+        let width = Glyph.Of(clusters[i])
+        if x + width > r.WidthCells { break }
+        screen.WriteCell(r.Column + x, r.Row, clusters[i], ink)
+        x = x + width
+        i = i + 1
+      }
     }
 
     if IsFocused {
@@ -132,6 +133,18 @@ public open class TextInput : Box {
       }
     }
   }
+  private func pannedStart(width int32) int32 {
+    var start = CaretGraphemeIndex
+    var cells = 0
+    while start > 0 {
+      let w = isPassword ? 1 : Glyph.Of(clusters[start - 1])
+      if cells + w >= width { break }
+      cells = cells + w
+      start = start - 1
+    }
+    return start
+  }
+
 
   private func columnOf(start int32, upto int32) int32 {
     var col = 0
@@ -157,6 +170,24 @@ public open class TextInput : Box {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     clampCaret(clusters.Count)
+    if ev.Kind == UiEventKind.Mouse {
+      let bounds = ContentBounds
+      if ev.Mouse != MouseKind.Press || ev.Button != MouseButton.Left || !bounds.Contains(ev.Position) {
+        return EventResult.Continue
+      }
+      var index = pannedStart(bounds.WidthCells)
+      var column = 0
+      let hit = ev.Position.Column - bounds.Column
+      while index < clusters.Count {
+        let width = isPassword ? 1 : Glyph.Of(clusters[index])
+        if hit < column + width { break }
+        column = column + width
+        index = index + 1
+      }
+      moveCaret(index)
+      return EventResult.Handled
+    }
+
 
     if ev.Kind == UiEventKind.Paste {
       insert(singleLinePaste(ev.Text))

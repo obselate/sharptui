@@ -351,6 +351,7 @@ public class DataCheck {
       softRoot.Handle(UiEvent{
         Kind: UiEventKind.Mouse,
         Mouse: MouseKind.Press,
+        Button: MouseButton.Left,
         Position: CellPoint{ Column: 3, Row: 1 },
       })
       failed = failed + Checks.Expect(soft.Caret.LineIndex == 0 && soft.Caret.GraphemeIndex > 0,

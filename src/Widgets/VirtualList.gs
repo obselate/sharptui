@@ -217,7 +217,7 @@ public open class VirtualListView : Box {
       if ev.Mouse == MouseKind.ScrollDown {
         return result(scrollTo(FirstVisibleRowOffset + Selection.WheelStep, bounds.HeightRows))
       }
-      if ev.Mouse == MouseKind.Press {
+      if ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left {
         FollowTail = false
         let row = FirstVisibleRowOffset + ev.Position.Row - bounds.Row
         return result(selectAtRow(row, bounds.HeightRows))
