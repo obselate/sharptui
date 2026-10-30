@@ -69,6 +69,7 @@ public class WidgetCheck {
   shared {
     public func Run() int32 {
       var failed = 0
+      failed = failed + checkKeyHints()
 
       failed = failed + Checks.Expect(Viewport.ClampOffset(20, 18, 5) == 15
         && Viewport.BringIntoView(20, 12, 2, 5) == 8,
