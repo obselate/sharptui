@@ -22,6 +22,7 @@ internal class Checks {
       failed = failed + MouseCaptureCheck.Run()
       failed = failed + SplitterCheck.Run()
       failed = failed + RichViewportCheck.Run()
+      failed = failed + NumericDisplayCheck.Run()
       return failed
     }
 
