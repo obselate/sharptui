@@ -66,7 +66,7 @@ public open class TextInput : Box {
     placeholderStyle = Style()
     clusters = List[string]()
     CanFocus = true
-    FlexShrink = 1.0F
+    Shrink = 1.0F
   }
 
   /// Enables intrinsic sizing so MeasureIntrinsic determines the auto width.

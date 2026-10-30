@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `1f90e80f0d3b650c2a2068fcbe8f04107a04776fd068ca4f7534bd0f3f48a88f`.
+Public-symbol SHA-256: `8cb6ae169f37aa328259b03683cc57d6de8b3335274d49fd61a7cc00abe48992`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -345,6 +345,7 @@ G# kind: `class`.
 ### Properties
 
 - `prop BorderGlyphs BorderGlyphs { get; set; }` — The corner glyphs of the border drawn when ShowBorder is set. Defaults to BorderGlyphs.Square.
+- `prop BorderStyle Style { get; set; }` — The style used only for the border and its titles. Inherits Style by default. FocusedStyle is merged over this style while the box is focused.
 - `prop BottomTitle string { get; set; }` — Text drawn right-aligned on the bottom border when ShowBorder is set. Empty string draws nothing.
 - `prop Bounds CellRect { get; }` — The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
 - `prop CanFocus bool { get; set; }` — Whether this box can receive keyboard focus. Defaults to false.
@@ -363,7 +364,8 @@ G# kind: `class`.
 - `prop RightTitle string { get; set; }` — Text drawn right-aligned on the top border when ShowBorder is set. Title keeps priority, so this text is truncated first. Empty string draws nothing.
 - `prop ShowBorder bool { get; set; }` — Whether a one-cell border is drawn around the box, consuming one cell of padding on each side. Defaults to false.
 - `prop ShowScrollbar bool { get; set; }` — Whether a vertical scrollbar is drawn against overflowing content. Reserves a column of padding on the right edge when ShowBorder is false. Defaults to false.
-- `prop Style Style { get; set; }` — The style used for this box's own fill, border, and title when unfocused. Foreground and background marked IsInherited fall back to the parent's resolved style.
+- `prop Shrink float32 { get; set; }` — Flex-shrink weight used to reduce main-axis size when siblings exceed the parent's space. The reduction is proportional to this weight times the basis size. Must be non-negative; defaults to 0, which preserves the box's size.
+- `prop Style Style { get; set; }` — The style used for this box's fill and content, inherited by its children. Foreground and background marked IsInherited fall back to the parent's resolved style.
 - `prop Title string { get; set; }` — Text drawn along the top edge, inside the border if ShowBorder is set or on its own row otherwise. Empty string draws nothing.
 - `prop Width CellLength { get; set; }` — The box's width. CellLength.Auto sizes it from content; defaults to Auto.
 

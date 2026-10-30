@@ -103,6 +103,27 @@ internal class LayoutCheck {
       failed = failed + Checks.Expect(fixedProbe.Bounds.WidthCells == 9 && fixedProbe.Bounds.HeightRows == 4,
         "fixed CellLength values override intrinsic measurement")
 
+      let firstShrink = Label{ Text: "中文中文中文中文中文中文中文中" }
+      let secondShrink = Label{ Text: "中文中文中文中文中文中文中文中" }
+      let shrinkLabels = Row{ Children: { firstShrink, secondShrink } }
+      shrinkLabels.Compute(40, 12)
+      failed = failed + Checks.Expect(firstShrink.Shrink == 0.0F
+        && firstShrink.Bounds.WidthCells == 30 && secondShrink.Bounds.WidthCells == 30,
+        "boxes preserve their intrinsic width when Shrink is not set")
+      firstShrink.Shrink = 1.0F
+      secondShrink.Shrink = 1.0F
+      let shrinkScreen = Screen(40, 12)
+      shrinkLabels.Draw(shrinkScreen)
+      failed = failed + Checks.Expect(firstShrink.Bounds.WidthCells == 20
+        && secondShrink.Bounds.WidthCells == 20 && secondShrink.Bounds.Column == 20
+        && shrinkScreen.Probe(38, 0) == "文",
+        "labels with Shrink share 40 columns and clip whole double-width glyphs")
+      firstShrink.Shrink = 3.0F
+      shrinkLabels.Compute(40, 12)
+      failed = failed + Checks.Expect(firstShrink.Bounds.WidthCells == 15
+        && secondShrink.Bounds.WidthCells == 25 && secondShrink.Bounds.Column == 15,
+        "changing Shrink redistributes negative space by weight and basis size")
+
       let changedRoot = Row{}
       let firstChild = Label{ Text: "one", Width: CellLength.Cells(3) }
       let secondChild = Label{ Text: "two", Width: CellLength.Cells(4) }
