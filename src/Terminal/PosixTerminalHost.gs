@@ -30,6 +30,7 @@ internal class PosixSignalBridge {
   private var signals List[PosixSignalRegistration]
   private var resized int32
   private var exitRequested int32
+  private var hungUp int32
 
   internal init(wakeup AutoResetEvent) {
     wake = wakeup
@@ -39,6 +40,7 @@ internal class PosixSignalBridge {
   }
 
   internal func Register() {
+    Interlocked.Exchange(ref hungUp, 0)
     signals.Add(PosixSignalRegistration.Create(PosixSignal.SIGWINCH, func(context PosixSignalContext) {
       context.Cancel = true
       Interlocked.Exchange(ref resized, 1)
@@ -59,9 +61,12 @@ internal class PosixSignalBridge {
 
   internal func ConsumeExit() bool -> Interlocked.Exchange(ref exitRequested, 0) != 0
 
+  internal func IsDisconnected() bool -> Interlocked.CompareExchange(ref hungUp, 0, 0) != 0
+
   private func exitSignal(signal PosixSignal) PosixSignalRegistration {
     return PosixSignalRegistration.Create(signal, func(context PosixSignalContext) {
       context.Cancel = true
+      if signal == PosixSignal.SIGHUP { Interlocked.Exchange(ref hungUp, 1) }
       Interlocked.Exchange(ref exitRequested, 1)
       wake.Set()
     })
@@ -121,6 +126,8 @@ internal class PosixTerminalHost : TerminalHost {
   public func ConsumeResize() bool -> signals.ConsumeResize()
 
   public func ConsumeExit() bool -> signals.ConsumeExit()
+
+  public func IsDisconnected() bool -> signals.IsDisconnected()
 
   public func WakeReader() {
     driver.WakeReader()

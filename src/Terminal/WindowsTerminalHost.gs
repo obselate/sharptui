@@ -247,6 +247,8 @@ internal class WindowsTerminalHost : TerminalHost {
 
   public func ConsumeExit() bool -> Interlocked.Exchange(ref exitRequested, 0) != 0
 
+  public func IsDisconnected() bool -> false
+
   public func WakeReader() {
     if readerWakeHandle != IntPtr.Zero { WindowsConsoleNative.SetEvent(readerWakeHandle) }
   }

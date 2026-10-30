@@ -325,9 +325,40 @@ internal class TerminalHostCheck {
       eofTerminal.Enter(Input(AutoResetEvent(false)))
       let eofSignaled = eofWake.WaitOne(1000)
       let eofExit = eofTerminal.ConsumeExit()
+      let eofOutput = eofHost.OutputText()
+      eofHost.OutputStream.RejectWrites = true
+      let eofWrites = eofHost.OutputStream.WriteAttempts
       eofTerminal.Restore()
-      failed = failed + Checks.Expect(eofSignaled && eofExit,
-        "terminal EOF wakes App and requests exit")
+      failed = failed + Checks.Expect(eofSignaled && eofExit && eofTerminal.IsDisconnected
+          && eofHost.OutputText() == eofOutput && eofHost.OutputStream.WriteAttempts == eofWrites
+          && eofHost.Restored == 1 && !eofTerminal.HasFaultHook(),
+        "terminal EOF remains visible after exit consumption and cleanup skips output but restores host state")
+      eofHost.EndOfFile = false
+      eofHost.OutputStream.RejectWrites = false
+      eofTerminal.Enter(Input(AutoResetEvent(false)))
+      failed += Checks.Expect(!eofTerminal.IsDisconnected, "terminal re-entry clears the disconnected state")
+      eofTerminal.Restore()
+
+      let writeHost = TerminalHostFake()
+      let writeTerminal = Terminal(AutoResetEvent(false), writeHost)
+      writeTerminal.Enter(Input(AutoResetEvent(false)))
+      writeHost.OutputStream.RejectWrites = true
+      let writeAttempts = writeHost.OutputStream.WriteAttempts
+      writeTerminal.Restore()
+      failed += Checks.Expect(writeTerminal.IsDisconnected && writeHost.Restored == 1
+          && !writeTerminal.HasFaultHook() && writeHost.OutputStream.WriteAttempts == writeAttempts + 1,
+        "a restore write failure ends terminal output and still releases host state and hooks")
+
+      let writerWake = AutoResetEvent(false)
+      let writerStream = TerminalOutputProbe{ RejectWrites: true }
+      let writer = TerminalOutput(writerStream, writerWake, TerminalBuffer(64))
+      writer.Control("lost terminal")
+      let writerSignaled = writerWake.WaitOne(1000)
+      writer.Control("discarded control")
+      writer.Stop()
+      failed += Checks.Expect(writerSignaled && writer.Error != nil && writerStream.WriteAttempts == 1,
+        "an output fault wakes App and prevents later queued writes")
+      failed += Checks.Expect(!App().IsTerminalDisconnected, "a new App has no terminal disconnect")
       return failed
     }
   }
@@ -377,7 +408,7 @@ internal class WindowsRecordScript {
 }
 
 internal class TerminalHostFake : TerminalHost {
-  private var output MemoryStream
+  internal var OutputStream TerminalOutputProbe
   private var readerWake AutoResetEvent
   internal var Entered int32
   internal var Restored int32
@@ -388,7 +419,7 @@ internal class TerminalHostFake : TerminalHost {
   internal var ReadProcessed AutoResetEvent
 
   internal init() {
-    output = MemoryStream()
+    OutputStream = TerminalOutputProbe()
     readerWake = AutoResetEvent(false)
     Entered = 0
     Restored = 0
@@ -409,6 +440,7 @@ internal class TerminalHostFake : TerminalHost {
   public func Rows() int32 -> 24
   public func ConsumeResize() bool -> false
   public func ConsumeExit() bool -> false
+  public func IsDisconnected() bool -> false
   public func WakeReader() {
     Woken = Woken + 1
     readerWake.Set()
@@ -430,9 +462,20 @@ internal class TerminalHostFake : TerminalHost {
     readerWake.WaitOne(timeoutMilliseconds)
     return 0
   }
-  public func Output() Stream -> output
+  public func Output() Stream -> OutputStream
 
-  internal func OutputText() string -> Encoding.UTF8.GetString(output.ToArray())
+  internal func OutputText() string -> Encoding.UTF8.GetString(OutputStream.ToArray())
+}
+
+internal class TerminalOutputProbe : MemoryStream {
+  internal prop RejectWrites bool { get; set; }
+  internal prop WriteAttempts int32 { get; private set; }
+
+  public override func Write(buffer []uint8, offset int32, count int32) {
+    WriteAttempts = WriteAttempts + 1
+    if RejectWrites { throw IOException("Terminal output is unavailable") }
+    base.Write(buffer, offset, count)
+  }
 }
 
 /// The Windows reader hands every record to this, so cover it on every platform.
