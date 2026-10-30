@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `099937dbb877f1f9af2cbbe8496ec3684cd74daa51a9aa23e87f77b3ff7e2806`.
+Public-symbol SHA-256: `182246951ed4f84f1f69f099c3666030b35a490fc6716ff10668f5b05ad5e2e3`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -16,6 +16,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.Badge](#sharptuibadge)
 - [SharpTui.Bind](#sharptuibind)
 - [SharpTui.BindingPhase](#sharptuibindingphase)
+- [SharpTui.BorderGlyphs](#sharptuiborderglyphs)
 - [SharpTui.Box](#sharptuibox)
 - [SharpTui.Button](#sharptuibutton)
 - [SharpTui.CanvasMode](#sharptuicanvasmode)
@@ -47,6 +48,8 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.ImageView](#sharptuiimageview)
 - [SharpTui.Key](#sharptuikey)
 - [SharpTui.KeyGesture](#sharptuikeygesture)
+- [SharpTui.KeyHint](#sharptuikeyhint)
+- [SharpTui.KeyHintBar](#sharptuikeyhintbar)
 - [SharpTui.KeyModifiers](#sharptuikeymodifiers)
 - [SharpTui.KeyPhase](#sharptuikeyphase)
 - [SharpTui.KeyedSource`2](#sharptuikeyedsource2)
@@ -254,6 +257,7 @@ G# kind: `class`.
 - `prop Keys Keymap { get; set; }` — Application bindings offered before and after tree event handling.
 - `prop MouseTracking MouseTracking { get; set; }` — Terminal mouse reporting selected when Run enters the terminal.
 - `prop OnFocus Action[bool] { get; set; }` — Receives terminal focus changes on the UI thread, including while an overlay owns input focus.
+- `prop OnResize Action[CellSize] { get; set; }` — Receives the terminal size on the UI thread when Run starts and after each resize, before the next layout.
 - `prop OnTick Action { get; set; }` — Runs on the UI thread at TickInterval, including while an overlay owns input focus.
 - `prop QuitGestures List[KeyGesture] { get; }` — Fallback quit gestures. The tree receives each event before these are tested.
 - `prop Root Box { get; set; }` — The retained tree run by this app. Changing it takes effect on the next Run.
@@ -313,6 +317,17 @@ G# kind: `enum`.
 - `BeforeWidgets` — Offers the binding before the application tree handles the event.
 - `AfterWidgets` — Offers the binding after the application tree declines the event.
 
+## SharpTui.BorderGlyphs
+
+The corner glyphs a border uses.
+
+G# kind: `enum`.
+
+### Values
+
+- `Square` — Square corners: ┌┐└┘.
+- `Rounded` — Rounded corners: ╭╮╰╯.
+
 ## SharpTui.Box
 
 The base element. Everything drawable is a Box, so everything nests.
@@ -325,6 +340,8 @@ G# kind: `class`.
 
 ### Properties
 
+- `prop BorderGlyphs BorderGlyphs { get; set; }` — The corner glyphs of the border drawn when ShowBorder is set. Defaults to BorderGlyphs.Square.
+- `prop BottomTitle string { get; set; }` — Text drawn right-aligned on the bottom border when ShowBorder is set. Empty string draws nothing.
 - `prop Bounds CellRect { get; }` — The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
 - `prop CanFocus bool { get; set; }` — Whether this box can receive keyboard focus. Defaults to false.
 - `prop CanReceiveMouse bool { get; set; }` — Whether this box counts as a mouse hit target even when it cannot take focus. Defaults to false.
@@ -339,6 +356,7 @@ G# kind: `class`.
 - `prop IsVisible bool { get; set; }` — Whether this box and descendants participate in layout, drawing, input, and scrollbars.
 - `prop Padding CellInsets { get; set; }` — Inner spacing between the border or edge and content on each side. Defaults to CellInsets.None.
 - `prop Placement Placement { get; set; }` — Whether this box lays out in flow with siblings or is positioned absolutely. Defaults to Placement.InFlow.
+- `prop RightTitle string { get; set; }` — Text drawn right-aligned on the top border when ShowBorder is set. Title keeps priority, so this text is truncated first. Empty string draws nothing.
 - `prop ShowBorder bool { get; set; }` — Whether a one-cell border is drawn around the box, consuming one cell of padding on each side. Defaults to false.
 - `prop ShowScrollbar bool { get; set; }` — Whether a vertical scrollbar is drawn against overflowing content. Reserves a column of padding on the right edge when ShowBorder is false. Defaults to false.
 - `prop Style Style { get; set; }` — The style used for this box's own fill, border, and title when unfocused. Foreground and background marked IsInherited fall back to the parent's resolved style.
@@ -1021,6 +1039,41 @@ G# kind: `struct`.
   - `ev`: The event to test.
   - Returns: True when the event matches this gesture.
 
+## SharpTui.KeyHint
+
+A key label and command description in a KeyHintBar.
+
+G# kind: `class`.
+
+### Constructors
+
+- `init()` — Creates an enabled hint with empty text and no command.
+
+### Properties
+
+- `prop IsEnabled bool { get; set; }` — Whether the command can run. Disabled hints remain visible.
+- `prop KeyText string { get; set; }` — Key text shown before the description.
+- `prop OnClick Action { get; set; }` — Command to run on a left click. Assign the same command used by the key binding.
+- `prop Priority int32 { get; set; }` — Higher values are included first when space is limited. Ties keep item order.
+- `prop Text string { get; set; }` — Description shown after the key text.
+
+## SharpTui.KeyHintBar
+
+A one-row command guide that omits whole hints when space is limited.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty bar with a two-cell Gap.
+
+### Properties
+
+- `prop DisabledStyle Style { get; set; }` — Style merged over disabled hints. Defaults to dim.
+- `prop Items List[KeyHint] { get; set; }` — Hints in display order. Higher priorities get space first, without changing display order.
+- `prop KeyStyle Style { get; set; }` — Style merged over enabled key text. Defaults to bold for NoColor output.
+
 ## SharpTui.KeyModifiers
 
 Modifier keys held during a key or mouse event, combined as bit flags. CapsLock and NumLock report lock state rather than a held key, and are stripped before shortcut matching.
@@ -1548,6 +1601,10 @@ G# kind: `class`.
 - `func DrawBorder(r CellRect, s Style)` — Draws a border around a cell rectangle.
   - `r`: The cell rectangle to draw the border around.
   - `s`: The style to apply to the border.
+- `func DrawBorder(r CellRect, s Style, glyphs BorderGlyphs)` — Draws a border around a cell rectangle with the given corner glyphs.
+  - `r`: The cell rectangle to draw the border around.
+  - `s`: The style to apply to the border.
+  - `glyphs`: The corner glyphs to draw.
 - `func DrawImage(source ImageSource, bounds CellRect)` — Draws an image with contain scaling inside a cell rectangle.
   - `source`: The decoded, owned raster.
   - `bounds`: The destination rectangle before clipping.
@@ -1941,10 +1998,11 @@ G# kind: `enum`.
 
 ### Values
 
-- `Auto` — Selects a color mode from terminal capabilities.
+- `Auto` — Selects NoColor when NO_COLOR is set and not empty, otherwise a color mode from terminal capabilities.
 - `TrueColor` — Emits 24-bit RGB terminal colors.
 - `Palette256` — Quantizes colors to the 256-entry terminal palette.
 - `Palette16` — Quantizes colors to the base ANSI palette.
+- `NoColor` — Emits no colors. Text attributes such as Bold, Reverse, and Underline remain.
 
 ## SharpTui.TestDriver
 

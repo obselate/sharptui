@@ -39,6 +39,8 @@ type|SharpTui.ImageSource|class
 type|SharpTui.ImageView|class
 type|SharpTui.Key|enum
 type|SharpTui.KeyGesture|struct
+type|SharpTui.KeyHint|class
+type|SharpTui.KeyHintBar|class
 type|SharpTui.KeyModifiers|enum
 type|SharpTui.KeyPhase|enum
 type|SharpTui.KeyedSource`2|interface
