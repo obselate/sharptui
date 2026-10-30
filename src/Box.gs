@@ -54,6 +54,7 @@ public open class Box {
   private var treeViewport CellRect
 
   internal prop TreeViewport CellRect -> TreeRoot().treeViewport
+  internal prop TreeClipboard Clipboard? { get; set; }
 
   /// The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
   public prop Bounds CellRect -> bounds

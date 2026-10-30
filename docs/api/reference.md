@@ -1601,7 +1601,7 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
-- `prop Clipboard Clipboard { get; set; }` — The clipboard used by CopySelection and Ctrl+C.
+- `prop Clipboard Clipboard { get; set; }` — The clipboard used by CopySelection and Ctrl+C. Defaults to the app clipboard when attached, otherwise MemoryClipboard.Shared.
 - `prop FirstVisibleLine int32 { get; }` — The index of the topmost visible line. Negative values clamp to zero.
 - `prop GutterStyle Style { get; set; }` — The style applied to the line-number gutter in unwrapped mode.
 - `prop HorizontalCellOffset int32 { get; set; }` — The number of content cells skipped from the left edge in unwrapped mode. Negative values clamp to zero.
@@ -2148,7 +2148,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop Caret TextPosition { get; set; }` — The caret position as a line and grapheme index. Setting it moves the caret and scrolls it into view.
 - `prop CaretScreenPosition CellPoint? { get; }` — The caret's absolute terminal cell while it is visible, or nil when it is outside the current viewport.
-- `prop Clipboard Clipboard { get; set; }` — The clipboard used by copy, cut, and paste commands.
+- `prop Clipboard Clipboard { get; set; }` — The clipboard used by copy, cut, and paste commands. Defaults to the app clipboard when attached, otherwise MemoryClipboard.Shared.
 - `prop EnterBehavior TextAreaEnterBehavior { get; set; }` — How Enter inserts a line or invokes OnSubmit. Defaults to NewLine.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — The index of the topmost visible visual row. Negative values clamp to zero.
 - `prop GutterStyle Style { get; set; }` — The style applied to the line-number gutter.

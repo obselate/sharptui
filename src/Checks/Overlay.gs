@@ -38,6 +38,19 @@ internal open class OverlayScrollProbe : OverlayProbe {
   protected override func ScrollExtentRows() int32 -> 10
 }
 
+internal class DialogKeyProbe : Dialog {
+  internal prop ShortcutCount int32 { get; set; }
+
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Key && !inputIsRelease(ev)
+        && (ev.Text == "x" || (ev.Text == "c" && ev.Modifiers == KeyModifiers.Ctrl)) {
+      ShortcutCount = ShortcutCount + 1
+      return EventResult.Handled
+    }
+    return base.Accept(ev)
+  }
+}
+
 internal class OverlayCheck {
   shared {
     internal func Run() int32 {
@@ -241,7 +254,7 @@ internal class OverlayCheck {
         root.Draw(screen)
         root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
         failed = failed + Checks.Expect(chooser.SelectedIndex == 23, "Select keys reach the last option")
-        let dialog = Dialog{
+        let dialog = DialogKeyProbe{
           Message: "A long message wraps inside the available content width. 中文消息必须在内容区域内换行。"
             + " Additional text keeps the body locally scrollable at narrow sizes." + String(char(120), 400),
         }
@@ -252,12 +265,28 @@ internal class OverlayCheck {
         }
         var result = -1
         dialog.OnResult = action -> result = dialog.Actions.IndexOf(action)
-        let dialogRoot = Box{ Children: { dialog } }
+        let dialogBackground = OverlayProbe{}
+        let dialogRoot = Box{ Children: { dialogBackground, dialog } }
         dialogRoot.Draw(screen)
         let bounds = dialog.Bounds
         failed = failed + Checks.Expect(bounds.Column >= 0 && bounds.Row >= 0
             && bounds.Column + bounds.WidthCells <= width && bounds.Row + bounds.HeightRows <= height,
           "Dialog bounds include its border and padding inside the viewport")
+        if size == 0 {
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Character, Text: "x" })
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Character, Text: "c",
+            Modifiers: KeyModifiers.Ctrl })
+          failed = failed + Checks.Expect(dialog.ShortcutCount == 2,
+            "Dialog subclasses receive letter shortcuts and Ctrl+C")
+          failed = failed + Checks.Expect(dialogRoot.Handle(UiEvent{
+              Kind: UiEventKind.TextInput, Key: Key.Character, Text: "z" }) == EventResult.Handled
+              && dialogBackground.TextCount == 0,
+            "Dialog subclasses keep unhandled input inside the modal scope")
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press,
+            Button: MouseButton.Left, Position: CellPoint{} })
+          failed = failed + Checks.Expect(dialogBackground.MouseCount == 0,
+            "Dialog subclasses still block outside clicks")
+        }
         dialogRoot.Focus(dialog.Children[0])
         let body = dialog.Children[0]
         if size == 0 && body is TextBlock {

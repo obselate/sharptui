@@ -214,7 +214,7 @@ public open class RichTextBlock : Box {
   private var selectionEnd TextPosition
   private var marked bool
   private var selectedTextStyle Style
-  private var clipboard Clipboard
+  private var clipboard Clipboard?
   /// The styled runs to display. Setting it invalidates the display cache.
   /// Mutating the returned list in place does not invalidate the cache. Reassign Runs or use AppendRuns, PrependRuns, RemoveHeadRuns, RemoveTailRuns, or ClearRuns.
   public prop Runs List[TextRun] {
@@ -310,8 +310,9 @@ public open class RichTextBlock : Box {
   }
 
   /// The clipboard used by CopySelection and Ctrl+C.
+  /// Defaults to the app clipboard when attached, otherwise MemoryClipboard.Shared.
   public prop Clipboard Clipboard {
-    get -> clipboard
+    get -> clipboard ?? TreeRoot().TreeClipboard ?? MemoryClipboard.Shared
     set {
       if value == nil { throw ArgumentNullException("Clipboard") }
       clipboard = value
@@ -359,7 +360,7 @@ public open class RichTextBlock : Box {
   /// @returns True when nonempty selected text was copied.
   public func CopySelection() bool {
     if !marked { return false }
-    clipboard.SetText(SelectedText)
+    Clipboard.SetText(SelectedText)
     return true
   }
   /// Creates an empty, focusable rich text block.
@@ -388,7 +389,7 @@ public open class RichTextBlock : Box {
     cachedPrefixRunCount = 0
     cachedPrefixLineCount = 0
     selectedTextStyle = Style{ Attributes: TextAttributes.Reverse }
-    clipboard = MemoryClipboard.Shared
+    clipboard = nil
     CanFocus = true
     Grow = 1
   }

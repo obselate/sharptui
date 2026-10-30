@@ -26,7 +26,7 @@ public open class TextArea : Box {
   private var styleSource RichLineSource?
   private var enterBehavior TextAreaEnterBehavior
   private var maxLines int32
-  private var clipboard Clipboard
+  private var clipboard Clipboard?
   private var onChange Action[string]?
   private var onSubmit Action[string]?
 
@@ -120,8 +120,9 @@ public open class TextArea : Box {
   public prop LineCount int32 -> lines.Count
 
   /// The clipboard used by copy, cut, and paste commands.
+  /// Defaults to the app clipboard when attached, otherwise MemoryClipboard.Shared.
   public prop Clipboard Clipboard {
-    get -> clipboard
+    get -> clipboard ?? TreeRoot().TreeClipboard ?? MemoryClipboard.Shared
     set {
       if value == nil { throw ArgumentNullException("Clipboard") }
       clipboard = value
@@ -169,7 +170,7 @@ public open class TextArea : Box {
     styleSource = nil
     enterBehavior = TextAreaEnterBehavior.NewLine
     maxLines = 0
-    clipboard = MemoryClipboard.Shared
+    clipboard = nil
     onChange = nil
     onSubmit = nil
     undos = List[Snapshot]()

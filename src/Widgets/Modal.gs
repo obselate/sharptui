@@ -200,7 +200,7 @@ public open class Dialog : Overlay {
   /// Scrolls the message within this dialog.
   /// @param ev The input event to handle.
   /// @returns Handled when a local scroll was requested.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && (ev.Key == Key.PageUp || ev.Key == Key.PageDown) {
       body.ScrollToLine(Selection.ClampScroll(messageRows,
