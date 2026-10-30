@@ -3,6 +3,7 @@ package SharpTui
 import System
 import System.Collections.Generic
 import System.Text
+import System.Globalization
 
 /// Where the caret moves to in TextInput.MoveCaretToStart / MoveCaretToEnd.
 internal enum CaretPlacement { Start, End }
@@ -157,7 +158,7 @@ public open class TextInput : Box {
   /// Handles editing, caret movement, and clipboard shortcuts. A paste normalizes any line breaks in the pasted text to single spaces.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, otherwise Continue.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     let previous = text
     let outcome = acceptEdit(ev)
     if text != previous {
@@ -309,5 +310,107 @@ public open class TextInput : Box {
       i = i + 1
     }
     return out.ToString()
+  }
+}
+
+/// A single-line editor with an explicitly committed, bounded numeric value.
+public open class NumberInput : TextInput {
+  private var committed float64 = 0
+  private var minimum float64 = float64.MinValue
+  private var maximum float64 = float64.MaxValue
+  private var step float64 = 1
+  private var committedText string = "0"
+
+  /// The committed value. Setting it silently restores Text. Must be finite and in range.
+  public prop Value float64 {
+    get -> committed
+    set {
+      if !float64.IsFinite(value) || value < minimum || value > maximum { throw ArgumentOutOfRangeException("value") }
+      committed = value
+      committedText = value.ToString("R", CultureInfo.InvariantCulture)
+      CancelEdit()
+    }
+  }
+
+  /// The finite lower bound. Raising it clamps Value silently.
+  public prop Minimum float64 {
+    get -> minimum
+    set {
+      if !float64.IsFinite(value) || value > maximum { throw ArgumentOutOfRangeException("value") }
+      minimum = value
+      if committed < value { Value = value }
+    }
+  }
+
+  /// The finite upper bound. Lowering it clamps Value silently.
+  public prop Maximum float64 {
+    get -> maximum
+    set {
+      if !float64.IsFinite(value) || value < minimum { throw ArgumentOutOfRangeException("value") }
+      maximum = value
+      if committed > value { Value = value }
+    }
+  }
+
+  /// The finite, positive amount applied by Up and Down.
+  public prop Step float64 {
+    get -> step
+    set {
+      if !float64.IsFinite(value) || value <= 0 { throw ArgumentOutOfRangeException("value") }
+      step = value
+    }
+  }
+
+  /// Receives the committed value after a user commit or step changes it.
+  public prop OnValueChange Action[float64]? { get; set; }
+
+  /// Creates a numeric editor with value zero and step one.
+  public init() { Text = committedText }
+
+  /// Commits finite, in-range Text using invariant numeric notation.
+  /// @returns True for valid text, otherwise false without changing Value.
+  public func Commit() bool {
+    var parsed float64 = 0
+    if !float64.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed)
+        || !float64.IsFinite(parsed) || parsed < minimum || parsed > maximum { return false }
+    applyValue(parsed)
+    return true
+  }
+
+  /// Restores Text to the committed value without raising callbacks.
+  public func CancelEdit() {
+    if Text != committedText { Text = committedText }
+  }
+
+  /// Handles commit, cancel and bounded steps. Other input uses TextInput.
+  /// @param ev The input event.
+  /// @returns Handled for numeric commands, otherwise the inherited result.
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Key && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
+      if ev.Key == Key.Enter {
+        Commit()
+        return EventResult.Handled
+      }
+      if ev.Key == Key.Escape {
+        if Text == committedText { return EventResult.Continue }
+        CancelEdit()
+        return EventResult.Handled
+      }
+      if ev.Key == Key.Up || ev.Key == Key.Down {
+        let next = ev.Key == Key.Up ? Math.Min(maximum, committed + step) : Math.Max(minimum, committed - step)
+        applyValue(next)
+        return EventResult.Handled
+      }
+    }
+    return base.Accept(ev)
+  }
+
+  private func applyValue(value float64) {
+    if value == committed {
+      CancelEdit()
+      return
+    }
+    Value = value
+    if let callback = OnValueChange { callback(committed) }
   }
 }
