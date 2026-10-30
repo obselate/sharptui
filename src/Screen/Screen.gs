@@ -241,6 +241,12 @@ public class Screen {
 
   internal func RestoreClip(previous ScreenClip) { activeClip = previous }
 
+  internal func SuspendClip() ScreenClip {
+    let previous = activeClip
+    activeClip = ScreenClip{}
+    return previous
+  }
+
   internal func Invalidate() {
     if let plane = images { plane.Invalidate() }
     InvalidateCells()

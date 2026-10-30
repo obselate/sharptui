@@ -3676,8 +3676,8 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>75-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuiselect" data-search="sharptui.select a dropdown select with a bounded floating option list. add a select late among its siblings so the open list paints over them. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates a closed select with no options and the placeholder &quot;select&quot;. properties prop isopen bool { get; } — whether the floating option list is currently shown. prop onchange action[selectionchange] { get; set; } — receives each user selection change after navigation completes. programmatic selection is silent. prop options list[string] { get; set; } — selectable option strings; setting it replaces all options and re-resolves the selection via refresh. prop placeholder string { get; set; } — text shown in the closed control when options is empty. prop selectedindex int32 { get; set; } — index of the selected option, clamped to the current options range. setting it selects programmatically and does not emit a selectionchange. prop selectedstyle style { get; set; } — style merged over the highlighted option&#x27;s inherited style in the open list. methods func refresh() — re-resolves selection after direct options mutation.">
+<section class="sheet api-type" aria-labelledby="sharptuiselect" data-search="sharptui.select a dropdown select with a bounded floating option list. g# kind: class .
+inherits box ; see that type for inherited members. constructors init() — creates a closed select with no options and the placeholder &quot;select&quot;. properties prop isopen bool { get; } — whether the floating option list is currently shown. prop onchange action[selectionchange] { get; set; } — receives each user selection change after navigation completes. programmatic selection is silent. prop onopenchange action[bool] { get; set; } — receives true when the option list opens and false when it closes. prop options list[string] { get; set; } — selectable option strings; setting it replaces all options and re-resolves the selection via refresh. prop placeholder string { get; set; } — text shown in the closed control when options is empty. prop selectedindex int32 { get; set; } — index of the selected option, clamped to the current options range. setting it selects programmatically and does not emit a selectionchange. prop selectedstyle style { get; set; } — style merged over the highlighted option&#x27;s inherited style in the open list. methods func refresh() — re-resolves selection after direct options mutation.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -3691,7 +3691,7 @@ inherits box ; see that type for inherited members. constructors init() — crea
       </div>
     </div>
     <div class="chapter-copy">
-      <p>A dropdown select with a bounded floating option list. Add a Select late among its siblings so the open list paints over them.</p>
+      <p>A dropdown select with a bounded floating option list.</p>
 <p>G# kind: <code>class</code>.
 Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="constructors-35">Constructors</h3>
@@ -3702,6 +3702,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <ul>
 <li><code>prop IsOpen bool { get; }</code> — Whether the floating option list is currently shown.</li>
 <li><code>prop OnChange Action[SelectionChange] { get; set; }</code> — Receives each user selection change after navigation completes. Programmatic selection is silent.</li>
+<li><code>prop OnOpenChange Action[bool] { get; set; }</code> — Receives true when the option list opens and false when it closes.</li>
 <li><code>prop Options List[string] { get; set; }</code> — Selectable option strings; setting it replaces all options and re-resolves the selection via Refresh.</li>
 <li><code>prop Placeholder string { get; set; }</code> — Text shown in the closed control when Options is empty.</li>
 <li><code>prop SelectedIndex int32 { get; set; }</code> — Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.</li>
