@@ -2306,7 +2306,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>44-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuikeyhint" data-search="sharptui.keyhint a key label and command description in a keyhintbar. g# kind: class . constructors init() — creates an enabled hint with empty text and no command. properties prop isenabled bool { get; set; } — whether the command can run. disabled hints remain visible. prop keytext string { get; set; } — key text shown before the description. prop onclick action { get; set; } — command to run on a left click. assign the same command used by the key binding. prop priority int32 { get; set; } — higher values are included first when space is limited. ties keep item order. prop text string { get; set; } — description shown after the key text.">
+<section class="sheet api-type" aria-labelledby="sharptuikeyhint" data-search="sharptui.keyhint a key label and command description in a keyhintbar. g# kind: class . constructors init() — creates an enabled hint with empty text and no command. properties prop isenabled bool { get; set; } — whether the command can run. disabled hints remain visible. prop keytext string { get; set; } — key text shown before the description. prop onclick action { get; set; } — command to run on a left click. assign the same command used by the key binding. prop priority int32 { get; set; } — higher values are included first when space is limited. ties keep item order. prop style style { get; set; } — style merged over the bar styles for key text and description. disabledstyle takes precedence. prop text string { get; set; } — description shown after the key text.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -2332,6 +2332,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <li><code>prop KeyText string { get; set; }</code> — Key text shown before the description.</li>
 <li><code>prop OnClick Action { get; set; }</code> — Command to run on a left click. Assign the same command used by the key binding.</li>
 <li><code>prop Priority int32 { get; set; }</code> — Higher values are included first when space is limited. Ties keep item order.</li>
+<li><code>prop Style Style { get; set; }</code> — Style merged over the bar styles for key text and description. DisabledStyle takes precedence.</li>
 <li><code>prop Text string { get; set; }</code> — Description shown after the key text.</li>
 </ul>
     </div>

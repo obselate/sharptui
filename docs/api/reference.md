@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `5d4e12ba4d8d23af3232fdd549a43b1127da2831ef8b37c86efde7653d8ab7b2`.
+Public-symbol SHA-256: `1f90e80f0d3b650c2a2068fcbe8f04107a04776fd068ca4f7534bd0f3f48a88f`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1094,6 +1094,7 @@ G# kind: `class`.
 - `prop KeyText string { get; set; }` — Key text shown before the description.
 - `prop OnClick Action { get; set; }` — Command to run on a left click. Assign the same command used by the key binding.
 - `prop Priority int32 { get; set; }` — Higher values are included first when space is limited. Ties keep item order.
+- `prop Style Style { get; set; }` — Style merged over the bar styles for key text and description. DisabledStyle takes precedence.
 - `prop Text string { get; set; }` — Description shown after the key text.
 
 ## SharpTui.KeyHintBar
