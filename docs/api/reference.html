@@ -1571,7 +1571,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuichartview" data-search="sharptui.chartview a retained xy chart with optional labels and a one-row block-level mode. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty chart with automatic ranges. properties prop axisstyle style { get; set; } — the terminal style of axis labels. prop horizontalrange numericrange { get; set; } — the horizontal scale. auto uses all finite samples. constant samples map to the center. prop horizontalticks list[charttick] { get; set; } — optional horizontal labels, in priority order. colliding labels are suppressed whole. prop series list[chartseries] { get; set; } — the ordered series. call refresh after changing a list or a series in place. prop verticalrange numericrange { get; set; } — the vertical scale. auto uses all finite samples. constant samples map to the center. prop verticalticks list[charttick] { get; set; } — optional vertical labels, in priority order. colliding labels are suppressed whole. methods func refresh() — invalidates retained samples and labels after an in-place change.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty chart with automatic ranges. properties prop axisstyle style { get; set; } — the terminal style of axis lines and labels. prop horizontalrange numericrange { get; set; } — the horizontal scale. auto uses all finite samples. constant samples map to the center. prop horizontalticks list[charttick] { get; set; } — optional horizontal labels, in priority order. colliding labels are suppressed whole. prop series list[chartseries] { get; set; } — the ordered series. call refresh after changing a list or a series in place. prop showaxes bool { get; set; } — shows axis lines outside the plot. one-row charts omit axes. defaults to false. prop verticalrange numericrange { get; set; } — the vertical scale. auto uses all finite samples. constant samples map to the center. prop verticalticks list[charttick] { get; set; } — optional vertical labels, in priority order. colliding labels are suppressed whole. methods func refresh() — invalidates retained samples and labels after an in-place change.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -1594,10 +1594,11 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 <h3 id="properties-17">Properties</h3>
 <ul>
-<li><code>prop AxisStyle Style { get; set; }</code> — The terminal style of axis labels.</li>
+<li><code>prop AxisStyle Style { get; set; }</code> — The terminal style of axis lines and labels.</li>
 <li><code>prop HorizontalRange NumericRange { get; set; }</code> — The horizontal scale. Auto uses all finite samples. Constant samples map to the center.</li>
 <li><code>prop HorizontalTicks List[ChartTick] { get; set; }</code> — Optional horizontal labels, in priority order. Colliding labels are suppressed whole.</li>
 <li><code>prop Series List[ChartSeries] { get; set; }</code> — The ordered series. Call Refresh after changing a list or a series in place.</li>
+<li><code>prop ShowAxes bool { get; set; }</code> — Shows axis lines outside the plot. One-row charts omit axes. Defaults to false.</li>
 <li><code>prop VerticalRange NumericRange { get; set; }</code> — The vertical scale. Auto uses all finite samples. Constant samples map to the center.</li>
 <li><code>prop VerticalTicks List[ChartTick] { get; set; }</code> — Optional vertical labels, in priority order. Colliding labels are suppressed whole.</li>
 </ul>

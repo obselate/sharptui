@@ -79,6 +79,7 @@ public open class ChartView : Box {
     private var verticalRange NumericRange
     private var horizontalTicks List[ChartTick] = List[ChartTick]()
     private var verticalTicks List[ChartTick] = List[ChartTick]()
+    private var showAxes bool
     private var dirty bool = true
     private var width int32 = -1
     private var height int32 = -1
@@ -132,7 +133,15 @@ public open class ChartView : Box {
             Refresh()
         }
     }
-    /// The terminal style of axis labels.
+    /// Shows axis lines outside the plot. One-row charts omit axes. Defaults to false.
+    public prop ShowAxes bool {
+        get -> showAxes
+        set {
+            showAxes = value
+            Refresh()
+        }
+    }
+    /// The terminal style of axis lines and labels.
     public prop AxisStyle Style {
         get;
         set;
@@ -174,9 +183,24 @@ public open class ChartView : Box {
                 },
                 style
             )
+            let axisStyle = AxisStyle.MergedOver(style)
+            if showAxes {
+                let column = bounds.Column + plot.Column - 1
+                let row = bounds.Row + plot.HeightRows
+                for y in 0 ... plot.HeightRows {
+                    screen.WriteCell(column, bounds.Row + y, "│", axisStyle)
+                }
+                screen.WriteCell(column, row, "└", axisStyle)
+                for x in 0 ... plot.WidthCells {
+                    screen.WriteCell(column + 1 + x, row, "─", axisStyle)
+                }
+            }
             for index in 0 ... labels.Count {
                 let label = labels[index]
-                screen.WriteClipped(bounds, label.X, label.Y, label.Text, AxisStyle.MergedOver(style))
+                screen.WriteClipped(bounds, label.X, label.Y, label.Text, axisStyle)
+                if showAxes && label.Y < plot.HeightRows {
+                    screen.WriteCell(bounds.Column + plot.Column - 1, bounds.Row + label.Y, "┤", axisStyle)
+                }
             }
         }
     }
@@ -234,11 +258,12 @@ public open class ChartView : Box {
                     margin = cells
                 }
             }
-            let left = margin > 0 ? margin + 1: 0
+            let axisCells = showAxes ? 1: 0
+            let left = (margin > 0 ? margin + 1: 0) + axisCells
             plot = CellRect{
                 Column: left,
                 WidthCells: width - left,
-                HeightRows: horizontalTicks.Count > 0 && height > 2 ? height - 1: height
+                HeightRows: height - axisCells - (horizontalTicks.Count > 0 && height > 2 ? 1: 0)
             }
             surface.Resize(plot.WidthCells, plot.HeightRows)
             for tick in verticalTicks {
@@ -256,7 +281,7 @@ public open class ChartView : Box {
                     tick.Text
                 )
             }
-            if plot.HeightRows < height {
+            if plot.HeightRows + axisCells < height {
                 for tick in horizontalTicks {
                     if !finite(tick.Value) || tick.Value < lowX || tick.Value > highX {
                         continue
