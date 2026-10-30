@@ -1,6 +1,7 @@
 package SharpTui
 
 import System
+import System.Collections.Generic
 
 internal open class OverlayProbe : Box {
   internal prop Marker string { get; set; }
@@ -186,6 +187,119 @@ internal class OverlayCheck {
       failed = failed + Checks.Expect(after == before,
         "Overlay unchanged redraw is allocation-free after warmup")
 
+      failed = failed + checkBoundedChoices()
+      return failed
+    }
+
+    private func checkBoundedChoices() int32 {
+      var failed = 0
+      let widths = List[int32]{ 40, 60, 80, 120, 160 }
+      let heights = List[int32]{ 12, 18, 24, 36, 48 }
+      var size = 0
+      while size < widths.Count {
+        let width = widths[size]
+        let height = heights[size]
+        let screen = Screen(width, height)
+        let chooser = Select{
+          Width: CellLength.Cells(width + 10),
+          Height: CellLength.Cells(1),
+          Placement: Placement.At(CellPoint{ Column: width - 4, Row: height - 1 }),
+        }
+        var i = 0
+        while i < 24 {
+          chooser.Options.Add(i % 2 == 0 ? "English option" : "中文选项")
+          i = i + 1
+        }
+        let root = Box{ Children: { chooser } }
+        root.Focus(chooser)
+        root.Draw(screen)
+        root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
+        root.Draw(screen)
+        failed = failed + Checks.Expect(screen.Probe(0, height - 9) == "┌"
+            && screen.Probe(width - 1, height - 2) == "┘",
+          "Select flips above and bounds its border to the viewport")
+        root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollDown,
+          Position: CellPoint{ Column: 1, Row: height - 8 } })
+        root.Draw(screen)
+        failed = failed + Checks.Expect(chooser.IsOpen && chooser.SelectedIndex == 0
+            && screen.Probe(1, height - 8) == "中",
+          "Select wheel scrolls options without changing the selection")
+        root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Right,
+          Position: CellPoint{ Column: 1, Row: height - 8 } })
+        failed = failed + Checks.Expect(chooser.IsOpen, "Select right click does not choose an option")
+        root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Left,
+          Position: CellPoint{ Column: 1, Row: height - 8 } })
+        failed = failed + Checks.Expect(!chooser.IsOpen && chooser.SelectedIndex == Selection.WheelStep,
+          "Select left click chooses a scrolled option")
+        root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
+        i = chooser.SelectedIndex
+        while i < 23 {
+          root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Down })
+          i = i + 1
+        }
+        root.Draw(screen)
+        root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
+        failed = failed + Checks.Expect(chooser.SelectedIndex == 23, "Select keys reach the last option")
+        let dialog = Dialog{
+          Message: "A long message wraps inside the available content width. 中文消息必须在内容区域内换行。"
+            + " Additional text keeps the body locally scrollable at narrow sizes.",
+        }
+        i = 0
+        while i < 16 {
+          dialog.Actions.Add(DialogAction{ Text: i % 2 == 0 ? "English action" : "中文操作", IsCancel: i == 15 })
+          i = i + 1
+        }
+        var result = -1
+        dialog.OnResult = action -> result = dialog.Actions.IndexOf(action)
+        let dialogRoot = Box{ Children: { dialog } }
+        dialogRoot.Draw(screen)
+        let bounds = dialog.Bounds
+        failed = failed + Checks.Expect(bounds.Column >= 0 && bounds.Row >= 0
+            && bounds.Column + bounds.WidthCells <= width && bounds.Row + bounds.HeightRows <= height,
+          "Dialog bounds include its border and padding inside the viewport")
+        i = 0
+        while i < dialog.Actions.Count {
+          let button = dialog.Children[1].Children[i]
+          dialogRoot.Focus(button)
+          dialogRoot.Draw(screen)
+          failed = failed + Checks.Expect(button.Bounds.HeightRows == 1
+              && button.Bounds.Row >= bounds.Row && button.Bounds.Row < bounds.Row + bounds.HeightRows,
+            "Dialog brings every focused action into its local viewport")
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
+          failed = failed + Checks.Expect(result == i, "Dialog action is reachable by key")
+          result = -1
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Left,
+            Position: CellPoint{ Column: button.Bounds.Column, Row: button.Bounds.Row } })
+          failed = failed + Checks.Expect(result == i, "Dialog action is reachable by left click")
+          i = i + 1
+        }
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Escape })
+        failed = failed + Checks.Expect(result == 15, "Dialog preserves the cancel action")
+        dialog.Message = ""
+        dialogRoot.Draw(screen)
+        failed = failed + Checks.Expect(dialog.Children[0].Bounds.HeightRows == 0,
+          "Dialog empty message consumes no row")
+        dialogRoot.Draw(screen)
+        root.Draw(screen)
+        let before = GC.GetAllocatedBytesForCurrentThread()
+        dialogRoot.Draw(screen)
+        let afterDialog = GC.GetAllocatedBytesForCurrentThread()
+        root.Draw(screen)
+        let afterSelect = GC.GetAllocatedBytesForCurrentThread()
+        dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageDown })
+        let afterPage = GC.GetAllocatedBytesForCurrentThread()
+        root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
+        root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollDown,
+          Position: CellPoint{ Column: 1, Row: height - 8 } })
+        let afterInput = GC.GetAllocatedBytesForCurrentThread()
+        Console.WriteLine(afterDialog - before)
+        Console.WriteLine(afterSelect - afterDialog)
+        Console.WriteLine(afterPage - afterSelect)
+        Console.WriteLine(afterInput - afterPage)
+        failed = failed + Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == before,
+          "Bounded dialog paint and popup wheel routing allocate no managed memory after warmup")
+        size = size + 1
+      }
       return failed
     }
   }

@@ -3,7 +3,7 @@ package SharpTui
 import System
 import System.Collections.Generic
 
-/// A dropdown select. Opens a floating option list below itself.
+/// A dropdown select with a bounded floating option list.
 /// Add a Select late among its siblings so the open list paints over them.
 public open class Select : Box {
   private var isOpen bool
@@ -108,7 +108,7 @@ public open class Select : Box {
     let rows = inner.HeightRows
     let selectedStyle = SelectedStyle.MergedOver(ink)
 
-    top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, rows)
+    top = Selection.ClampScroll(Options.Count, top, rows)
 
     var i = 0
     while i < rows && top + i < Options.Count {
@@ -137,7 +137,7 @@ public open class Select : Box {
   internal override func IsInputScope() bool -> IsOpen
 
   internal override func ScopeFallback(ev UiEvent) EventResult {
-    if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left { return Accept(ev) }
+    if ev.Kind == UiEventKind.Mouse { return Accept(ev) }
     return EventResult.Continue
   }
 
@@ -146,25 +146,35 @@ public open class Select : Box {
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
       isOpen = true
       highlightIndex = selectedOptionIndex()
+      top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, Math.Max(0, listRect().HeightRows - 2))
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
       isOpen = true
       highlightIndex = selectedOptionIndex()
+      top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, Math.Max(0, listRect().HeightRows - 2))
       return EventResult.Handled
     }
     return EventResult.Continue
   }
 
   private func acceptOpen(ev UiEvent) EventResult {
+    let rows = listRect().HeightRows - 2
+    if ev.Kind == UiEventKind.Mouse && (ev.Mouse == MouseKind.ScrollUp || ev.Mouse == MouseKind.ScrollDown) {
+      let delta = ev.Mouse == MouseKind.ScrollUp ? -Selection.WheelStep : Selection.WheelStep
+      top = Selection.ClampScroll(Options.Count, top + delta, rows)
+      return EventResult.Handled
+    }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Up {
       if highlightIndex <= 0 { return EventResult.Continue }
       highlightIndex = highlightIndex - 1
+      top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, rows)
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Down {
       if highlightIndex >= Options.Count - 1 { return EventResult.Continue }
       highlightIndex = highlightIndex + 1
+      top = Selection.ScrollIntoView(Options.Count, highlightIndex, top, rows)
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
@@ -191,11 +201,19 @@ public open class Select : Box {
   }
 
   private func listRect() CellRect {
+    let view = TreeViewport
+    let bottom = view.Row + view.HeightRows
+    let below = Math.Max(0, bottom - Bounds.Row - Bounds.HeightRows)
+    let above = Math.Max(0, Bounds.Row - view.Row)
+    let wanted = Math.Min(Options.Count + 2, 8)
+    let opensBelow = below >= wanted || below >= above
+    let height = Math.Min(wanted, opensBelow ? below : above)
+    let width = Math.Min(Math.Max(2, Bounds.WidthCells), view.WidthCells)
     return CellRect{
-      Column: Bounds.Column,
-      Row: Bounds.Row + Bounds.HeightRows,
-      WidthCells: Bounds.WidthCells,
-      HeightRows: Options.Count < 8 ? Options.Count : 8,
+      Column: Math.Max(view.Column, Math.Min(Bounds.Column, view.Column + view.WidthCells - width)),
+      Row: opensBelow ? Bounds.Row + Bounds.HeightRows : Bounds.Row - height,
+      WidthCells: width,
+      HeightRows: height,
     }
   }
 

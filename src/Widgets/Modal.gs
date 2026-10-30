@@ -103,6 +103,17 @@ public open class Dialog : Overlay {
   private var actions List[DialogAction]
   private var actionButtons List[Button]
   private var onResult Action[DialogAction]?
+  private var body TextBlock
+  private var actionHost Box
+  private var preferredWidth CellLength
+  private var assignedWidth CellLength
+  private var wrappedWidth int32
+  private var wrappedMessage string
+  private var messageRows int32
+  private var actionTop int32
+  private var actionRows int32
+  private var stacked bool
+  private var lastFocused Button?
 
   /// The wrapped body text. Setting it rebuilds the dialog's children.
   public prop Message string {
@@ -134,34 +145,122 @@ public open class Dialog : Overlay {
     actions = List[DialogAction]()
     actionButtons = List[Button]()
     onResult = nil
+    body = TextBlock{ Grow: 0 }
+    actionHost = Box()
+    preferredWidth = CellLength.Cells(44)
+    assignedWidth = preferredWidth
+    wrappedWidth = -1
+    wrappedMessage = ""
+    messageRows = 0
+    actionTop = 0
+    actionRows = 0
+    stacked = false
+    lastFocused = nil
     DimBackground = true
     Placement = Placement.Centered
     ShowBorder = true
     Width = CellLength.Cells(44)
     Padding = CellInsets.All(1)
+    compose()
   }
 
   /// Rebuilds the message and action buttons if Actions changed shape, otherwise refreshes the default/cancel button assignment.
   protected override func PrepareLayout() {
     if !compositionIsCurrent() { compose() }
     else { configureActions() }
+    let view = TreeViewport
+    if Width.IsAuto != assignedWidth.IsAuto || Width.CellCount != assignedWidth.CellCount { preferredWidth = Width }
+    let width = Math.Min(view.WidthCells, preferredWidth.IsAuto ? view.WidthCells : preferredWidth.CellCount)
+    assignedWidth = CellLength.Cells(Math.Max(0, width))
+    if Width.IsAuto || Width.CellCount != assignedWidth.CellCount { Width = assignedWidth }
+    let edges = (ShowBorder ? 2 : 0)
+    let contentWidth = Math.Max(0, width - edges - Padding.LeftCells - Padding.RightCells)
+    let availableRows = Math.Max(0, view.HeightRows - edges - Padding.TopRows - Padding.BottomRows)
+    if wrappedWidth != contentWidth || wrappedMessage != Message {
+      messageRows = Message == "" || contentWidth <= 0 ? 0 : CellText.Wrap(Message, contentWidth).Count
+      wrappedWidth = contentWidth
+      wrappedMessage = Message
+    }
+    var totalWidth = 0
+    for button in actionButtons { totalWidth = totalWidth + Glyph.WidthOf(button.Text) + 2 }
+    if actionButtons.Count > 1 { totalWidth = totalWidth + (actionButtons.Count - 1) * 2 }
+    stacked = totalWidth > contentWidth
+    let wantedActions = stacked ? actionButtons.Count : (actionButtons.Count > 0 ? 1 : 0)
+    actionRows = Math.Min(wantedActions, Math.Max(0, availableRows - (messageRows > 0 ? 1 : 0)))
+    let bodyRows = Math.Min(messageRows, Math.Max(0, availableRows - actionRows))
+    if body.Height.IsAuto || body.Height.CellCount != bodyRows { body.Height = CellLength.Cells(bodyRows) }
+    if body.Width.IsAuto || body.Width.CellCount != contentWidth { body.Width = CellLength.Cells(contentWidth) }
+    if actionHost.Height.IsAuto || actionHost.Height.CellCount != actionRows { actionHost.Height = CellLength.Cells(actionRows) }
+    if actionHost.Width.IsAuto || actionHost.Width.CellCount != contentWidth { actionHost.Width = CellLength.Cells(contentWidth) }
+    let height = bodyRows + actionRows + edges + Padding.TopRows + Padding.BottomRows
+    if Height.IsAuto || Height.CellCount != height { Height = CellLength.Cells(height) }
+    var i = 0
+    while i < actionButtons.Count {
+      let button = actionButtons[i]
+      if button.IsFocused && !Object.ReferenceEquals(lastFocused, button) {
+        actionTop = Selection.ScrollIntoView(actionButtons.Count, i, actionTop, actionRows)
+        lastFocused = button
+      }
+      i = i + 1
+    }
+    actionTop = Selection.ClampScroll(actionButtons.Count, actionTop, actionRows)
+    var column = 0
+    i = 0
+    while i < actionButtons.Count {
+      let button = actionButtons[i]
+      let row = stacked ? i - actionTop : 0
+      let x = stacked ? 0 : column
+      let y = Math.Max(0, row)
+      if button.Placement.IsInFlow || button.Placement.Point.Column != x || button.Placement.Point.Row != y {
+        button.Placement = Placement.At(CellPoint{ Column: x, Row: y })
+      }
+      let buttonWidth = stacked ? contentWidth : Glyph.WidthOf(button.Text) + 2
+      let buttonHeight = row >= 0 && row < actionRows ? 1 : 0
+      if button.Width.IsAuto || button.Width.CellCount != buttonWidth { button.Width = CellLength.Cells(buttonWidth) }
+      if button.Height.IsAuto || button.Height.CellCount != buttonHeight { button.Height = CellLength.Cells(buttonHeight) }
+      column = column + Glyph.WidthOf(button.Text) + 4
+      i = i + 1
+    }
+  }
+
+  /// Scrolls the message or stacked actions within this dialog.
+  /// @param ev The input event to handle.
+  /// @returns Handled when a local scroll was requested.
+  protected override func Accept(ev UiEvent) EventResult {
+    if inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
+    if ev.Kind == UiEventKind.Mouse && stacked && actionHost.Bounds.Contains(ev.Position) {
+      if ev.Mouse == MouseKind.ScrollUp || ev.Mouse == MouseKind.ScrollDown {
+        actionTop = Selection.ClampScroll(actionButtons.Count,
+          actionTop + (ev.Mouse == MouseKind.ScrollUp ? -Selection.WheelStep : Selection.WheelStep), actionRows)
+        return EventResult.Handled
+      }
+    }
+    if ev.Kind == UiEventKind.Key && (ev.Key == Key.PageUp || ev.Key == Key.PageDown) {
+      body.ScrollToLine(Selection.ClampScroll(messageRows,
+        body.FirstVisibleLine + (ev.Key == Key.PageUp ? -body.ContentBounds.HeightRows : body.ContentBounds.HeightRows),
+        body.ContentBounds.HeightRows))
+      return EventResult.Handled
+    }
+    return EventResult.Continue
   }
 
   private func compose() {
     if actions == nil || actionButtons == nil { return }
     Children.Clear()
     actionButtons.Clear()
-    for line in CellText.Wrap(Message, 40) {
-      Children.Add(Label{ Text: line })
-    }
-    let row = Row{ Gap: 2 }
+    body.Text = Message
+    Children.Add(body)
+    actionHost.Children.Clear()
     for action in Actions {
       let button = Button{ Text: action.Text }
       button.OnClick = () -> choose(action)
       actionButtons.Add(button)
-      row.Children.Add(button)
+      actionHost.Children.Add(button)
     }
-    Children.Add(row)
+    Children.Add(actionHost)
+    wrappedWidth = -1
+    actionTop = 0
+    lastFocused = nil
     configureActions()
   }
 

@@ -50,6 +50,9 @@ public open class Box {
   private var parent Box?
   private var mouseCapture Box?
   private var focusTargets List[Box]?
+  private var treeViewport CellRect
+
+  internal prop TreeViewport CellRect -> TreeRoot().treeViewport
 
   /// The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
   public prop Bounds CellRect -> bounds
@@ -382,6 +385,7 @@ public open class Box {
       config = fresh
     }
     guard let cfg = config else { return }
+    treeViewport = bounds
 
     prepareTree(nil)
     build(cfg)
