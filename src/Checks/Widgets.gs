@@ -747,6 +747,39 @@ public class WidgetCheck {
             "TableView applies its selection and tail viewport on the first 40x12 layout")
         }
       }
+      for header in selectionModes {
+        let resizingTable = makeTable()
+        resizingTable.Rows.RemoveRange(13, 7)
+        resizingTable.ShowHeader = header
+        resizingTable.Height = CellLength.Cells(14)
+        resizingTable.SelectedRowIndex = 10
+        let resizingRoot = Box{ Children: { resizingTable } }
+        let resizingScreen = Screen(40, 14)
+        resizingRoot.Draw(resizingScreen)
+        failed = failed + Checks.Expect(resizingTable.FirstVisibleRowIndex == 0,
+          "TableView shows all thirteen rows before resizing")
+        resizingTable.Height = CellLength.Cells(7)
+        resizingRoot.Draw(resizingScreen)
+        let minimumOffset = header ? 5 : 4
+        failed = failed + Checks.Expect(resizingTable.SelectedRowIndex == 10
+            && resizingTable.FirstVisibleRowIndex == minimumOffset
+            && resizingScreen.Probe(0, (header ? 1 : 0) + 10 - minimumOffset) == "i",
+          "TableView scrolls the minimum to keep selection visible after shrinking with or without a header")
+        resizingTable.Height = CellLength.Cells(9)
+        resizingRoot.Draw(resizingScreen)
+        failed = failed + Checks.Expect(resizingTable.FirstVisibleRowIndex == minimumOffset,
+          "TableView does not jump when growing with the selected row already visible")
+        resizingRoot.Handle(UiEvent{
+          Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollUp,
+          Position: CellPoint{ Column: 1, Row: 2 },
+        })
+        resizingTable.Width = CellLength.Cells(39)
+        resizingTable.Refresh()
+        resizingRoot.Draw(resizingScreen)
+        failed = failed + Checks.Expect(resizingTable.SelectedRowIndex == 10
+            && resizingTable.FirstVisibleRowIndex == minimumOffset - 3,
+          "TableView preserves wheel scrolling away from selection across layouts without a height change")
+      }
 
       let following = makeTable()
       following.ShowHeader = false
