@@ -96,6 +96,67 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(windowListMove == EventResult.Continue && variable.SelectedIndex == 1,
         "collection views leave window-modified navigation unconsumed")
 
+      let number = NumberInput{ Minimum: 0, Maximum: 10, Step: 3, Value: 8, Width: 12 }
+      let numberOther = Button{ Text: "Next" }
+      let numberRoot = Column{ Children: { number, numberOther } }
+      let numberScreen = Screen(40, 12)
+      numberRoot.Draw(numberScreen)
+      numberRoot.Focus(number)
+      var numberChanges = 0
+      number.OnValueChange = value -> { numberChanges++ }
+      numberRoot.Handle(keyEv(Key.Up))
+      failed += Checks.Expect(number.Value == 10 && number.Text == "10", "NumberInput clamps an upward step")
+      numberRoot.Handle(keyEv(Key.Down))
+      failed += Checks.Expect(number.Value == 7 && numberChanges == 2, "NumberInput steps the committed value")
+      number.Value = 1
+      numberRoot.Handle(keyEv(Key.Down))
+      failed += Checks.Expect(number.Value == 0 && numberChanges == 3, "NumberInput clamps a downward step and loads silently")
+      number.Text = "invalid"
+      numberRoot.Handle(keyEv(Key.Enter))
+      failed += Checks.Expect(number.Value == 0 && number.Text == "invalid" && !number.Commit(), "NumberInput rejects invalid provisional text")
+      numberRoot.Handle(keyEv(Key.Escape))
+      failed += Checks.Expect(number.Text == "0", "NumberInput Escape restores committed text")
+      number.Text = "4.5"
+      numberRoot.Focus(numberOther)
+      failed += Checks.Expect(number.Value == 0 && number.Text == "4.5", "NumberInput focus leave preserves provisional text")
+      numberRoot.Focus(number)
+      numberRoot.Handle(keyEv(Key.Enter))
+      failed += Checks.Expect(number.Value == 4.5 && numberChanges == 4, "NumberInput Enter explicitly commits valid text")
+      number.Text = "NaN"
+      failed += Checks.Expect(!number.Commit() && number.Value == 4.5, "NumberInput rejects non-finite text")
+      number.Text = "11"
+      failed += Checks.Expect(!number.Commit(), "NumberInput rejects out-of-range text")
+      number.Text = "日12"
+      number.MoveCaretToStart()
+      numberRoot.Draw(numberScreen)
+      numberRoot.Handle(mouseEv(2, 0))
+      failed += Checks.Expect(number.CaretGraphemeIndex == 1, "NumberInput inherits wide-grapheme click placement")
+      numberRoot.Handle(keyEv(Key.Right))
+      numberRoot.Handle(keyEv(Key.Left))
+      failed += Checks.Expect(number.CaretGraphemeIndex == 1 && number.Value == 4.5, "NumberInput Left and Right remain caret keys")
+      numberRoot.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollUp, Position: CellPoint{ Column: 0, Row: 0 } })
+      failed += Checks.Expect(number.Value == 4.5, "NumberInput ignores wheel stepping")
+      var invalidNumberProperties = 0
+      try { number.Step = 0 } catch (error ArgumentOutOfRangeException) { invalidNumberProperties++ }
+      try { number.Step = float64.PositiveInfinity } catch (error ArgumentOutOfRangeException) { invalidNumberProperties++ }
+      try { number.Minimum = 11 } catch (error ArgumentOutOfRangeException) { invalidNumberProperties++ }
+      try { number.Maximum = -1 } catch (error ArgumentOutOfRangeException) { invalidNumberProperties++ }
+      try { number.Value = float64.NaN } catch (error ArgumentOutOfRangeException) { invalidNumberProperties++ }
+      failed += Checks.Expect(invalidNumberProperties == 5, "NumberInput validates numeric properties")
+      number.Value = 0
+      numberRoot.Draw(numberScreen)
+      let clampedNumberEvent = keyEv(Key.Down)
+      for i in 0 ... 100 {
+        numberRoot.Handle(clampedNumberEvent)
+        numberRoot.Draw(numberScreen)
+      }
+      let numberAllocationStart = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 100 {
+        numberRoot.Handle(clampedNumberEvent)
+        numberRoot.Draw(numberScreen)
+      }
+      failed += Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == numberAllocationStart, "NumberInput clamped step and steady repaint allocate zero bytes")
+
       let entry = TextInput{}
       let eroot = Box{ Children: { entry } }
       let escr = Screen(20, 3)
