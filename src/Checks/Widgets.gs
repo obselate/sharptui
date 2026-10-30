@@ -601,6 +601,35 @@ public class WidgetCheck {
       stable.Rows = List[TableRow]{ tblRow("item8", "8"), tblRow("item3", "3"), tblRow("item9", "9") }
       failed = failed + Checks.Expect(stable.SelectedRowIndex == 1 && stable.SelectedRowId == "item3",
         "TableView restores selection by stable row Id after filtering or sorting")
+      let selectionModes = List[bool]{false, true}
+      for follow in selectionModes {
+        for header in selectionModes {
+          let pendingTable = makeTable()
+          pendingTable.Height = CellLength.Cells(12)
+          pendingTable.ShowHeader = header
+          pendingTable.FollowTail = follow
+          pendingTable.FirstVisibleRowIndex = 1
+          failed = failed + Checks.Expect(
+            pendingTable.SelectedRowIndex == (follow ? 19 : 0)
+              && pendingTable.SelectedRowId == (follow ? "item19" : "item0"),
+            "TableView reads selection before its first layout with FollowTail on and off")
+          pendingTable.SelectedRowIndex = 3
+          failed = failed + Checks.Expect(
+            pendingTable.SelectedRowIndex == (follow ? 19 : 3)
+              && pendingTable.SelectedRowId == (follow ? "item19" : "item3")
+              && pendingTable.FirstVisibleRowIndex == 1,
+            "TableView sets selection before layout without moving a zero-height viewport")
+          let pendingRoot = Box{ Children: { pendingTable } }
+          let pendingScreen = Screen(40, 12)
+          pendingRoot.Draw(pendingScreen)
+          failed = failed + Checks.Expect(
+            pendingTable.SelectedRowIndex == (follow ? 19 : 3)
+              && pendingTable.SelectedRowId == (follow ? "item19" : "item3")
+              && pendingTable.FirstVisibleRowIndex == (follow ? (header ? 9 : 8) : 1)
+              && pendingScreen.Probe(0, header ? 1 : 0) == "i",
+            "TableView applies its selection and tail viewport on the first 40x12 layout")
+        }
+      }
 
       let following = makeTable()
       following.ShowHeader = false
