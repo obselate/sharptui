@@ -56,6 +56,7 @@ SharpTui.MemoryClipboard
 SharpTui.MouseButton
 SharpTui.MouseKind
 SharpTui.MouseTracking
+SharpTui.NumericDisplay
 SharpTui.NumericRange
 SharpTui.Overlay
 SharpTui.PixelSize

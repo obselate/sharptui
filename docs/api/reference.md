@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `182246951ed4f84f1f69f099c3666030b35a490fc6716ff10668f5b05ad5e2e3`.
+Public-symbol SHA-256: `a4eab08c0ba1e5a93d753f2094461c55b006cc7969e5d42354641dc79b5cadf8`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -65,6 +65,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.MouseButton](#sharptuimousebutton)
 - [SharpTui.MouseKind](#sharptuimousekind)
 - [SharpTui.MouseTracking](#sharptuimousetracking)
+- [SharpTui.NumericDisplay](#sharptuinumericdisplay)
 - [SharpTui.NumericRange](#sharptuinumericrange)
 - [SharpTui.Overlay](#sharptuioverlay)
 - [SharpTui.PixelSize](#sharptuipixelsize)
@@ -1377,6 +1378,23 @@ G# kind: `enum`.
 - `Click` — Reports button presses and releases, but not pointer motion.
 - `Drag` — Reports button events and pointer motion while a button is held.
 - `AllMotion` — Reports button events and all pointer motion.
+
+## SharpTui.NumericDisplay
+
+Numeric text drawn in one, three, or five rows, with plain text fallback.
+
+G# kind: `class`.
+Inherits `Box`; see that type for inherited members.
+
+### Constructors
+
+- `init()` — Creates an empty, left-aligned display with a preferred height of one row.
+
+### Properties
+
+- `prop Alignment HorizontalAlignment { get; set; }` — Horizontal placement of the rendered value within the content region.
+- `prop PreferredHeight int32 { get; set; }` — The requested glyph height: 1, 3, or 5. Insufficient width or height uses one plain row.
+- `prop Text string { get; set; }` — The complete value. Unsupported characters use one plain row, clipped at grapheme boundaries.
 
 ## SharpTui.NumericRange
 
