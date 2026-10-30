@@ -13,17 +13,8 @@ public open class Spinner : Box {
   public prop Frames List[string] {
     get -> frames
     set {
-      var changed = frames.Count != value.Count
-      if !changed {
-        for i in 0 ... frames.Count {
-          if frames[i] != value[i] {
-            changed = true
-            break
-          }
-        }
-      }
       frames = value
-      if changed { MarkMeasureDirty() }
+      MarkMeasureDirty()
     }
   }
   /// The index into Frames currently shown, derived from the number of Advance calls.

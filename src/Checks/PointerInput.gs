@@ -133,7 +133,10 @@ private func checkPointerCorrectness() int32 {
   failed = failed + Checks.Expect(following.Bounds.Column == previousColumn + 3,
     "changing Label.Text invalidates intrinsic layout and moves its following sibling")
   let measuredTabs = Tabs{ Titles: List[string]{ "a" } }
-  failed += checkContentRelayout(measuredTabs, () -> { measuredTabs.Titles = List[string]{ "日本" } })
+  failed += checkContentRelayout(measuredTabs, () -> {
+    measuredTabs.Titles[0] = "日本"
+    measuredTabs.Titles = measuredTabs.Titles
+  })
   let status = StatusBar{ LeftText: "a" }
   failed += checkContentRelayout(status, () -> { status.LeftText = "日本" })
   let measuredToggle = Toggle{ Text: "a" }

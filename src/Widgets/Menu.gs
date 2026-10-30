@@ -23,20 +23,8 @@ public open class Select : Box {
   public prop Options List[string] {
     get -> options
     set {
-      var changed = options.Count != value.Count
-      if !changed {
-        for i in 0 ... options.Count {
-          if options[i] != value[i] {
-            changed = true
-            break
-          }
-        }
-      }
       options = value
-      normalizeSelection()
-      highlightIndex = clampIndex(highlightIndex)
-      selection.Change = nil
-      if changed { MarkMeasureDirty() }
+      Refresh()
     }
   }
   /// Index of the selected option, clamped to the current Options range. Setting it selects programmatically and does not emit a SelectionChange.

@@ -19,19 +19,8 @@ public open class Tabs : Box {
   public prop Titles List[string] {
     get -> titles
     set {
-      var changed = titles.Count != value.Count
-      if !changed {
-        for i in 0 ... titles.Count {
-          if titles[i] != value[i] {
-            changed = true
-            break
-          }
-        }
-      }
       titles = value
-      if changed { MarkMeasureDirty() }
-      selection.Index = normalizedSelectedIndex()
-      selection.Change = nil
+      Refresh()
     }
   }
 
@@ -218,27 +207,24 @@ public open class StatusBar : Box {
   public prop LeftRuns List[TextRun] {
     get -> leftRuns
     set {
-      let changed = !sameRuns(leftRuns, value)
       leftRuns = value
-      if changed { MarkMeasureDirty() }
+      MarkMeasureDirty()
     }
   }
   /// Styled content drawn in the center. When non-empty, this takes precedence over CenterText.
   public prop CenterRuns List[TextRun] {
     get -> centerRuns
     set {
-      let changed = !sameRuns(centerRuns, value)
       centerRuns = value
-      if changed { MarkMeasureDirty() }
+      MarkMeasureDirty()
     }
   }
   /// Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.
   public prop RightRuns List[TextRun] {
     get -> rightRuns
     set {
-      let changed = !sameRuns(rightRuns, value)
       rightRuns = value
-      if changed { MarkMeasureDirty() }
+      MarkMeasureDirty()
     }
   }
 
@@ -250,14 +236,6 @@ public open class StatusBar : Box {
     leftRuns = List[TextRun]()
     centerRuns = List[TextRun]()
     rightRuns = List[TextRun]()
-  }
-
-  private func sameRuns(a List[TextRun], b List[TextRun]) bool {
-    if a.Count != b.Count { return false }
-    for i in 0 ... a.Count {
-      if !EqualityComparer[TextRun].Default.Equals(a[i], b[i]) { return false }
-    }
-    return true
   }
 
   /// Always true, so this bar sizes itself via MeasureIntrinsic.
