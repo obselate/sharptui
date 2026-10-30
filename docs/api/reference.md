@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `e55d6b9190354581f86f0c5974b303337b57cb996ca74bcf7d60b7ae1defb334`.
+Public-symbol SHA-256: `d95ed160c9241db6376f1795e3644e5a6dcfb02518f5273473e9f0328a67dbec`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1566,6 +1566,7 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop IsHorizontal bool { get; set; }` — Whether options form a row with Left/Right navigation instead of a column with Up/Down. Defaults to false.
 - `prop OnChange Action[Toggle] { get; set; }` — Receives the activated radio choice. Programmatic selection is silent.
 - `prop SelectedToggle Toggle { get; }` — The currently selected toggle, or nil when none is selected.
 

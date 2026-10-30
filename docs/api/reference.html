@@ -3257,7 +3257,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuiradiogroup" data-search="sharptui.radiogroup owns toggle children and keeps at most one checked at a time, radio-button style. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty radio group with no selection. properties prop onchange action[toggle] { get; set; } — receives the activated radio choice. programmatic selection is silent. prop selectedtoggle toggle { get; } — the currently selected toggle, or nil when none is selected. methods func add(toggle toggle) — adds a toggle as a child and attaches it to this group. throws if the toggle already belongs to another group. toggle : the toggle to add. func clearselection() — deselects every toggle in the group. func select(toggle toggle) — selects toggle, deselecting every other toggle in the group. throws if toggle does not belong to this group. toggle : the toggle to select.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty radio group with no selection. properties prop ishorizontal bool { get; set; } — whether options form a row with left/right navigation instead of a column with up/down. defaults to false. prop onchange action[toggle] { get; set; } — receives the activated radio choice. programmatic selection is silent. prop selectedtoggle toggle { get; } — the currently selected toggle, or nil when none is selected. methods func add(toggle toggle) — adds a toggle as a child and attaches it to this group. throws if the toggle already belongs to another group. toggle : the toggle to add. func clearselection() — deselects every toggle in the group. func select(toggle toggle) — selects toggle, deselecting every other toggle in the group. throws if toggle does not belong to this group. toggle : the toggle to select.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -3280,6 +3280,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 <h3 id="properties-44">Properties</h3>
 <ul>
+<li><code>prop IsHorizontal bool { get; set; }</code> — Whether options form a row with Left/Right navigation instead of a column with Up/Down. Defaults to false.</li>
 <li><code>prop OnChange Action[Toggle] { get; set; }</code> — Receives the activated radio choice. Programmatic selection is silent.</li>
 <li><code>prop SelectedToggle Toggle { get; }</code> — The currently selected toggle, or nil when none is selected.</li>
 </ul>
