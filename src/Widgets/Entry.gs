@@ -385,7 +385,7 @@ public open class NumberInput : TextInput {
   /// Handles commit, cancel and bounded steps. Other input uses TextInput.
   /// @param ev The input event.
   /// @returns Handled for numeric commands, otherwise the inherited result.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     if ev.Kind == UiEventKind.Key && !inputIsRelease(ev) && !inputHasWindowModifier(ev.Modifiers) {
       if ev.Key == Key.Enter {
         Commit()

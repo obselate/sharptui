@@ -97,19 +97,19 @@ public open class Toggle : Box {
   /// selects this toggle instead of unchecking an already-checked one.
   /// @param ev The input event to handle.
   /// @returns Handled when the event was consumed, Continue otherwise.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) { return EventResult.Continue }
     if inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
     if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter {
-      activate()
+      Activate()
       return EventResult.Handled
     }
     if ev.Key == Key.Character && ev.Text == " " {
-      activate()
+      Activate()
       return EventResult.Handled
     }
     if ev.Kind == UiEventKind.Mouse && ev.Mouse == MouseKind.Press && ev.Button == MouseButton.Left && ContentBounds.Contains(ev.Position) {
-      activate()
+      Activate()
       return EventResult.Handled
     }
     return EventResult.Continue
@@ -127,7 +127,7 @@ public open class Toggle : Box {
     MarkMeasureDirty()
   }
 
-  private func activate() {
+  internal func Activate() {
     if let group = owner {
       if isChecked { return }
       group.Select(this)
@@ -148,6 +148,12 @@ public open class RadioGroup : Box {
   public prop OnChange Action[Toggle]? { get; set; }
 
   private var selectedToggle Toggle?
+
+  /// Whether options form a row with Left/Right navigation instead of a column with Up/Down. Defaults to false.
+  public prop IsHorizontal bool {
+    get -> LayoutAxis == Axis.Row
+    set -> LayoutAxis = value ? Axis.Row : Axis.Column
+  }
 
   /// The currently selected toggle, or nil when none is selected.
   public prop SelectedToggle Toggle? {
@@ -178,6 +184,31 @@ public open class RadioGroup : Box {
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
     synchronize()
+  }
+
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind != UiEventKind.Key || inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) {
+      return EventResult.Continue
+    }
+    let previous = ev.Key == (IsHorizontal ? Key.Left : Key.Up)
+    if !previous && ev.Key != (IsHorizontal ? Key.Right : Key.Down) { return EventResult.Continue }
+    synchronize()
+    var index = previous ? 0 : Children.Count - 1
+    for i in 0 ... Children.Count {
+      if Children[i].IsFocused { index = i }
+    }
+    var remaining = Children.Count
+    while remaining > 0 {
+      index = (index + (previous ? -1 : 1) + Children.Count) % Children.Count
+      let child = Children[index]
+      if child is Toggle && child.IsVisible && child.CanFocus {
+        TreeRoot().Focus(child)
+        child.Activate()
+        return EventResult.Handled
+      }
+      remaining = remaining - 1
+    }
+    return EventResult.Continue
   }
 
   /// Selects toggle, deselecting every other toggle in the group. Throws if toggle does not belong to this group.

@@ -66,6 +66,30 @@ class VariableSourceCheck : VirtualListSource {
   }
 }
 
+internal class ToggleEnterProbe : Toggle {
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter { return EventResult.Continue }
+    return base.Accept(ev)
+  }
+}
+
+internal class NumberInputEnterProbe : NumberInput {
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.Enter { return EventResult.Continue }
+    return base.Accept(ev)
+  }
+}
+
+internal class InputParentProbe : Box {
+  internal prop EnterCount int32 { get; set; }
+
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind != UiEventKind.Key || ev.Key != Key.Enter { return EventResult.Continue }
+    EnterCount = EnterCount + 1
+    return EventResult.Handled
+  }
+}
+
 public class WidgetCheck {
   shared {
     public func Run() int32 {
@@ -397,6 +421,23 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(troot.Handle(mouseEv(2, 5)) == EventResult.Continue, "a click outside is ignored")
       failed = failed + Checks.Expect(toggle.IsChecked, "the outside click left Toggle.IsChecked alone")
 
+      let extendedToggle = ToggleEnterProbe{ Text: "toggle" }
+      let extendedNumber = NumberInputEnterProbe{ Value: 1, Text: "2", Width: 12 }
+      let inputParent = InputParentProbe{ Children: { extendedToggle, extendedNumber } }
+      inputParent.Draw(Screen(40, 12))
+      inputParent.Focus(extendedToggle)
+      inputParent.Handle(keyEv(Key.Enter))
+      inputParent.Focus(extendedNumber)
+      inputParent.Handle(keyEv(Key.Enter))
+      failed += Checks.Expect(inputParent.EnterCount == 2 && !extendedToggle.IsChecked
+          && extendedNumber.Value == 1 && extendedNumber.Text == "2",
+        "Toggle and NumberInput subclasses can pass Enter through to their parent")
+      inputParent.Handle(keyEv(Key.Up))
+      inputParent.Focus(extendedToggle)
+      inputParent.Handle(charEv(" "))
+      failed += Checks.Expect(extendedNumber.Value == 2 && extendedToggle.IsChecked,
+        "Input subclasses can call the base handler for other keys")
+
       let one = Toggle{ Text: "one" }
       let two = Toggle{ Text: "two" }
       let group = RadioGroup{}
@@ -421,6 +462,46 @@ public class WidgetCheck {
       one.IsChecked = false
       failed = failed + Checks.Expect(!one.IsChecked && !two.IsChecked && group.SelectedToggle == nil,
         "clearing grouped Toggle.IsChecked clears the group selection")
+
+      var radioChanges = 0
+      group.OnChange = selected -> radioChanges = radioChanges + 1
+      rroot.Focus(one)
+      rroot.Handle(keyEv(Key.Down))
+      failed += Checks.Expect(!group.IsHorizontal && two.IsFocused && two.IsChecked
+          && one.Bounds.Row < two.Bounds.Row && radioChanges == 1,
+        "RadioGroup column layout selects and focuses with Down")
+      rroot.Handle(keyEv(Key.Up))
+      failed += Checks.Expect(one.IsFocused && one.IsChecked && !two.IsChecked,
+        "RadioGroup column layout selects with Up")
+      group.IsHorizontal = true
+      one.Text = "中文"
+      let radioScreen = Screen(40, 12)
+      radioScreen.ColorMode = TerminalColorMode.NoColor
+      rroot.Draw(radioScreen)
+      failed += Checks.Expect(one.Bounds.Row == two.Bounds.Row && one.Bounds.HeightRows == 1
+          && two.Bounds.Column >= one.Bounds.Column + one.Bounds.WidthCells
+          && radioScreen.Probe(one.Bounds.Column + 4, one.Bounds.Row) == "中"
+          && radioScreen.Probe(one.Bounds.Column + 6, one.Bounds.Row) == "文"
+          && radioScreen.Probe(two.Bounds.Column + 4, two.Bounds.Row) == "t",
+        "RadioGroup row layout draws wide text on one line without color")
+      rroot.Handle(keyEv(Key.Right))
+      failed += Checks.Expect(two.IsFocused && two.IsChecked && !one.IsChecked,
+        "RadioGroup row layout selects and focuses with Right")
+      rroot.Handle(keyEv(Key.Left))
+      failed += Checks.Expect(one.IsFocused && one.IsChecked && !two.IsChecked,
+        "RadioGroup row layout selects and focuses with Left")
+      failed += Checks.Expect(rroot.Handle(keyEv(Key.Down)) == EventResult.Continue && one.IsChecked,
+        "RadioGroup row layout leaves vertical keys unconsumed")
+      rroot.Handle(mouseEv(two.Bounds.Column, two.Bounds.Row))
+      failed += Checks.Expect(two.IsChecked && !one.IsChecked && radioChanges == 5,
+        "RadioGroup row layout preserves click selection and callbacks")
+      rroot.Handle(keyEv(Key.Left))
+      rroot.Handle(keyEv(Key.Right))
+      let radioAllocationStart = GC.GetAllocatedBytesForCurrentThread()
+      rroot.Handle(keyEv(Key.Left))
+      rroot.Handle(keyEv(Key.Right))
+      failed += Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == radioAllocationStart,
+        "RadioGroup arrow selection allocates no managed memory after warmup")
 
       let declaredOne = Toggle{ Text: "declared one" }
       let declaredTwo = Toggle{ Text: "declared two" }
