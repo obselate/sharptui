@@ -138,6 +138,45 @@ internal class LayoutCheck {
       failed = failed + Checks.Expect(secondChild.Bounds.Column == 0,
         "removing a child after layout updates the Yoga tree")
 
+      let retainedChild = Label{ Text: "中文" }
+      let retainedParent = Box{ Children: { retainedChild } }
+      let droppedParent = Box{ Children: { retainedParent } }
+      let retainedRoot = Box{ Children: { droppedParent } }
+      let retainedScreen = Screen(40, 12)
+      retainedRoot.Draw(retainedScreen)
+      retainedRoot.Children = List[Box]()
+      let replacementParent = Box{ Padding: CellInsets.All(2), Children: { retainedChild } }
+      retainedRoot.Children = List[Box]{ replacementParent }
+      retainedRoot.Draw(retainedScreen)
+      failed = failed + Checks.Expect(retainedChild.Bounds.Column == 2 && retainedChild.Bounds.Row == 2
+        && retainedScreen.Probe(2, 2) == "中",
+        "a retained descendant renders in a new parent after its ancestor is dropped")
+      replacementParent.Children.Clear()
+      retainedRoot.Children = List[Box]{ droppedParent }
+      retainedRoot.Draw(retainedScreen)
+      failed = failed + Checks.Expect(retainedChild.Bounds.Column == 0 && retainedScreen.Probe(0, 0) == "中",
+        "a detached ancestor rebuilds its Yoga child links when reused")
+
+      let movedChild = Label{ Text: "中文", CanFocus: true }
+      let destinationParent = Box{ Width: CellLength.Cells(20), Padding: CellInsets.All(2) }
+      let sourceParent = Box{ Width: CellLength.Cells(20), Children: { movedChild } }
+      let liveParents = Row{ Children: { destinationParent, sourceParent } }
+      liveParents.Draw(retainedScreen)
+      sourceParent.Children.Clear()
+      destinationParent.Children.Add(movedChild)
+      liveParents.Draw(retainedScreen)
+      failed = failed + Checks.Expect(movedChild.Bounds.Column == 2 && retainedScreen.Probe(2, 2) == "中",
+        "a child moves between live parents before the source parent is synchronized")
+      destinationParent.Children.Clear()
+      sourceParent.Children.Add(movedChild)
+      sourceParent.Draw(retainedScreen)
+      movedChild.Focus(movedChild)
+      liveParents.Children = List[Box]{ sourceParent }
+      liveParents.Draw(retainedScreen)
+      failed = failed + Checks.Expect(movedChild.IsFocused
+        && movedChild.Bounds.Column == 0 && retainedScreen.Probe(0, 0) == "中",
+        "dropping a former parent does not detach a child already moved to another parent")
+
       let wrapped = TextIntrinsicProbe{ Content: "hello world foo" }
       let constrained = Row{
         Children: {
