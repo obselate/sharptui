@@ -32,6 +32,8 @@ type|SharpTui.Dialog|class
 type|SharpTui.DialogAction|class
 type|SharpTui.Easing|enum
 type|SharpTui.EventResult|enum
+type|SharpTui.Form|class
+type|SharpTui.FormField|class
 type|SharpTui.GraphicsProtocol|enum
 type|SharpTui.HorizontalAlignment|enum
 type|SharpTui.ImageFit|enum
