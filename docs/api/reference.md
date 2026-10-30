@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `cc13f45a9b03363015c0f7a69fc0ed0c2f9b69620bf05b8823aeedda927ecee1`.
+Public-symbol SHA-256: `a048408ba7002557c08380a639b45ce61ce463eadaa109ea788014a809baac4a`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -2011,12 +2011,15 @@ Inherits `Box`; see that type for inherited members.
 - `prop Columns List[TableColumn] { get; set; }` — Column definitions in display order.
 - `prop FirstVisibleColumnIndex int32 { get; set; }` — Index of the first visible column in the horizontal viewport.
 - `prop FirstVisibleRowIndex int32 { get; set; }` — Index of the first data row visible in the viewport.
+- `prop FollowTail bool { get; set; }` — Keeps the last selectable row selected and visible until backward navigation or a left click.
 - `prop HeaderStyle Style { get; set; }` — Style applied to the header row.
+- `prop OnActivate Action[TableRow] { get; set; }` — Receives the selected row on Enter or a left click on that row. Activation does not change selection.
 - `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop Rows List[TableRow] { get; set; }` — Data rows shown by this table; setting it replaces all rows and preserves selection by stable Id when possible.
 - `prop SelectedRowId string { get; }` — Id of the selected row, or empty when no row is selected.
 - `prop SelectedRowIndex int32 { get; set; }` — Index of the selected row. Setting it selects programmatically and does not emit a SelectionChange.
 - `prop SelectedRowStyle Style { get; set; }` — Style merged over the selected row's inherited style.
+- `prop ShowHeader bool { get; set; }` — Shows the header row. Defaults to true.
 - `prop Source KeyedSource[TableRow, string] { get; set; }` — An optional indexed row source. When set, the source supplies rows instead of Rows.
 
 ### Methods
