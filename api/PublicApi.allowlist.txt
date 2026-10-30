@@ -39,6 +39,8 @@ SharpTui.ImageSource
 SharpTui.ImageView
 SharpTui.Key
 SharpTui.KeyGesture
+SharpTui.KeyHint
+SharpTui.KeyHintBar
 SharpTui.KeyModifiers
 SharpTui.KeyPhase
 SharpTui.KeyedSource`2
