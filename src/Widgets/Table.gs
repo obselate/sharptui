@@ -164,6 +164,7 @@ public open class TableView : Box {
   private var selection SelectionState
   private var followTail bool
   private var showHeader bool
+  private var viewportHeight int32 = -1
   private let cellHosts List[TableCellHost] = List[TableCellHost]()
   private let cellContents List[Box] = List[Box]()
   private let cellBounds List[CellRect] = List[CellRect]()
@@ -300,7 +301,12 @@ public open class TableView : Box {
     let r = ContentBounds
     let headerRows = ShowHeader ? 1 : 0
     let height = Math.Max(0, r.HeightRows - headerRows)
-    FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
+    if viewportHeight >= 0 && height != viewportHeight && !followTail {
+      FirstVisibleRowIndex = Selection.ScrollIntoView(rowCount(), selection.Index, FirstVisibleRowIndex, height)
+    } else {
+      FirstVisibleRowIndex = clampScroll(FirstVisibleRowIndex, height)
+    }
+    viewportHeight = height
     let widths = columnWidths(r.WidthCells)
     cellContents.Clear()
     cellBounds.Clear()
