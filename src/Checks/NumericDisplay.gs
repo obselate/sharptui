@@ -15,45 +15,47 @@ internal class NumericDisplayCheck {
                 numericRows(
                 "-12.5%",
                 3,
-                List[string]{"         _       _  █ █", "███   |  _|     |_   █ ", "      | |_   █   _| █ █"}
+                List[string]{"    ▄█  ▀▀█   █▀▀ ▀ █", "▀▀▀  █  █▀▀   ▀▀█ ▄▀ ", "    ▀▀▀ ▀▀▀ ▀ ▀▀▀ ▀ ▀",}
             )
-            failed = failed + numericRows("+90", 3, List[string]{" █   _   _ ", "███ |_| | |", " █   _| |_|"})
+            failed = failed + numericRows("+90", 3, List[string]{" ▄  █▀█ █▀█", "▀█▀ ▀▀█ █ █", "    ▀▀▀ ▀▀▀",})
             failed = failed +
-                numericRows(
-                "08:49",
-                3,
-                List[string]{" _   _   █       _ ", "| | |_|     |_| |_|", "|_| |_|  █    |  _|"}
-            )
+                numericRows("08:49", 3, List[string]{"█▀█ █▀█ ▄ █ █ █▀█", "█ █ █▀█ ▄ ▀▀█ ▀▀█", "▀▀▀ ▀▀▀     ▀ ▀▀▀",})
             failed = failed +
-                numericRows(" 367", 3, List[string]{"     _   _   _ ", "     _| |_    |", "     _| |_|   |"})
+                numericRows(" 367", 3, List[string]{"    ▀▀█ █▀▀ ▀▀█", "    ▀▀█ █▀█   █", "    ▀▀▀ ▀▀▀   ▀",})
             failed = failed +
                 numericRows(
                 "-12.5%",
                 5,
                 List[string]{
-                    "     █  ███     ███ █ █",
-                    "    ██    █     █     █",
-                    "███  █  ███     ███  █ ",
-                    "     █  █         █ █  ",
-                    "    ███ ███  █  ███ █ █"
+                    "         ██   ██████    ██████ ██  ██",
+                    "       ████       ██    ██         ██",
+                    "██████   ██   ██████    ██████   ██  ",
+                    "         ██   ██            ██ ██    ",
+                    "       ██████ ██████ ██ ██████ ██  ██",
                 }
             )
             failed = failed +
                 numericRows(
                 "+90",
                 5,
-                List[string]{"    ███ ███", " █  █ █ █ █", "███ ███ █ █", " █    █ █ █", "    ███ ███"}
+                List[string]{
+                    "       ██████ ██████",
+                    "  ██   ██  ██ ██  ██",
+                    "██████ ██████ ██  ██",
+                    "  ██       ██ ██  ██",
+                    "       ██████ ██████",
+                }
             )
             failed = failed +
                 numericRows(
                 "08:49",
                 5,
                 List[string]{
-                    "███ ███     █ █ ███",
-                    "█ █ █ █  █  █ █ █ █",
-                    "█ █ ███     ███ ███",
-                    "█ █ █ █  █    █   █",
-                    "███ ███       █ ███"
+                    "██████ ██████    ██  ██ ██████",
+                    "██  ██ ██  ██ ██ ██  ██ ██  ██",
+                    "██  ██ ██████    ██████ ██████",
+                    "██  ██ ██  ██ ██     ██     ██",
+                    "██████ ██████        ██ ██████",
                 }
             )
             failed = failed +
@@ -61,25 +63,26 @@ internal class NumericDisplayCheck {
                 " 367",
                 5,
                 List[string]{
-                    "    ███ ███ ███",
-                    "      █ █     █",
-                    "    ███ ███   █",
-                    "      █ █ █   █",
-                    "    ███ ███   █"
+                    "       ██████ ██████ ██████",
+                    "           ██ ██         ██",
+                    "       ██████ ██████     ██",
+                    "           ██ ██  ██     ██",
+                    "       ██████ ██████     ██",
                 }
             )
 
             let largeHeights = List[int32]{3, 5}
             for height in largeHeights {
                 let display = NumericDisplay{Text: "-12.5%", PreferredHeight: height}
-                let narrow = Screen(22, height)
+                let width = height == 3 ? 21: 37
+                let narrow = Screen(width - 1, height)
                 display.Draw(narrow)
                 failed = failed + Checks.Expect(
                     narrow.Probe(0, 0) == "-" && narrow.Probe(5, 0) == "%"
                     && narrow.Probe(0, height - 1) == " ",
                     "NumericDisplay falls back as a whole when glyph width cannot fit"
                 )
-                let short = Screen(23, height - 1)
+                let short = Screen(width, height - 1)
                 display.Draw(short)
                 failed = failed + Checks.Expect(
                     short.Probe(0, 0) == "-" && short.Probe(5, 0) == "%"
@@ -115,13 +118,13 @@ internal class NumericDisplayCheck {
                     let display = NumericDisplay{Text: "0", PreferredHeight: height, Alignment: alignment}
                     let screen = Screen(9, height)
                     display.Draw(screen)
-                    let width = height == 1 ? 1: 3
+                    let width = height == 1 ? 1: height == 3 ? 3: 6
                     let offset = alignment == HorizontalAlignment.Left ? 0: alignment == HorizontalAlignment.Center ? (
                         9 - width
                     ) / 2: 9 - width
-                    let column = offset + (height == 3 ? 1: 0)
+                    let column = offset
                     failed = failed + Checks.Expect(
-                        screen.Probe(column, 0) == (height == 1 ? "0": height == 3 ? "_": "█"),
+                        screen.Probe(column, 0) == (height == 1 ? "0": "█"),
                         "NumericDisplay aligns the complete glyph form"
                     )
                     screen.ColorMode = TerminalColorMode.NoColor

@@ -145,69 +145,57 @@ public open class NumericDisplay : Box {
                 supported = false
             }
         }
-        glyphWidth = Math.Max(0, clusters.Count * 4 - 1)
+        glyphWidth = 0
         if supported && preferredHeight > 1 {
-            for i in 0 ... clusters.Count {
-                let shape = pattern(clusters[i][0])
+            let scale = preferredHeight == 5 ? 2: 1
+            for cluster in clusters {
+                let shape = pattern(cluster[0])
+                let columns = (shape.Length + 1) / 5 - 1
                 for row in 0 ... preferredHeight {
-                    for column in 0 ... 3 {
-                        let glyph = shape[row * 4 + column]
-                        if glyph != ' ' {
-                            points.Add(
-                                NumericDisplayCell{
-                                    Column: i * 4 + column,
-                                    Row: row,
-                                    Glyph: glyph == '#' ? "█": glyph.ToString(),
-                                }
-                            )
+                    let topRow = preferredHeight == 5 ? row: row * 2
+                    for column in 0 ... columns {
+                        let top = shape[topRow * (columns + 1) + column] == '#'
+                        let bottom = preferredHeight == 3 && topRow + 1 < 5
+                        && shape[(topRow + 1) * (columns + 1) + column] == '#'
+                        let glyph = preferredHeight == 5 ? (top ? "█": ""):
+                        top ? (bottom ? "█": "▀"): (bottom ? "▄": "")
+                        if glyph != "" {
+                            for cell in 0 ... scale {
+                                points.Add(
+                                    NumericDisplayCell{
+                                        Column: glyphWidth + column * scale + cell,
+                                        Row: row,
+                                        Glyph: glyph,
+                                    }
+                                )
+                            }
                         }
                     }
                 }
+                glyphWidth = glyphWidth + columns * scale + 1
             }
+            glyphWidth = Math.Max(0, glyphWidth - 1)
         }
         MarkMeasureDirty()
     }
 
-    private func pattern(character char) string {
-        if preferredHeight == 5 {
-            return switch character {
-                case '0': "###/# #/# #/# #/###"
-                case '1': " # /## / # / # /###"
-                case '2': "###/  #/###/#  /###"
-                case '3': "###/  #/###/  #/###"
-                case '4': "# #/# #/###/  #/  #"
-                case '5': "###/#  /###/  #/###"
-                case '6': "###/#  /###/# #/###"
-                case '7': "###/  #/  #/  #/  #"
-                case '8': "###/# #/###/# #/###"
-                case '9': "###/# #/###/  #/###"
-                case '+': "   / # /###/ # /   "
-                case '-': "   /   /###/   /   "
-                case '.': "   /   /   /   / # "
-                case ':': "   / # /   / # /   "
-                case '%': "# #/  #/ # /#  /# #"
-                case ' ': "   /   /   /   /   "
-                case _: ""
-            }
-        }
-        return switch character {
-            case '0': " _ /| |/|_|"
-            case '1': "   /  |/  |"
-            case '2': " _ / _|/|_ "
-            case '3': " _ / _|/ _|"
-            case '4': "   /|_|/  |"
-            case '5': " _ /|_ / _|"
-            case '6': " _ /|_ /|_|"
-            case '7': " _ /  |/  |"
-            case '8': " _ /|_|/|_|"
-            case '9': " _ /|_|/ _|"
-            case '+': " # /###/ # "
-            case '-': "   /###/   "
-            case '.': "   /   / # "
-            case ':': " # /   / # "
-            case '%': "# #/ # /# #"
-            case ' ': "   /   /   "
-            case _: ""
-        }
+    private func pattern(character char) string -> switch character {
+        case '0': "###/# #/# #/# #/###"
+        case '1': " # /## / # / # /###"
+        case '2': "###/  #/###/#  /###"
+        case '3': "###/  #/###/  #/###"
+        case '4': "# #/# #/###/  #/  #"
+        case '5': "###/#  /###/  #/###"
+        case '6': "###/#  /###/# #/###"
+        case '7': "###/  #/  #/  #/  #"
+        case '8': "###/# #/###/# #/###"
+        case '9': "###/# #/###/  #/###"
+        case '+': "   / # /###/ # /   "
+        case '-': "   /   /###/   /   "
+        case '.': " / / / /#"
+        case ':': " /#/ /#/ "
+        case '%': "# #/  #/ # /#  /# #"
+        case ' ': "   /   /   /   /   "
+        case _: ""
     }
 }
