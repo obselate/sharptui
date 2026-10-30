@@ -732,8 +732,10 @@ public open class TableView : Box {
     if followTail {
       let last = nearestSelectable(count - 1, -1)
       setSelection(last < 0 ? count - 1 : last, false)
-      FirstVisibleRowIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleRowIndex,
-        ContentBounds.HeightRows - (ShowHeader ? 1 : 0))
+      let height = ContentBounds.HeightRows - (ShowHeader ? 1 : 0)
+      if height > 0 {
+        FirstVisibleRowIndex = Selection.ScrollIntoView(count, selection.Index, FirstVisibleRowIndex, height)
+      }
       return
     }
     let previous = selection.Index
