@@ -47,6 +47,7 @@ public open class Box {
   private var treeChildren List[Box]
   private var parent Box?
   private var mouseCapture Box?
+  private var focusTargets List[Box]?
 
   /// The box's rectangle in screen cells after the last layout pass. Zero-valued when not visible.
   public prop Bounds CellRect -> bounds
@@ -310,6 +311,7 @@ public open class Box {
     layoutStyleDirty = true
     childVisibilityDirty = false
     parent = nil
+    focusTargets = nil
     mouseCapture = nil
   }
 
@@ -418,11 +420,16 @@ public open class Box {
   /// @param target The box to give focus to.
   public func Focus(target Box) {
     TreeRoot().clearFocus()
-    let all = List[Box]()
+    let all = focusTargets ?? List[Box]()
+    focusTargets = all
     collect(all)
-    for box in all {
+    var i = 0
+    while i < all.Count {
+      let box = all[i]
       box.isFocused = Object.ReferenceEquals(box, target)
+      i = i + 1
     }
+    all.Clear()
   }
 
   /// The visible focusable descendant that currently holds focus, or nil if none.
@@ -739,8 +746,10 @@ public open class Box {
   private func collect(into List[Box]) {
     if !IsVisible { return }
     if CanFocus { into.Add(this) }
-    for kid in Children {
-      kid.collect(into)
+    var i = 0
+    while i < Children.Count {
+      Children[i].collect(into)
+      i = i + 1
     }
   }
 
@@ -833,8 +842,10 @@ public open class Box {
 
   private func clearFocus() {
     isFocused = false
-    for kid in Children {
-      kid.clearFocus()
+    var i = 0
+    while i < Children.Count {
+      Children[i].clearFocus()
+      i = i + 1
     }
   }
 

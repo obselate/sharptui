@@ -232,6 +232,27 @@ internal class MouseCaptureCheck {
       failed = failed + Checks.Expect(bytesAfter == bytesBefore && generationAfter == generationBefore,
         "warmed captured motion allocates 0 B and causes no Gen0 collections")
 
+      let firstFocus = MouseCaptureProbe{ Width: CellLength.Cells(4), Height: CellLength.Cells(1), ConsumeMouse: true }
+      let secondFocus = MouseCaptureProbe{ Width: CellLength.Cells(4), Height: CellLength.Cells(1), ConsumeMouse: true }
+      firstFocus.MakeFocusable()
+      secondFocus.MakeFocusable()
+      let nestedFocus = Row{ Children: {
+        Box{ Children: { firstFocus } }, Box{ Children: { secondFocus } },
+      } }
+      nestedFocus.Draw(Screen(12, 2))
+      for i in 0 ... 16 {
+        nestedFocus.Handle(mouseCaptureEvent(MouseKind.Press, firstFocus.Bounds.Column, 0))
+        nestedFocus.Handle(mouseCaptureEvent(MouseKind.Press, secondFocus.Bounds.Column, 0))
+      }
+      let focusBytes = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 64 {
+        nestedFocus.Handle(mouseCaptureEvent(MouseKind.Press, firstFocus.Bounds.Column, 0))
+        nestedFocus.Handle(mouseCaptureEvent(MouseKind.Press, secondFocus.Bounds.Column, 0))
+      }
+      let focusAllocated = GC.GetAllocatedBytesForCurrentThread() - focusBytes
+      failed += Checks.Expect(focusAllocated == 0 && secondFocus.IsFocused && !firstFocus.IsFocused,
+        "warmed left presses through a nested tree move focus with zero allocation")
+
       return failed
     }
   }
