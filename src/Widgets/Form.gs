@@ -28,7 +28,7 @@ public class FormField : Box {
       editor = value
       if value != nil {
         value.ConstrainWidth = true
-        value.FlexShrink = 1.0F
+        value.Shrink = 1.0F
         valueRow.Add(value)
       }
       valueRow.Add(modified)
@@ -110,7 +110,7 @@ public open class Form : Box {
 
   /// Creates a form. Add FormField children in display order. Editors keep their state while scrolling.
   public init() {
-    FlexShrink = 1.0F
+    Shrink = 1.0F
     CanReceiveMouse = true
   }
 

@@ -86,6 +86,55 @@ internal class ColorCheck {
       root.Draw(inherited)
       failed = failed + Checks.Expect(!inherited.Flush().Contains("[38;2;108;188;95m"),
         "Color.TerminalDefault does not inherit the parent color")
+
+      let borderInk = Color.Rgb("D1A047")
+      let borderFill = Color.Rgb("263344")
+      let framed = Box{
+        ShowBorder: true,
+        Title: "标题",
+        RightTitle: "右",
+        BottomTitle: "底",
+        Style: Style{ Foreground: green, Background: surface },
+        BorderStyle: Style{ Foreground: borderInk, Background: borderFill },
+        Children: { Label{ Text: "中文" } },
+      }
+      let framedScreen = Screen(40, 12)
+      framed.Draw(framedScreen)
+      let framedOutput = framedScreen.Flush()
+      failed = failed + Checks.Expect(framedOutput.Contains(Ansi.Style(green.Packed, surface.Packed, 0) + "中文")
+        && framedOutput.Contains("[38;2;209;160;71m")
+        && framedScreen.BackgroundAt(0, 0) == borderFill.Packed
+        && framedScreen.BackgroundAt(2, 0) == borderFill.Packed
+        && framedScreen.BackgroundAt(35, 0) == borderFill.Packed
+        && framedScreen.BackgroundAt(35, 11) == borderFill.Packed
+        && framedScreen.BackgroundAt(1, 1) == surface.Packed
+        && framedScreen.BackgroundAt(20, 5) == surface.Packed,
+        "BorderStyle colors the border and its titles without changing content or child style")
+      framedScreen.ColorMode = TerminalColorMode.NoColor
+      framedScreen.Invalidate()
+      framed.Draw(framedScreen)
+      let framedPlain = framedScreen.Flush()
+      failed = failed + Checks.Expect(framedPlain.Contains("中文")
+        && !framedPlain.Contains("38;") && !framedPlain.Contains("48;"),
+        "BorderStyle respects NoColor")
+      framed.CanFocus = true
+      framed.FocusedStyle = Style{ Background: green }
+      framed.Focus(framed)
+      framed.Draw(framedScreen)
+      failed = failed + Checks.Expect(framedScreen.BackgroundAt(0, 0) == green.Packed
+        && framedScreen.BackgroundAt(1, 1) == surface.Packed,
+        "FocusedStyle overrides BorderStyle without changing the child style")
+      framed.BorderStyle = Style()
+      framed.ClearFocus()
+      framed.Draw(framedScreen)
+      failed = failed + Checks.Expect(framedScreen.BackgroundAt(0, 0) == surface.Packed,
+        "an unset BorderStyle keeps the box style on the border")
+      framed.BorderStyle = Style{ Foreground: borderInk, Background: borderFill }
+      for i in 0 ... 64 { framed.Draw(framedScreen) }
+      let before = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 100 { framed.Draw(framedScreen) }
+      let allocated = GC.GetAllocatedBytesForCurrentThread() - before
+      failed = failed + Checks.Expect(allocated == 0, "BorderStyle paint allocates no bytes")
       return failed
     }
   }

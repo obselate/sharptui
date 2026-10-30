@@ -25,6 +25,7 @@ public open class Box {
   private var width CellLength
   private var height CellLength
   private var style Style
+  private var borderStyle Style
   private var focusedStyle Style
   private var showBorder bool
   private var borderGlyphs BorderGlyphs
@@ -91,11 +92,13 @@ public open class Box {
     }
   }
 
-  /// Lets an internal leaf relinquish intrinsic main-axis size when its parent is smaller.
-  internal prop FlexShrink float32 {
+  /// Flex-shrink weight used to reduce main-axis size when siblings exceed the parent's space.
+  /// The reduction is proportional to this weight times the basis size. Must be non-negative;
+  /// defaults to 0, which preserves the box's size.
+  public prop Shrink float32 {
     get -> flexShrink
     set {
-      if value < 0.0F { throw ArgumentOutOfRangeException("FlexShrink") }
+      if value < 0.0F { throw ArgumentOutOfRangeException("Shrink") }
       flexShrink = value
       layoutStyleDirty = true
     }
@@ -119,11 +122,18 @@ public open class Box {
     }
   }
 
-  /// The style used for this box's own fill, border, and title when unfocused. Foreground and
+  /// The style used for this box's fill and content, inherited by its children. Foreground and
   /// background marked IsInherited fall back to the parent's resolved style.
   public prop Style Style {
     get -> style
     set -> style = value
+  }
+
+  /// The style used only for the border and its titles. Inherits Style by default.
+  /// FocusedStyle is merged over this style while the box is focused.
+  public prop BorderStyle Style {
+    get -> borderStyle
+    set -> borderStyle = value
   }
 
   /// The style merged over Style while this exact box is focused. Focus held by a descendant does
@@ -296,6 +306,7 @@ public open class Box {
     width = CellLength.Auto
     height = CellLength.Auto
     style = Style()
+    borderStyle = Style()
     focusedStyle = Style()
     showBorder = false
     borderGlyphs = BorderGlyphs.Square
@@ -848,18 +859,20 @@ public open class Box {
       screen.Fill(frame, resolvedStyle)
     }
     if ShowBorder {
-      screen.DrawBorder(frame, chrome, BorderGlyphs)
+      let resolvedBorder = BorderStyle.MergedOver(resolvedStyle)
+      let border = IsFocused ? FocusedStyle.MergedOver(resolvedBorder) : resolvedBorder
+      screen.DrawBorder(frame, border, BorderGlyphs)
       let right = frame.Column + frame.WidthCells - 3
       var used = 1
       if Title != "" {
         let cells = Glyph.FitWidth(Title, frame.WidthCells - 4)
-        borderTitle(screen, frame.Column + 2, frame.Row, Title, cells, chrome)
+        borderTitle(screen, frame.Column + 2, frame.Row, Title, cells, border)
         used = cells + 3
       }
       let rightCells = Glyph.FitWidth(RightTitle, frame.WidthCells - 5 - used)
-      borderTitle(screen, right - rightCells, frame.Row, RightTitle, rightCells, chrome)
+      borderTitle(screen, right - rightCells, frame.Row, RightTitle, rightCells, border)
       let bottomCells = Glyph.FitWidth(BottomTitle, frame.WidthCells - 6)
-      borderTitle(screen, right - bottomCells, frame.Row + frame.HeightRows - 1, BottomTitle, bottomCells, chrome)
+      borderTitle(screen, right - bottomCells, frame.Row + frame.HeightRows - 1, BottomTitle, bottomCells, border)
     } else if Title != "" {
       screen.WriteClipped(frame, 1, 0, Title, chrome)
     }
