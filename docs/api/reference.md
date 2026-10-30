@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `091a4c5e115872d7f6f60c6f364d78aca05c8cac6568bcbe25a08b33414bf7a0`.
+Public-symbol SHA-256: `c03cb02b995591f424c2014045a594b58fae2ebde0453b3f6db5e8d40e43b71b`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -2017,6 +2017,7 @@ G# kind: `class`.
 
 - `prop Alignment HorizontalAlignment { get; set; }` — Horizontal alignment of text within this column's cells.
 - `prop ColumnWidth ColumnWidth { get; set; }` — Width policy for this column, either a fixed cell count or a weighted share.
+- `prop Ellipsis bool { get; set; }` — Ends clipped header, plain cell, and styled cell text with an ellipsis. Defaults to false.
 - `prop Header string { get; set; }` — Text drawn in the header row for this column.
 - `prop HeaderAlignment HorizontalAlignment { get; set; }` — Horizontal alignment of the header text, independent of body cells.
 

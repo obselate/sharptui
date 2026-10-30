@@ -80,6 +80,18 @@ internal class NumberInputEnterProbe : NumberInput {
   }
 }
 
+internal class TableEndProbe : TableView {
+  internal prop EndCount int32 { get; set; }
+
+  protected override func Accept(ev UiEvent) EventResult {
+    if ev.Kind == UiEventKind.Key && ev.Key == Key.End {
+      EndCount = EndCount + 1
+      return EventResult.Handled
+    }
+    return base.Accept(ev)
+  }
+}
+
 internal class InputParentProbe : Box {
   internal prop EnterCount int32 { get; set; }
 
@@ -950,6 +962,63 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(clippedCells && clippedWire.Contains("[1m")
           && !clippedWire.Contains("38;2;") && !clippedWire.Contains("48;2;"),
         "TableView clips fixed-width headers, text, runs and retained cells without splitting wide glyphs or overwriting a frame in NoColor")
+      let extensibleTable = TableEndProbe{
+        Rows: { tblRow("first", ""), tblRow("second", ""), tblRow("last", "") },
+      }
+      let extensibleRoot = Box{ Children: { extensibleTable } }
+      extensibleRoot.Draw(Screen(40, 12))
+      extensibleRoot.Focus(extensibleTable)
+      failed = failed + Checks.Expect(extensibleRoot.Handle(keyEv(Key.End)) == EventResult.Handled
+          && extensibleTable.EndCount == 1 && extensibleTable.SelectedRowIndex == 0,
+        "TableView subclasses can handle End before the base selection handler")
+      failed = failed + Checks.Expect(extensibleRoot.Handle(keyEv(Key.Down)) == EventResult.Handled
+          && extensibleTable.SelectedRowIndex == 1,
+        "TableView subclasses can pass other keys to the base handler")
+      let ellipsisColumn = TableColumn{ Header: "中文AB", ColumnWidth: ColumnWidth.Cells(10) }
+      failed = failed + Checks.Expect(!ellipsisColumn.Ellipsis, "TableColumn ellipsis defaults to off")
+      let ellipsisTable = TableView{
+        Height: CellLength.Cells(3),
+        Columns: { ellipsisColumn },
+        Rows: { tblRow("中文AB", "") },
+      }
+      let ellipsisRuns = tblRow("runs", "")
+      ellipsisRuns.Cells[0] = TableCell{
+        Runs: List[TextRun]{ TextRun("中", Style()), TextRun("文AB", Style()) },
+      }
+      ellipsisTable.Rows.Add(ellipsisRuns)
+      let ellipsisRoot = Box{ Children: { ellipsisTable } }
+      let plainPrefixes = List[string]{ "", "", "中", "中", "中文", "中文A", "中文AB" }
+      let ellipsisPrefixes = List[string]{ "", "…", "…", "中…", "中…", "中文…", "中文AB" }
+      for columns in 0 ... 7 {
+        ellipsisTable.Width = CellLength.Cells(columns)
+        for enabled in selectionModes {
+          ellipsisColumn.Ellipsis = enabled
+          ellipsisColumn.HeaderAlignment = enabled ? HorizontalAlignment.Center : HorizontalAlignment.Left
+          ellipsisColumn.Alignment = enabled ? HorizontalAlignment.Right : HorizontalAlignment.Left
+          let actual = Screen(40, 12)
+          actual.ColorMode = TerminalColorMode.NoColor
+          ellipsisRoot.Draw(actual)
+          let expected = Screen(40, 12)
+          for row in 0 ... 3 {
+            expected.Write(0, row, enabled ? ellipsisPrefixes[columns] : plainPrefixes[columns])
+          }
+          var correct = true
+          for row in 0 ... 3 {
+            for column in 0 ... 40 {
+              correct = correct && actual.Probe(column, row) == expected.Probe(column, row)
+            }
+          }
+          let before = GC.GetAllocatedBytesForCurrentThread()
+          for frame in 0 ... 4 {
+            actual.Clear()
+            ellipsisRoot.Draw(actual)
+          }
+          let bytes = GC.GetAllocatedBytesForCurrentThread() - before
+          failed = failed + Checks.Expect(correct && bytes == 0L,
+            "TableColumn ellipsis keeps whole wide glyphs in headers, text and styled runs at width "
+              + columns.ToString() + ", measured frame bytes " + bytes.ToString())
+        }
+      }
 
       let tabsChanges = SelectionProbe()
 
