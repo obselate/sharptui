@@ -207,6 +207,9 @@ public class AllocBench {
       uiBenchCleanRedraw("sparkline unchanged redraw", uiBenchSparkline(w), w, h)
       uiBenchCleanRedraw("sparkline 10k auto range unchanged redraw", uiBenchLargeSparkline(10000, w), w, h)
       uiBenchSparklineChange()
+      uiBenchCleanRedraw("chart unchanged redraw", ChartView{ Series: {
+        ChartSeries{ Points: { ChartPoint{ X: 0.0, Y: 0.0 }, ChartPoint{ X: 10.0, Y: 1.0 } } },
+      } }, w, h)
       uiBenchCleanRedraw("spinner unchanged redraw", uiBenchSpinner(w), w, h)
       uiBenchSpinnerAdvance()
       uiBenchCleanRedraw("badge unchanged redraw", uiBenchBadge(w), w, h)

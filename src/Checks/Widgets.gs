@@ -710,6 +710,7 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(cjk.Text == "日!本", "the caret indexes clusters, not bytes")
 
       failed = failed + runWidgetScenario()
+      failed = failed + runChartChecks()
       return failed
     }
   }
