@@ -58,6 +58,8 @@ public class TableColumn {
   public prop HeaderAlignment HorizontalAlignment { get; set; }
   /// Horizontal alignment of text within this column's cells.
   public prop Alignment HorizontalAlignment { get; set; }
+  /// Ends clipped header, plain cell, and styled cell text with an ellipsis. Defaults to false.
+  public prop Ellipsis bool { get; set; }
 
   /// Creates a column with an empty header, an equal share width, and left alignment.
   public init() {
@@ -427,7 +429,7 @@ public open class TableView : Box {
   /// Moves or scrolls the selected row from keyboard and mouse input, and pans the visible columns.
   /// @param ev The input event to handle.
   /// @returns Handled when the event changed the selection or scroll position, Continue otherwise.
-  protected override func Accept(ev UiEvent) EventResult {
+  protected open override func Accept(ev UiEvent) EventResult {
     let outcome = acceptSelection(ev)
     selection.Notify()
     if outcome != EventResult.Continue { LayoutCompleted() }
@@ -532,7 +534,7 @@ public open class TableView : Box {
     var x = 0
     var i = FirstVisibleColumnIndex
     while i < Columns.Count {
-      drawTextCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].HeaderAlignment, ink)
+      drawTextCell(screen, r, x, 0, widths[i], Columns[i].Header, Columns[i].HeaderAlignment, Columns[i].Ellipsis, ink)
       x = x + widths[i]
       if i + 1 < Columns.Count {
         drawSeparator(screen, r, x, 0, ink)
@@ -549,7 +551,7 @@ public open class TableView : Box {
     while i < count {
       let w = widths[i]
       if i < cells.Count {
-        drawTableCell(screen, r, x, row, w, cells[i], Columns[i].Alignment, ink)
+        drawTableCell(screen, r, x, row, w, cells[i], Columns[i].Alignment, Columns[i].Ellipsis, ink)
       }
       x = x + w
       if i + 1 < count {
@@ -562,56 +564,78 @@ public open class TableView : Box {
   }
 
   private func drawTableCell(screen Screen, r CellRect, x int32, row int32, width int32,
-    cell TableCell, alignment HorizontalAlignment, inherited Style) {
+    cell TableCell, alignment HorizontalAlignment, ellipsis bool, inherited Style) {
     let ink = cell.Style.MergedOver(inherited)
     if cell.Content != nil { return }
     guard let runs = cell.Runs else {
-      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ink)
+      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ellipsis, ink)
       return
     }
     if runs.Count == 0 {
-      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ink)
+      drawTextCell(screen, r, x, row, width, cell.Text, alignment, ellipsis, ink)
       return
     }
-    drawRunCell(screen, r, x, row, width, runs, alignment, ink)
+    drawRunCell(screen, r, x, row, width, runs, alignment, ellipsis, ink)
   }
 
   private func drawTextCell(screen Screen, r CellRect, x int32, row int32, width int32,
-    text string, alignment HorizontalAlignment, ink Style) {
+    text string, alignment HorizontalAlignment, ellipsis bool, ink Style) {
     let visibleWidth = Math.Min(width, r.WidthCells - x)
     if visibleWidth <= 0 { return }
-    var dx = x
-    if alignment != HorizontalAlignment.Left {
-      let textWidth = clippedWidth(text, width)
-      if alignment == HorizontalAlignment.Center { dx = x + (width - textWidth) / 2 }
-      if alignment == HorizontalAlignment.Right { dx = x + width - textWidth }
-    }
-    screen.WriteClipped(CellRect{
+    var cellRect = CellRect{
       Column: r.Column + x,
       Row: r.Row + row,
       WidthCells: visibleWidth,
       HeightRows: 1,
-    }, dx - x, 0, text, ink)
+    }
+    if ellipsis && boundedWidth(text, visibleWidth + 1) > visibleWidth {
+      let fit = Glyph.FitWidth(text, visibleWidth - 1)
+      screen.WriteClipped(cellRect, fit, 0, "…", ink)
+      cellRect = CellRect{ ...cellRect, WidthCells: fit }
+      screen.WriteClipped(cellRect, 0, 0, text, ink)
+      return
+    }
+    var dx = x
+    let alignmentWidth = ellipsis ? visibleWidth : width
+    if alignment != HorizontalAlignment.Left {
+      let textWidth = clippedWidth(text, alignmentWidth)
+      if alignment == HorizontalAlignment.Center { dx = x + (alignmentWidth - textWidth) / 2 }
+      if alignment == HorizontalAlignment.Right { dx = x + alignmentWidth - textWidth }
+    }
+    screen.WriteClipped(cellRect, dx - x, 0, text, ink)
   }
 
   private func drawRunCell(screen Screen, r CellRect, x int32, row int32, width int32,
-    runs List[TextRun], alignment HorizontalAlignment, ink Style) {
+    runs List[TextRun], alignment HorizontalAlignment, ellipsis bool, ink Style) {
     let visibleWidth = Math.Min(width, r.WidthCells - x)
     if visibleWidth <= 0 { return }
-    let contentWidth = clippedRunsWidth(runs, width)
+    let alignmentWidth = ellipsis ? visibleWidth : width
+    let contentWidth = clippedRunsWidth(runs, alignmentWidth)
     var offset = 0
-    if alignment == HorizontalAlignment.Center { offset = (width - contentWidth) / 2 }
-    if alignment == HorizontalAlignment.Right { offset = width - contentWidth }
-    let cellRect = CellRect{
+    if alignment == HorizontalAlignment.Center { offset = (alignmentWidth - contentWidth) / 2 }
+    if alignment == HorizontalAlignment.Right { offset = alignmentWidth - contentWidth }
+    var cellRect = CellRect{
       Column: r.Column + x,
       Row: r.Row + row,
       WidthCells: visibleWidth,
       HeightRows: 1,
     }
+    if ellipsis && clippedRunsWidth(runs, visibleWidth + 1) > visibleWidth {
+      var fit = 0
+      for index in 0 ... runs.Count {
+        let run = runs[index]
+        let part = Glyph.FitWidth(run.Text, visibleWidth - 1 - fit)
+        fit = fit + part
+        if part < Glyph.WidthOf(run.Text) { break }
+      }
+      screen.WriteClipped(cellRect, fit, 0, "…", ink)
+      cellRect = CellRect{ ...cellRect, WidthCells: fit }
+      offset = 0
+    }
     var i = 0
-    while i < runs.Count && offset < width {
+    while i < runs.Count && offset < cellRect.WidthCells {
       let run = runs[i]
-      let remaining = width - offset
+      let remaining = cellRect.WidthCells - offset
       screen.WriteClipped(cellRect, offset, 0,
         TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink))
       let runWidth = boundedWidth(run.Text, remaining)

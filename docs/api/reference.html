@@ -4155,7 +4155,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>87-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuitablecolumn" data-search="sharptui.tablecolumn a named table column, its width policy, and its text alignment. g# kind: class . constructors init() — creates a column with an empty header, an equal share width, and left alignment. properties prop alignment horizontalalignment { get; set; } — horizontal alignment of text within this column&#x27;s cells. prop columnwidth columnwidth { get; set; } — width policy for this column, either a fixed cell count or a weighted share. prop header string { get; set; } — text drawn in the header row for this column. prop headeralignment horizontalalignment { get; set; } — horizontal alignment of the header text, independent of body cells.">
+<section class="sheet api-type" aria-labelledby="sharptuitablecolumn" data-search="sharptui.tablecolumn a named table column, its width policy, and its text alignment. g# kind: class . constructors init() — creates a column with an empty header, an equal share width, and left alignment. properties prop alignment horizontalalignment { get; set; } — horizontal alignment of text within this column&#x27;s cells. prop columnwidth columnwidth { get; set; } — width policy for this column, either a fixed cell count or a weighted share. prop ellipsis bool { get; set; } — ends clipped header, plain cell, and styled cell text with an ellipsis. defaults to false. prop header string { get; set; } — text drawn in the header row for this column. prop headeralignment horizontalalignment { get; set; } — horizontal alignment of the header text, independent of body cells.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -4179,6 +4179,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <ul>
 <li><code>prop Alignment HorizontalAlignment { get; set; }</code> — Horizontal alignment of text within this column's cells.</li>
 <li><code>prop ColumnWidth ColumnWidth { get; set; }</code> — Width policy for this column, either a fixed cell count or a weighted share.</li>
+<li><code>prop Ellipsis bool { get; set; }</code> — Ends clipped header, plain cell, and styled cell text with an ellipsis. Defaults to false.</li>
 <li><code>prop Header string { get; set; }</code> — Text drawn in the header row for this column.</li>
 <li><code>prop HeaderAlignment HorizontalAlignment { get; set; }</code> — Horizontal alignment of the header text, independent of body cells.</li>
 </ul>
