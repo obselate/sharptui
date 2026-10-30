@@ -578,7 +578,8 @@ public open class TableView : Box {
 
   private func drawTextCell(screen Screen, r CellRect, x int32, row int32, width int32,
     text string, alignment HorizontalAlignment, ink Style) {
-    if width <= 0 { return }
+    let visibleWidth = Math.Min(width, r.WidthCells - x)
+    if visibleWidth <= 0 { return }
     var dx = x
     if alignment != HorizontalAlignment.Left {
       let textWidth = clippedWidth(text, width)
@@ -588,14 +589,15 @@ public open class TableView : Box {
     screen.WriteClipped(CellRect{
       Column: r.Column + x,
       Row: r.Row + row,
-      WidthCells: width,
+      WidthCells: visibleWidth,
       HeightRows: 1,
     }, dx - x, 0, text, ink)
   }
 
   private func drawRunCell(screen Screen, r CellRect, x int32, row int32, width int32,
     runs List[TextRun], alignment HorizontalAlignment, ink Style) {
-    if width <= 0 { return }
+    let visibleWidth = Math.Min(width, r.WidthCells - x)
+    if visibleWidth <= 0 { return }
     let contentWidth = clippedRunsWidth(runs, width)
     var offset = 0
     if alignment == HorizontalAlignment.Center { offset = (width - contentWidth) / 2 }
@@ -603,7 +605,7 @@ public open class TableView : Box {
     let cellRect = CellRect{
       Column: r.Column + x,
       Row: r.Row + row,
-      WidthCells: width,
+      WidthCells: visibleWidth,
       HeightRows: 1,
     }
     var i = 0
