@@ -97,12 +97,20 @@ public class DialogAction {
   }
 }
 
-/// A centered, dimmed modal overlay showing a message and a row of action buttons.
+/// A centered, dimmed modal overlay with a wrapped message and adaptive action buttons.
+/// Stacked actions that exceed the available content rows are clipped.
 public open class Dialog : Overlay {
   private var message string
   private var actions List[DialogAction]
   private var actionButtons List[Button]
   private var onResult Action[DialogAction]?
+  private var body TextBlock
+  private var actionHost Box
+  private var preferredWidth CellLength
+  private var assignedWidth CellLength
+  private var wrappedWidth int32
+  private var wrappedMessage string
+  private var messageRows int32
 
   /// The wrapped body text. Setting it rebuilds the dialog's children.
   public prop Message string {
@@ -134,34 +142,90 @@ public open class Dialog : Overlay {
     actions = List[DialogAction]()
     actionButtons = List[Button]()
     onResult = nil
+    body = TextBlock{ Grow: 0 }
+    actionHost = Box()
+    preferredWidth = CellLength.Cells(44)
+    assignedWidth = preferredWidth
+    wrappedWidth = -1
+    wrappedMessage = ""
+    messageRows = 0
     DimBackground = true
     Placement = Placement.Centered
     ShowBorder = true
     Width = CellLength.Cells(44)
     Padding = CellInsets.All(1)
+    compose()
   }
+  internal override prop ClipChildren bool -> true
 
   /// Rebuilds the message and action buttons if Actions changed shape, otherwise refreshes the default/cancel button assignment.
   protected override func PrepareLayout() {
     if !compositionIsCurrent() { compose() }
     else { configureActions() }
+    let view = TreeViewport
+    if Width.IsAuto != assignedWidth.IsAuto || Width.CellCount != assignedWidth.CellCount { preferredWidth = Width }
+    let width = Math.Min(view.WidthCells, preferredWidth.IsAuto ? view.WidthCells : preferredWidth.CellCount)
+    assignedWidth = CellLength.Cells(Math.Max(0, width))
+    if Width.IsAuto || Width.CellCount != assignedWidth.CellCount { Width = assignedWidth }
+    let edges = (ShowBorder ? 2 : 0)
+    let contentWidth = Math.Max(0, width - edges - Padding.LeftCells - Padding.RightCells)
+    let availableRows = Math.Max(0, view.HeightRows - edges - Padding.TopRows - Padding.BottomRows)
+    if wrappedWidth != contentWidth || wrappedMessage != Message {
+      messageRows = Message == "" || contentWidth <= 0 ? 0 : CellText.Wrap(Message, contentWidth).Count
+      wrappedWidth = contentWidth
+      wrappedMessage = Message
+    }
+    var totalWidth = 0
+    var actionIndex = 0
+    while actionIndex < actionButtons.Count {
+      totalWidth = totalWidth + Glyph.WidthOf(actionButtons[actionIndex].Text) + 2
+      actionIndex = actionIndex + 1
+    }
+    if actionButtons.Count > 1 { totalWidth = totalWidth + (actionButtons.Count - 1) * 2 }
+    let stacked = totalWidth > contentWidth
+    let axis = stacked ? Axis.Column : Axis.Row
+    let gap = stacked ? 0 : 2
+    if actionHost.LayoutAxis != axis { actionHost.LayoutAxis = axis }
+    if actionHost.Gap != gap { actionHost.Gap = gap }
+    let actionRows = Math.Min(availableRows, stacked ? actionButtons.Count : (actionButtons.Count > 0 ? 1 : 0))
+    let bodyRows = Math.Min(messageRows, Math.Max(0, availableRows - actionRows))
+    if body.Height.IsAuto || body.Height.CellCount != bodyRows { body.Height = CellLength.Cells(bodyRows) }
+    if body.Width.IsAuto || body.Width.CellCount != contentWidth { body.Width = CellLength.Cells(contentWidth) }
+    if actionHost.Height.IsAuto || actionHost.Height.CellCount != actionRows { actionHost.Height = CellLength.Cells(actionRows) }
+    if actionHost.Width.IsAuto || actionHost.Width.CellCount != contentWidth { actionHost.Width = CellLength.Cells(contentWidth) }
+    let height = bodyRows + actionRows + edges + Padding.TopRows + Padding.BottomRows
+    if Height.IsAuto || Height.CellCount != height { Height = CellLength.Cells(height) }
+  }
+
+  /// Scrolls the message within this dialog.
+  /// @param ev The input event to handle.
+  /// @returns Handled when a local scroll was requested.
+  protected override func Accept(ev UiEvent) EventResult {
+    if inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
+    if ev.Kind == UiEventKind.Key && (ev.Key == Key.PageUp || ev.Key == Key.PageDown) {
+      body.ScrollToLine(Selection.ClampScroll(messageRows,
+        body.FirstVisibleLine + (ev.Key == Key.PageUp ? -body.ContentBounds.HeightRows : body.ContentBounds.HeightRows),
+        body.ContentBounds.HeightRows))
+      return EventResult.Handled
+    }
+    return EventResult.Continue
   }
 
   private func compose() {
     if actions == nil || actionButtons == nil { return }
     Children.Clear()
     actionButtons.Clear()
-    for line in CellText.Wrap(Message, 40) {
-      Children.Add(Label{ Text: line })
-    }
-    let row = Row{ Gap: 2 }
+    body.Text = Message
+    Children.Add(body)
+    actionHost.Children.Clear()
     for action in Actions {
       let button = Button{ Text: action.Text }
       button.OnClick = () -> choose(action)
       actionButtons.Add(button)
-      row.Children.Add(button)
+      actionHost.Children.Add(button)
     }
-    Children.Add(row)
+    Children.Add(actionHost)
+    wrappedWidth = -1
     configureActions()
   }
 
