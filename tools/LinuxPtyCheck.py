@@ -160,6 +160,14 @@ def run_session(name, reply=None):
         if not input_output.startswith(ESC):
             raise RuntimeError(f"{name}: SharpTui echoed a raw PTY input byte before the frame")
 
+        if reply is None:
+            for sequence in (b"\x1b[4~", b"\x1b[1~", b"\x1b[8~", b"\x1b[7~",
+                             b"\x1b[4;5~", b"\x1b[1;5~", b"\x1b[8;5~", b"\x1b[7;5~"):
+                os.write(master, sequence)
+                endpoint_output = collect(master, 0.2)
+                if b"git" not in endpoint_output or b"motion" not in endpoint_output:
+                    raise RuntimeError(f"{name}: {sequence!r} did not move between picker endpoints")
+
         os.write(master, ESC)
         status = wait_exit(pid, 2.0)
         reaped = True
@@ -205,7 +213,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-        print("linux PTY check: ok (no-reply, BEL, ST)")
+        print("linux PTY check: ok (no-reply, BEL, ST, Home/End tilde keys)")
     except Exception as error:
         print(f"linux PTY check FAILED: {error}", file=sys.stderr)
         sys.exit(1)

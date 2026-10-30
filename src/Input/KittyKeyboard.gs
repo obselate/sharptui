@@ -256,8 +256,8 @@ internal class KittyKeyboard {
     if value == 3 { return Key.Delete }
     if value == 5 { return Key.PageUp }
     if value == 6 { return Key.PageDown }
-    if value == 7 { return Key.Home }
-    if value == 8 { return Key.End }
+    if value == 1 || value == 7 { return Key.Home }
+    if value == 4 || value == 8 { return Key.End }
     if value == 11 { return Key.F1 }
     if value == 12 { return Key.F2 }
     if value == 13 { return Key.F3 }
