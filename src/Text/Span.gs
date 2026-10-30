@@ -53,7 +53,6 @@ public class RichTextLine {
   private var runWidths List[int32]
   private var runGraphemes List[int32]
   private var widthCells int32
-  private var graphemes List[TextRun]?
 
   /// The styled runs in this line.
   public prop Runs IReadOnlyList[TextRun] -> runs
@@ -79,18 +78,6 @@ public class RichTextLine {
 
   internal func RunWidth(index int32) int32 -> runWidths[index]
   internal func RunGraphemeCount(index int32) int32 -> runGraphemes[index]
-
-  internal func Graphemes() List[TextRun] {
-    if let cached = graphemes { return cached }
-    let cached = List[TextRun]()
-    for run in runs {
-      for cluster in Glyph.Elements(run.Text) {
-        cached.Add(TextRun(cluster, run.Style, run.Hyperlink))
-      }
-    }
-    graphemes = cached
-    return cached
-  }
 
   internal func Matches(text string) bool {
     var offset = 0

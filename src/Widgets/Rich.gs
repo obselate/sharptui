@@ -33,7 +33,7 @@ private struct RichWrapState {
 /// (via AttachOpen/DetachOpen/CaptureState/RestoreState) and one-shot prepend wrapping (via Complete).
 private class RichRunWrapper {
   private var width int32
-  private var lines List[RichTextLine]
+  private var lines List[List[TextRun]]
   private var pending List[RichGlyph]
   private var start int32
   private var wordAt int32
@@ -45,7 +45,7 @@ private class RichRunWrapper {
 
   internal init(width int32) {
     this.width = width
-    lines = List[RichTextLine]()
+    lines = List[List[TextRun]]()
     pending = List[RichGlyph]()
     start = 0
     wordAt = 0
@@ -55,7 +55,7 @@ private class RichRunWrapper {
   }
 
   /// The packed lines committed so far, including any attached open (trailing, still-open) line.
-  internal prop Lines List[RichTextLine] -> lines
+  internal prop Lines List[List[TextRun]] -> lines
   internal prop Starts List[TextPosition] -> starts
 
   internal func Append(run TextRun) {
@@ -63,7 +63,7 @@ private class RichRunWrapper {
   }
 
   /// Packs and appends the still-open trailing line, then returns Lines.
-  internal func Complete() List[RichTextLine] {
+  internal func Complete() List[List[TextRun]] {
     AttachOpen()
     return lines
   }
@@ -156,11 +156,11 @@ private class RichRunWrapper {
       : TextPosition{ LineIndex: line, GraphemeIndex: grapheme })
   }
 
-  private func pack(from int32, to int32) RichTextLine {
+  private func pack(from int32, to int32) List[TextRun] {
     let line = List[TextRun]()
     var end = to
     while end > from && pending[end - 1].Text == " " { end = end - 1 }
-    if end <= from { return RichTextLine(line) }
+    if end <= from { return line }
 
     var style = pending[from].Style
     var hyperlink = pending[from].Hyperlink
@@ -178,11 +178,13 @@ private class RichRunWrapper {
       i = i + 1
     }
     if text.Length > 0 { line.Add(TextRun(text.ToString(), style, hyperlink)) }
-    return RichTextLine(line)
+    return line
   }
 }
 
 /// Styled, wrapped text with an explicit line viewport.
+/// Read-only selection uses physical lines and grapheme indexes. Appends preserve selection.
+/// Replacing, prepending, or removing content clears selection.
 public open class RichTextBlock : Box {
   private var runs List[TextRun]
   private var lineSource RichLineSource?
@@ -193,8 +195,8 @@ public open class RichTextBlock : Box {
   private var horizontalCellOffset int32
   private var maximumUnwrappedWidth int32
 
-  private var cache List[RichTextLine]
-  private var unwrappedLines List[RichTextLine]
+  private var cache List[List[TextRun]]
+  private var unwrappedLines List[List[TextRun]]
   private var wrapper RichRunWrapper
   private var cachedRunCount int32
   private var cachedWidth int32
@@ -225,6 +227,7 @@ public open class RichTextBlock : Box {
       ClearSelection()
       cachedRunCount = -1
       dirty = true
+      MarkMeasureDirty()
     }
   }
 
@@ -252,7 +255,10 @@ public open class RichTextBlock : Box {
     set {
       if wrapping == value { return }
       wrapping = value
-      if value != TextWrapping.None { lineSource = nil }
+      if value != TextWrapping.None && lineSource != nil {
+        lineSource = nil
+        ClearSelection()
+      }
       cachedRunCount = -1
       dirty = true
   }
@@ -321,7 +327,14 @@ public open class RichTextBlock : Box {
     if let source = lineSource {
       row = source.Count() - 1
       if row < 0 { row = 0 }
-      else { column = source.ItemAt(row).Graphemes().Count }
+      else {
+        let line = source.ItemAt(row)
+        var index = 0
+        while index < line.Runs.Count {
+          column = column + line.RunGraphemeCount(index)
+          index = index + 1
+        }
+      }
     } else {
       for run in runs {
         for cluster in Glyph.Elements(run.Text) {
@@ -361,7 +374,7 @@ public open class RichTextBlock : Box {
     maximumUnwrappedWidth = 0
     wrapper = RichRunWrapper(0)
     cache = wrapper.Lines
-    unwrappedLines = List[RichTextLine]()
+    unwrappedLines = List[List[TextRun]]()
     cachedRunCount = -1
     cachedWidth = -1
     dirty = true
@@ -558,6 +571,7 @@ public open class RichTextBlock : Box {
   private func useRunContent() {
     if lineSource == nil { return }
     lineSource = nil
+    ClearSelection()
     cachedRunCount = -1
     dirty = true
   }
@@ -706,7 +720,7 @@ public open class RichTextBlock : Box {
 
   private func clamp(s int32, height int32) int32 -> SharpTui.Selection.ClampScroll(activeLineCount(), s, height)
 
-  private func activeLines() List[RichTextLine] {
+  private func activeLines() List[List[TextRun]] {
     if wrapping == TextWrapping.None {
       if dirty { rebuildUnwrapped() }
       return unwrappedLines
@@ -779,7 +793,7 @@ public open class RichTextBlock : Box {
             lineWidth = lineWidth + segmentWidth
           }
           if lineWidth > maximumUnwrappedWidth { maximumUnwrappedWidth = lineWidth }
-          unwrappedLines.Add(RichTextLine(line))
+          unwrappedLines.Add(line)
           line = List[TextRun]()
           lineWidth = 0
           segmentHasNonAscii = false
@@ -799,7 +813,7 @@ public open class RichTextBlock : Box {
       runIndex = runIndex + 1
     }
     if lineWidth > maximumUnwrappedWidth { maximumUnwrappedWidth = lineWidth }
-    unwrappedLines.Add(RichTextLine(line))
+    unwrappedLines.Add(line)
     cache = unwrappedLines
     cachedRunCount = runs.Count
     dirty = false
@@ -883,7 +897,8 @@ public open class RichTextBlock : Box {
       if source != nil {
         paintSourceLine(screen, r, row, x, source.ItemAt(index), ink)
       } else {
-        paintSourceLine(screen, r, row, x, unwrappedLines[index], ink)
+        paintSelectionLine(screen, r, row, x, unwrappedLines[index],
+          TextPosition{ LineIndex: index, GraphemeIndex: 0 }, HorizontalCellOffset, ink)
       }
       row = row + 1
       index = index + 1
@@ -893,7 +908,7 @@ public open class RichTextBlock : Box {
       var stop = index + r.HeightRows
       if stop > lineCount { stop = lineCount }
       while index < stop {
-        source.ItemAt(index).Graphemes()
+        source.ItemAt(index)
         index = index + 1
       }
     }
@@ -903,7 +918,7 @@ public open class RichTextBlock : Box {
     if line.WidthCells > maximumUnwrappedWidth {
       maximumUnwrappedWidth = line.WidthCells
     }
-    paintSelectionLine(screen, r, row, startX, line,
+    paintSelectionLine(screen, r, row, startX, line.Runs,
       TextPosition{ LineIndex: FirstVisibleLine + row, GraphemeIndex: 0 },
       HorizontalCellOffset, ink)
   }
@@ -919,25 +934,29 @@ public open class RichTextBlock : Box {
   }
 
   private func paintSelectionLine(screen Screen, r CellRect, row int32, startX int32,
-      line RichTextLine, start TextPosition, skip int32, ink Style) {
-    let glyphs = line.Graphemes()
+      line IReadOnlyList[TextRun], start TextPosition, skip int32, ink Style) {
     var x = startX - skip
     var index = 0
-    while index < glyphs.Count && x < r.WidthCells {
-      let glyph = glyphs[index]
-      let width = Glyph.Of(glyph.Text)
-      var style = glyph.Style.MergedOver(ink)
-      let position = TextPosition{
-        LineIndex: start.LineIndex, GraphemeIndex: start.GraphemeIndex + index,
+    var runIndex = 0
+    while runIndex < line.Count && x < r.WidthCells {
+      let run = line[runIndex]
+      for glyph in Glyph.Elements(run.Text) {
+        if x >= r.WidthCells { return }
+        let width = Glyph.Of(glyph)
+        var style = run.Style.MergedOver(ink)
+        let position = TextPosition{
+          LineIndex: start.LineIndex, GraphemeIndex: start.GraphemeIndex + index,
+        }
+        if isSelected(position) { style = selectedTextStyle.MergedOver(style) }
+        if x >= startX {
+          screen.WriteClipped(r, x, row, TextRun(glyph, style, run.Hyperlink))
+        } else if x + width > startX {
+          screen.WriteClipped(r, startX, row, " ", style)
+        }
+        x = x + width
+        index = index + 1
       }
-      if isSelected(position) { style = selectedTextStyle.MergedOver(style) }
-      if x >= startX {
-        screen.WriteClipped(r, x, row, TextRun(glyph.Text, style, glyph.Hyperlink))
-      } else if x + width > startX {
-        screen.WriteClipped(r, startX, row, " ", style)
-      }
-      x = x + width
-      index = index + 1
+      runIndex = runIndex + 1
     }
   }
 
@@ -950,45 +969,46 @@ public open class RichTextBlock : Box {
     var index = FirstVisibleLine + row
     if index >= count { index = count - 1 }
     var start = TextPosition{ LineIndex: index, GraphemeIndex: 0 }
-    var line RichTextLine
+    var line IReadOnlyList[TextRun]
     var x = point.Column - bounds.Column
     if wrapping == TextWrapping.None {
       x = x - lineNumberGutterWidth()
       if x < 0 { x = 0 }
       x = x + HorizontalCellOffset
-      if let source = lineSource { line = source.ItemAt(index) }
+      if let source = lineSource { line = source.ItemAt(index).Runs }
       else { line = unwrappedLines[index] }
     } else {
       start = wrapper.Starts[index]
       line = cache[index]
     }
-    let glyphs = line.Graphemes()
     var column = 0
-    var grapheme = 0
-    while grapheme < glyphs.Count {
-      let width = Glyph.Of(glyphs[grapheme].Text)
-      if x < column + width { break }
-      column = column + width
-      grapheme = grapheme + 1
+    var grapheme = start.GraphemeIndex
+    var runIndex = 0
+    while runIndex < line.Count {
+      for glyph in Glyph.Elements(line[runIndex].Text) {
+        let width = Glyph.Of(glyph)
+        if x < column + width {
+          return TextPosition{ LineIndex: start.LineIndex, GraphemeIndex: grapheme }
+        }
+        column = column + width
+        grapheme = grapheme + 1
+      }
+      runIndex = runIndex + 1
     }
-    return TextPosition{ LineIndex: start.LineIndex, GraphemeIndex: start.GraphemeIndex + grapheme }
+    return TextPosition{ LineIndex: start.LineIndex, GraphemeIndex: grapheme }
   }
 
-  private func before(a TextPosition, b TextPosition) bool {
-    return a.LineIndex < b.LineIndex
-      || (a.LineIndex == b.LineIndex && a.GraphemeIndex < b.GraphemeIndex)
-  }
+  private func before(a TextPosition, b TextPosition) bool ->
+    a.LineIndex < b.LineIndex || (a.LineIndex == b.LineIndex && a.GraphemeIndex < b.GraphemeIndex)
 
-  private func samePosition(a TextPosition, b TextPosition) bool {
-    return a.LineIndex == b.LineIndex && a.GraphemeIndex == b.GraphemeIndex
-  }
+  private func samePosition(a TextPosition, b TextPosition) bool ->
+    a.LineIndex == b.LineIndex && a.GraphemeIndex == b.GraphemeIndex
 
   private func selectionStart() TextPosition -> before(anchor, selectionEnd) ? anchor : selectionEnd
   private func selectionStop() TextPosition -> before(anchor, selectionEnd) ? selectionEnd : anchor
 
-  private func isSelected(position TextPosition) bool {
-    return marked && !before(position, selectionStart()) && before(position, selectionStop())
-  }
+  private func isSelected(position TextPosition) bool ->
+    marked && !before(position, selectionStart()) && before(position, selectionStop())
 
   private func selectedText() string {
     if !marked { return "" }
@@ -999,12 +1019,12 @@ public open class RichTextBlock : Box {
       var row = start.LineIndex
       while row <= stop.LineIndex && row < source.Count() {
         if row > start.LineIndex { text.Append("\n") }
-        let glyphs = source.ItemAt(row).Graphemes()
-        var column = row == start.LineIndex ? start.GraphemeIndex : 0
-        let end = row == stop.LineIndex ? stop.GraphemeIndex : glyphs.Count
-        while column < end && column < glyphs.Count {
-          text.Append(glyphs[column].Text)
-          column = column + 1
+        var column = 0
+        for run in source.ItemAt(row).Runs {
+          for glyph in Glyph.Elements(run.Text) {
+            if isSelected(TextPosition{ LineIndex: row, GraphemeIndex: column }) { text.Append(glyph) }
+            column = column + 1
+          }
         }
         row = row + 1
       }
