@@ -48,7 +48,7 @@ public open class Button : Box {
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
     if r.HeightRows <= 0 { return }
-    let style = IsFocused ? ink.Inverted() : ink
+    let style = IsFocused ? ink.WithAttributes(TextAttributes.Reverse) : ink
     let textWidth = Glyph.WidthOf(Text)
     var x = (r.WidthCells - textWidth - 2) / 2
     if x < 0 { x = 0 }
@@ -99,6 +99,7 @@ public class DialogAction {
 
 /// A centered, dimmed modal overlay with a wrapped message and adaptive action buttons.
 /// Stacked actions that exceed the available content rows are clipped.
+/// Opening focuses the default action, or the first action when no default is set.
 public open class Dialog : Overlay {
   private var message string
   private var actions List[DialogAction]
@@ -142,7 +143,7 @@ public open class Dialog : Overlay {
     actions = List[DialogAction]()
     actionButtons = List[Button]()
     onResult = nil
-    body = TextBlock{ Grow: 0 }
+    body = TextBlock{ Grow: 0, CanFocus: false, CanReceiveMouse: true }
     actionHost = Box()
     preferredWidth = CellLength.Cells(44)
     assignedWidth = preferredWidth
@@ -157,6 +158,16 @@ public open class Dialog : Overlay {
     compose()
   }
   internal override prop ClipChildren bool -> true
+
+  internal override func FocusInitial() bool {
+    if !compositionIsCurrent() { compose() }
+    else { configureActions() }
+    if let action = DefaultAction {
+      TreeRoot().Focus(action)
+      return action.IsFocused
+    }
+    return FocusFirst()
+  }
 
   /// Rebuilds the message and action buttons if Actions changed shape, otherwise refreshes the default/cancel button assignment.
   protected override func PrepareLayout() {
@@ -197,11 +208,22 @@ public open class Dialog : Overlay {
     if Height.IsAuto || Height.CellCount != height { Height = CellLength.Cells(height) }
   }
 
-  /// Scrolls the message within this dialog.
+  /// Scrolls the message and moves focus between action buttons.
   /// @param ev The input event to handle.
-  /// @returns Handled when a local scroll was requested.
+  /// @returns Handled when a local scroll or action focus move was requested.
   protected open override func Accept(ev UiEvent) EventResult {
     if inputIsRelease(ev) || inputHasWindowModifier(ev.Modifiers) { return EventResult.Continue }
+    if ev.Kind == UiEventKind.Key && (ev.Key == Key.Left || ev.Key == Key.Right
+        || (actionHost.LayoutAxis == Axis.Column && (ev.Key == Key.Up || ev.Key == Key.Down))) {
+      if actionButtons.Count == 0 { return EventResult.Handled }
+      var index = 0
+      while index < actionButtons.Count && !actionButtons[index].IsFocused { index = index + 1 }
+      let previous = ev.Key == Key.Left || ev.Key == Key.Up
+      let next = index == actionButtons.Count ? (previous ? actionButtons.Count - 1 : 0)
+        : (index + (previous ? -1 : 1) + actionButtons.Count) % actionButtons.Count
+      TreeRoot().Focus(actionButtons[next])
+      return EventResult.Handled
+    }
     if ev.Kind == UiEventKind.Key && (ev.Key == Key.PageUp || ev.Key == Key.PageDown) {
       body.ScrollToLine(Selection.ClampScroll(messageRows,
         body.FirstVisibleLine + (ev.Key == Key.PageUp ? -body.ContentBounds.HeightRows : body.ContentBounds.HeightRows),

@@ -837,7 +837,7 @@ G# kind: `struct`.
 
 ## SharpTui.Dialog
 
-A centered, dimmed modal overlay with a wrapped message and adaptive action buttons. Stacked actions that exceed the available content rows are clipped.
+A centered, dimmed modal overlay with a wrapped message and adaptive action buttons. Stacked actions that exceed the available content rows are clipped. Opening focuses the default action, or the first action when no default is set.
 
 G# kind: `class`.
 Inherits `Overlay`; see that type for inherited members.

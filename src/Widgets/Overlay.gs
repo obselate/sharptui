@@ -84,13 +84,15 @@ public open class Overlay : Box {
     return EventResult.Continue
   }
 
+  internal open func FocusInitial() bool -> FocusFirst()
+
   private func activate() {
     if focusActive || !IsVisible { return }
     let root = TreeRoot()
     let focused = root.FocusedElement
     if focused != nil && !Contains(focused) { previousFocus = focused }
     else { previousFocus = nil }
-    if !FocusFirst() { root.ClearFocus() }
+    if !FocusInitial() { root.ClearFocus() }
     focusActive = true
   }
 

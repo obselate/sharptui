@@ -212,8 +212,8 @@ public class MoreCheck {
       let dialog = Dialog{ Message: "Are you sure?" }
       var result DialogAction?
       dialog.OnResult = (action DialogAction) -> result = action
-      dialog.Actions.Add(ok)
       dialog.Actions.Add(cancel)
+      dialog.Actions.Add(ok)
       failed = failed + Checks.Expect(dialog.Placement.IsCentered && dialog.DimBackground,
         "Dialog defaults to centered placement with background dimming")
       failed = failed + Checks.Expect(dialog.Children.Count > 0,
@@ -221,20 +221,43 @@ public class MoreCheck {
 
       let filler = Box{}
       let mdroot = Box{ Children: { filler, dialog } }
-      mdroot.Draw(Screen(60, 20))
+      let dialogScreen = Screen(40, 12)
+      dialogScreen.ColorMode = TerminalColorMode.NoColor
+      mdroot.Draw(dialogScreen)
       let actionRow = dialog.Children[dialog.Children.Count - 1]
-      let okButton = actionRow.Children[0]
-      let cancelButton = actionRow.Children[1]
+      let cancelButton = actionRow.Children[0]
+      let okButton = actionRow.Children[1]
       failed = failed + Checks.Expect(okButton.Bounds.WidthCells == CellText.MeasureWidth(ok.Text) + 2
         && cancelButton.Bounds.WidthCells == CellText.MeasureWidth(cancel.Text) + 2,
         "Dialog lays added actions out on the next draw")
 
-      mdroot.Focus(okButton)
-      failed = failed + Checks.Expect(Object.ReferenceEquals(mdroot.FocusedElement, okButton),
-        "Dialog action participates in focus routing")
+      failed = failed + Checks.Expect(!dialog.Children[0].CanFocus
+          && Object.ReferenceEquals(mdroot.FocusedElement, okButton)
+          && dialogScreen.Flush().Contains("[7m"),
+        "Dialog draws its default action focused on its first frame without color")
       mdroot.Handle(keyEv(Key.Enter))
       failed = failed + Checks.Expect(Object.ReferenceEquals(result, ok),
         "Enter on the focused action invokes the typed result callback")
+      mdroot.Handle(keyEv(Key.Right))
+      mdroot.Handle(keyEv(Key.Enter))
+      failed = failed + Checks.Expect(cancelButton.IsFocused && Object.ReferenceEquals(result, cancel),
+        "Dialog Right skips its body and Enter invokes the other action")
+      mdroot.Handle(keyEv(Key.Left))
+      failed = failed + Checks.Expect(okButton.IsFocused,
+        "Dialog Left returns directly to the default action")
+      dialog.IsVisible = false
+      dialog.IsVisible = true
+      failed = failed + Checks.Expect(okButton.IsFocused,
+        "Dialog reopening focuses the default action")
+      let firstAction = DialogAction{ Text: "First", IsCancel: true }
+      let fallbackDialog = Dialog{ Actions: List[DialogAction]{ firstAction, cancel } }
+      var fallbackResult DialogAction?
+      fallbackDialog.OnResult = action -> fallbackResult = action
+      let fallbackRoot = Box{ Children: { fallbackDialog } }
+      fallbackRoot.Draw(Screen(40, 12))
+      fallbackRoot.Handle(keyEv(Key.Enter))
+      failed = failed + Checks.Expect(Object.ReferenceEquals(fallbackResult, firstAction),
+        "Dialog without a non-cancel action focuses its first button")
 
       result = nil
       mdroot.Handle(mouseEv(cancelButton.Bounds.Column + 1, cancelButton.Bounds.Row))
