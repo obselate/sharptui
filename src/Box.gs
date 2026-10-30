@@ -749,7 +749,7 @@ public open class Box {
     var old = 0
     while old < treeChildren.Count {
       let prior = treeChildren[old]
-      if !containsChild(prior) { prior.detachTree() }
+      if !containsChild(prior) && Object.ReferenceEquals(prior.parent, this) { prior.detachTree() }
       old = old + 1
     }
     treeChildren.Clear()
@@ -797,7 +797,8 @@ public open class Box {
 
     var old = 0
     while old < treeChildren.Count {
-      treeChildren[old].detachTree()
+      let child = treeChildren[old]
+      if Object.ReferenceEquals(child.parent, this) { child.detachTree() }
       old = old + 1
     }
     var current = 0
@@ -806,6 +807,11 @@ public open class Box {
       if !hasTreeChild(child) { child.detachTree() }
       current = current + 1
     }
+    if let node = yoga {
+      if let owner = YGNodeAPI.YGNodeGetOwner(node) { YGNodeAPI.YGNodeRemoveChild(owner, node) }
+    }
+    if let owner = parent { owner.linked.Remove(this) }
+    linked.Clear()
     parent = nil
   }
 
@@ -1114,6 +1120,7 @@ public open class Box {
   }
 
   private func linkTree(owner Box?) {
+    if parent != nil && !Object.ReferenceEquals(parent, owner) { detachTree() }
     parent = owner
     synchronizeChildren()
     var child = 0
