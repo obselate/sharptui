@@ -32,6 +32,8 @@ SharpTui.Dialog
 SharpTui.DialogAction
 SharpTui.Easing
 SharpTui.EventResult
+SharpTui.Form
+SharpTui.FormField
 SharpTui.GraphicsProtocol
 SharpTui.HorizontalAlignment
 SharpTui.ImageFit

@@ -14,6 +14,7 @@ internal class Checks {
       failed = failed + DataCheck.Run()
       failed = failed + ColorCheck.Run()
       failed = failed + LayoutCheck.Run()
+      failed = failed + FormCheck.Run()
       failed = failed + KeysCheck.Run()
       failed = failed + ScreenTextCheck.Run()
       failed = failed + InputDecoderCheck.Run()
