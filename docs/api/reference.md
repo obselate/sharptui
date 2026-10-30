@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `df18085c254250ce315d8261aeac59200a7c6b9a858cc721d668a918bed2038e`.
+Public-symbol SHA-256: `df0f27484761223439d7d6acfa31e96b74e76c69f42f7353da55355d42cdd5c2`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1589,7 +1589,7 @@ G# kind: `interface`.
 
 ## SharpTui.RichTextBlock
 
-Styled, wrapped text with an explicit line viewport.
+Styled, wrapped text with an explicit line viewport. Read-only selection uses physical lines and grapheme indexes. Appends preserve selection. Replacing, prepending, or removing content clears selection.
 
 G# kind: `class`.
 Inherits `Box`; see that type for inherited members.
@@ -1600,11 +1600,15 @@ Inherits `Box`; see that type for inherited members.
 
 ### Properties
 
+- `prop Clipboard Clipboard { get; set; }` — The clipboard used by CopySelection and Ctrl+C.
 - `prop FirstVisibleLine int32 { get; }` — The index of the topmost visible line. Negative values clamp to zero.
 - `prop GutterStyle Style { get; set; }` — The style applied to the line-number gutter in unwrapped mode.
 - `prop HorizontalCellOffset int32 { get; set; }` — The number of content cells skipped from the left edge in unwrapped mode. Negative values clamp to zero.
 - `prop LineSource RichLineSource { get; set; }` — An optional immutable physical-line source. Setting it selects unwrapped mode and clears Runs.
 - `prop Runs List[TextRun] { get; set; }` — The styled runs to display. Setting it invalidates the display cache. Mutating the returned list in place does not invalidate the cache. Reassign Runs or use AppendRuns, PrependRuns, RemoveHeadRuns, RemoveTailRuns, or ClearRuns.
+- `prop SelectedText string { get; }` — The selected plain text. Reading this property creates the copied string.
+- `prop SelectedTextStyle Style { get; set; }` — The style applied over selected text. Defaults to reverse video.
+- `prop Selection TextSelection? { get; }` — The selected source-line and grapheme range, or nil when empty.
 - `prop ShowLineNumbers bool { get; set; }` — Whether unwrapped physical lines display a right-aligned line-number gutter.
 - `prop Wrapping TextWrapping { get; set; }` — Whether rich text wraps at word boundaries or preserves physical lines.
 
@@ -1613,6 +1617,9 @@ Inherits `Box`; see that type for inherited members.
 - `func AppendRuns(added List[TextRun])` — Appends runs to the current content.
   - `added`: The runs to append.
 - `func ClearRuns()` — Removes all runs from the current content.
+- `func ClearSelection()` — Clears the selection and ends any captured drag.
+- `func CopySelection() bool` — Copies selected plain text to Clipboard.
+  - Returns: True when nonempty selected text was copied.
 - `func LineCount() int32` — Returns the number of active wrapped or physical lines.
   - Returns: The number of active lines.
 - `func PrependRuns(added List[TextRun])` — Inserts runs before the current content and keeps the same old line visible.
@@ -1624,6 +1631,7 @@ Inherits `Box`; see that type for inherited members.
 - `func ScrollToEnd()` — Keeps the viewport pinned to the final line across later updates.
 - `func ScrollToLine(line int32)` — Scrolls so that the given line index becomes the topmost visible line.
   - `line`: The line index to scroll to.
+- `func SelectAll()` — Selects all source text without moving the viewport.
 
 ## SharpTui.RichTextLine
 

@@ -3340,8 +3340,8 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>70-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuirichtextblock" data-search="sharptui.richtextblock styled, wrapped text with an explicit line viewport. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty, focusable rich text block. properties prop firstvisibleline int32 { get; } — the index of the topmost visible line. negative values clamp to zero. prop gutterstyle style { get; set; } — the style applied to the line-number gutter in unwrapped mode. prop horizontalcelloffset int32 { get; set; } — the number of content cells skipped from the left edge in unwrapped mode. negative values clamp to zero. prop linesource richlinesource { get; set; } — an optional immutable physical-line source. setting it selects unwrapped mode and clears runs. prop runs list[textrun] { get; set; } — the styled runs to display. setting it invalidates the display cache. mutating the returned list in place does not invalidate the cache. reassign runs or use appendruns, prependruns, removeheadruns, removetailruns, or clearruns. prop showlinenumbers bool { get; set; } — whether unwrapped physical lines display a right-aligned line-number gutter. prop wrapping textwrapping { get; set; } — whether rich text wraps at word boundaries or preserves physical lines. methods func appendruns(added list[textrun]) — appends runs to the current content. added : the runs to append. func clearruns() — removes all runs from the current content. func linecount() int32 — returns the number of active wrapped or physical lines. returns: the number of active lines. func prependruns(added list[textrun]) — inserts runs before the current content and keeps the same old line visible. added : the runs to insert before the current content. func removeheadruns(count int32) — removes runs from the start of a cached newline-delimited prepend. count : the number of head runs to remove. func removetailruns(count int32) — removes a number of runs from the end of the current content. count : the number of tail runs to remove. func scrolltoend() — keeps the viewport pinned to the final line across later updates. func scrolltoline(line int32) — scrolls so that the given line index becomes the topmost visible line. line : the line index to scroll to.">
+<section class="sheet api-type" aria-labelledby="sharptuirichtextblock" data-search="sharptui.richtextblock styled, wrapped text with an explicit line viewport. read-only selection uses physical lines and grapheme indexes. appends preserve selection. replacing, prepending, or removing content clears selection. g# kind: class .
+inherits box ; see that type for inherited members. constructors init() — creates an empty, focusable rich text block. properties prop clipboard clipboard { get; set; } — the clipboard used by copyselection and ctrl+c. prop firstvisibleline int32 { get; } — the index of the topmost visible line. negative values clamp to zero. prop gutterstyle style { get; set; } — the style applied to the line-number gutter in unwrapped mode. prop horizontalcelloffset int32 { get; set; } — the number of content cells skipped from the left edge in unwrapped mode. negative values clamp to zero. prop linesource richlinesource { get; set; } — an optional immutable physical-line source. setting it selects unwrapped mode and clears runs. prop runs list[textrun] { get; set; } — the styled runs to display. setting it invalidates the display cache. mutating the returned list in place does not invalidate the cache. reassign runs or use appendruns, prependruns, removeheadruns, removetailruns, or clearruns. prop selectedtext string { get; } — the selected plain text. reading this property creates the copied string. prop selectedtextstyle style { get; set; } — the style applied over selected text. defaults to reverse video. prop selection textselection? { get; } — the selected source-line and grapheme range, or nil when empty. prop showlinenumbers bool { get; set; } — whether unwrapped physical lines display a right-aligned line-number gutter. prop wrapping textwrapping { get; set; } — whether rich text wraps at word boundaries or preserves physical lines. methods func appendruns(added list[textrun]) — appends runs to the current content. added : the runs to append. func clearruns() — removes all runs from the current content. func clearselection() — clears the selection and ends any captured drag. func copyselection() bool — copies selected plain text to clipboard. returns: true when nonempty selected text was copied. func linecount() int32 — returns the number of active wrapped or physical lines. returns: the number of active lines. func prependruns(added list[textrun]) — inserts runs before the current content and keeps the same old line visible. added : the runs to insert before the current content. func removeheadruns(count int32) — removes runs from the start of a cached newline-delimited prepend. count : the number of head runs to remove. func removetailruns(count int32) — removes a number of runs from the end of the current content. count : the number of tail runs to remove. func scrolltoend() — keeps the viewport pinned to the final line across later updates. func scrolltoline(line int32) — scrolls so that the given line index becomes the topmost visible line. line : the line index to scroll to. func selectall() — selects all source text without moving the viewport.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -3355,7 +3355,7 @@ inherits box ; see that type for inherited members. constructors init() — crea
       </div>
     </div>
     <div class="chapter-copy">
-      <p>Styled, wrapped text with an explicit line viewport.</p>
+      <p>Styled, wrapped text with an explicit line viewport. Read-only selection uses physical lines and grapheme indexes. Appends preserve selection. Replacing, prepending, or removing content clears selection.</p>
 <p>G# kind: <code>class</code>.
 Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="constructors-31">Constructors</h3>
@@ -3364,11 +3364,15 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 <h3 id="properties-45">Properties</h3>
 <ul>
+<li><code>prop Clipboard Clipboard { get; set; }</code> — The clipboard used by CopySelection and Ctrl+C.</li>
 <li><code>prop FirstVisibleLine int32 { get; }</code> — The index of the topmost visible line. Negative values clamp to zero.</li>
 <li><code>prop GutterStyle Style { get; set; }</code> — The style applied to the line-number gutter in unwrapped mode.</li>
 <li><code>prop HorizontalCellOffset int32 { get; set; }</code> — The number of content cells skipped from the left edge in unwrapped mode. Negative values clamp to zero.</li>
 <li><code>prop LineSource RichLineSource { get; set; }</code> — An optional immutable physical-line source. Setting it selects unwrapped mode and clears Runs.</li>
 <li><code>prop Runs List[TextRun] { get; set; }</code> — The styled runs to display. Setting it invalidates the display cache. Mutating the returned list in place does not invalidate the cache. Reassign Runs or use AppendRuns, PrependRuns, RemoveHeadRuns, RemoveTailRuns, or ClearRuns.</li>
+<li><code>prop SelectedText string { get; }</code> — The selected plain text. Reading this property creates the copied string.</li>
+<li><code>prop SelectedTextStyle Style { get; set; }</code> — The style applied over selected text. Defaults to reverse video.</li>
+<li><code>prop Selection TextSelection? { get; }</code> — The selected source-line and grapheme range, or nil when empty.</li>
 <li><code>prop ShowLineNumbers bool { get; set; }</code> — Whether unwrapped physical lines display a right-aligned line-number gutter.</li>
 <li><code>prop Wrapping TextWrapping { get; set; }</code> — Whether rich text wraps at word boundaries or preserves physical lines.</li>
 </ul>
@@ -3380,6 +3384,12 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </ul>
 </li>
 <li><code>func ClearRuns()</code> — Removes all runs from the current content.</li>
+<li><code>func ClearSelection()</code> — Clears the selection and ends any captured drag.</li>
+<li><code>func CopySelection() bool</code> — Copies selected plain text to Clipboard.
+<ul>
+<li>Returns: True when nonempty selected text was copied.</li>
+</ul>
+</li>
 <li><code>func LineCount() int32</code> — Returns the number of active wrapped or physical lines.
 <ul>
 <li>Returns: The number of active lines.</li>
@@ -3406,6 +3416,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <li><code>line</code>: The line index to scroll to.</li>
 </ul>
 </li>
+<li><code>func SelectAll()</code> — Selects all source text without moving the viewport.</li>
 </ul>
     </div>
   </div>
