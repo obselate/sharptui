@@ -1,5 +1,6 @@
 package SharpTui
 
+import System
 import System.Collections.Generic
 
 internal class RichViewportCheck {
@@ -189,6 +190,132 @@ internal class RichViewportCheck {
           && virtual.LineCount() == 1
           && virtualScreen.Probe(2, 0) == "x",
         "RichTextBlock Runs replacement leaves virtual-source mode")
+      failed = failed + selectionChecks()
+      return failed
+    }
+
+    private func selectionChecks() int32 {
+      var failed = 0
+      let clipboard = MemoryClipboard()
+      let text = "甲e\u0301 ab cd\n尾声"
+      let rich = RichTextBlock{
+        Runs: List[TextRun]{
+          TextRun("甲e\u0301 ab ", Style{ Attributes: TextAttributes.Bold }, "https://example.com"),
+          TextRun("cd\n尾声", Style()),
+        },
+        Clipboard: clipboard,
+        Width: CellLength.Cells(6),
+        Height: CellLength.Cells(2),
+      }
+      let screen = Screen(6, 2)
+      rich.Draw(screen)
+      let copy = UiEvent{
+        Kind: UiEventKind.Key, Key: Key.Character, Text: "c", Modifiers: KeyModifiers.Ctrl,
+      }
+      let move = UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Move,
+        Position: CellPoint{ Column: 2, Row: 1 },
+      }
+      failed = failed + Checks.Expect(rich.Handle(copy) == EventResult.Continue
+          && rich.Handle(move) == EventResult.Continue && rich.Selection == nil,
+        "RichTextBlock leaves hover and unselected Ctrl+C unhandled")
+      rich.Handle(UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Press, Button: MouseButton.Right,
+        Position: CellPoint{ Column: 2, Row: 0 },
+      })
+      rich.Handle(move)
+      failed = failed + Checks.Expect(rich.Selection == nil,
+        "RichTextBlock ignores right-button selection")
+      rich.Handle(mouseEv(2, 0))
+      rich.Handle(move)
+      let selection = rich.Selection
+      failed = failed + Checks.Expect(selection != nil
+          && selection.Value.Start.LineIndex == 0 && selection.Value.Start.GraphemeIndex == 1
+          && selection.Value.End.LineIndex == 0 && selection.Value.End.GraphemeIndex == 8
+          && rich.SelectedText == "e\u0301 ab cd",
+        "RichTextBlock selects source graphemes across wrapped styled runs")
+      rich.Draw(screen)
+      let beforeWrapped = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 128 {
+        rich.Handle(move)
+        rich.Draw(screen)
+      }
+      let wrappedBytes = GC.GetAllocatedBytesForCurrentThread() - beforeWrapped
+      failed = failed + Checks.Expect(wrappedBytes == 0,
+        "RichTextBlock wrapped Unicode selection paint and moves allocate zero bytes")
+      rich.Handle(UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Move,
+        Position: CellPoint{ Column: 4, Row: 8 },
+      })
+      failed = failed + Checks.Expect(rich.FirstVisibleLine == 1
+          && rich.SelectedText == "e\u0301 ab cd\n尾声",
+        "RichTextBlock captured drag outside the viewport scrolls and extends")
+      rich.Handle(UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Release, Button: MouseButton.Left,
+        Position: CellPoint{ Column: 20, Row: 20 },
+      })
+      rich.Handle(move)
+      failed = failed + Checks.Expect(rich.Handle(copy) == EventResult.Handled
+          && clipboard.GetText() == "e\u0301 ab cd\n尾声",
+        "RichTextBlock releases outside and copies plain text without styles or links")
+      rich.AppendRuns(List[TextRun]{ TextRun("\nnew line", Style()) })
+      rich.Draw(screen)
+      failed = failed + Checks.Expect(rich.SelectedText == "e\u0301 ab cd\n尾声",
+        "RichTextBlock append preserves anchored source positions")
+      rich.Handle(UiEvent{
+        Kind: UiEventKind.Key, Key: Key.Character, Text: "a", Modifiers: KeyModifiers.Ctrl,
+      })
+      failed = failed + Checks.Expect(rich.SelectedText == text + "\nnew line",
+        "RichTextBlock Ctrl+A includes physical newlines but not soft wraps")
+      rich.Handle(keyEv(Key.Escape))
+      failed = failed + Checks.Expect(rich.Selection == nil && !rich.CopySelection(),
+        "RichTextBlock Escape clears selection")
+      let source = SyntaxLineSource(List[string]{ "甲e\u0301abcdef", "尾声", "third" }, "txt", Style())
+      rich.LineSource = source
+      rich.ShowLineNumbers = true
+      rich.ScrollToLine(0)
+      rich.HorizontalCellOffset = 2
+      rich.Draw(screen)
+      rich.Handle(mouseEv(2, 0))
+      rich.Handle(UiEvent{
+        Kind: UiEventKind.Mouse, Mouse: MouseKind.Move,
+        Position: CellPoint{ Column: 5, Row: 0 },
+      })
+      failed = failed + Checks.Expect(rich.SelectedText == "e\u0301ab",
+        "RichTextBlock source selection accounts for the gutter and horizontal pan")
+      rich.Handle(move)
+      rich.Draw(screen)
+      screen.Flush()
+      let beforeMove = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 128 { rich.Handle(move) }
+      let moveBytes = GC.GetAllocatedBytesForCurrentThread() - beforeMove
+      let beforePaint = GC.GetAllocatedBytesForCurrentThread()
+      for i in 0 ... 128 { rich.Draw(screen) }
+      let paintBytes = GC.GetAllocatedBytesForCurrentThread() - beforePaint
+      failed = failed + Checks.Expect(moveBytes == 0 && paintBytes == 0,
+        "RichTextBlock Unicode selection paint and captured moves allocate zero bytes")
+      rich.ClearSelection()
+      failed = failed + Checks.Expect(rich.Handle(move) == EventResult.Continue,
+        "RichTextBlock clearing selection cancels capture")
+      rich.Handle(mouseEv(2, 0))
+      rich.IsVisible = false
+      rich.IsVisible = true
+      rich.Draw(screen)
+      failed = failed + Checks.Expect(rich.Handle(move) == EventResult.Continue && rich.Selection == nil,
+        "RichTextBlock capture loss prevents later hover selection")
+      rich.SelectAll()
+      rich.Width = CellLength.Cells(40)
+      rich.Height = CellLength.Cells(12)
+      let narrow = Screen(40, 12)
+      narrow.ColorMode = TerminalColorMode.NoColor
+      rich.Draw(narrow)
+      failed = failed + Checks.Expect(rich.CopySelection()
+          && clipboard.GetText() == "甲e\u0301abcdef\n尾声\nthird"
+          && narrow.Flush().Contains("[7m"),
+        "RichTextBlock selection fits 40x12 and remains visible without color")
+      rich.Runs = List[TextRun]{ TextRun("replacement", Style()) }
+      failed = failed + Checks.Expect(rich.Selection == nil,
+        "RichTextBlock destructive source replacement clears selection")
       return failed
     }
 
