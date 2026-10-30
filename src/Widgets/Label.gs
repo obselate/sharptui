@@ -27,6 +27,9 @@ public open class Label : Box {
     set -> alignment = value
   }
 
+  /// Ends text with an ellipsis when it exceeds the box width.
+  public prop Ellipsis bool { get; set; }
+
   /// Creates an empty, left-aligned label.
   public init() {
     text = ""
@@ -60,7 +63,14 @@ public open class Label : Box {
     if Alignment == HorizontalAlignment.Center { x = (r.WidthCells - w) / 2 }
     if Alignment == HorizontalAlignment.Right { x = r.WidthCells - w }
     if x < 0 { x = 0 }
-    screen.WriteClipped(r, x, 0, text, ink)
+    if Ellipsis && w > r.WidthCells && r.WidthCells > 0 {
+      let fit = Glyph.FitWidth(text, r.WidthCells - 1)
+      let clip = CellRect{ Column: r.Column, Row: r.Row, WidthCells: fit, HeightRows: r.HeightRows }
+      screen.WriteClipped(clip, 0, 0, text, ink)
+      screen.WriteClipped(r, fit, 0, "…", ink)
+    } else {
+      screen.WriteClipped(r, x, 0, text, ink)
+    }
   }
 
   private func rebuild() {

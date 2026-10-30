@@ -13,6 +13,7 @@ public open class Tabs : Box {
     set -> selection.OnChange = value
   }
   private var titles List[string]
+  private var titleRuns List[List[TextRun]]
   private var titleStarts List[int32]
 
   /// Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.
@@ -20,6 +21,15 @@ public open class Tabs : Box {
     get -> titles
     set {
       titles = value
+      Refresh()
+    }
+  }
+
+  /// Styled titles in display order. A non-empty list takes precedence over Titles.
+  public prop TitleRuns List[List[TextRun]] {
+    get -> titleRuns
+    set {
+      titleRuns = value
       Refresh()
     }
   }
@@ -39,6 +49,7 @@ public open class Tabs : Box {
   /// Creates an empty tab strip with a two-cell title gap and CanFocus enabled.
   public init() {
     titles = List[string]()
+    titleRuns = List[List[TextRun]]()
     titleStarts = List[int32]()
     selection = SelectionState()
     SelectedStyle = Style()
@@ -47,7 +58,7 @@ public open class Tabs : Box {
   }
 
 
-  /// Re-resolves selection after direct Titles mutation.
+  /// Re-resolves selection after direct Titles or TitleRuns mutation.
   public func Refresh() {
     selection.Index = normalizedSelectedIndex()
     selection.Change = nil
@@ -63,9 +74,9 @@ public open class Tabs : Box {
   /// @returns The measured size in cells.
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     var width = 0
-    for i in 0 ... Titles.Count {
+    for i in 0 ... titleCount() {
       if i > 0 { width = width + Gap }
-      width = width + Glyph.WidthOf(Titles[i])
+      width = width + titleWidth(i)
     }
     return CellSize{ WidthCells: width, HeightRows: 1 }
   }
@@ -75,14 +86,24 @@ public open class Tabs : Box {
   /// @param r The rect to paint within.
   /// @param ink The inherited style.
   protected override func Render(screen Screen, r CellRect, ink Style) {
-    if r.HeightRows <= 0 || Titles.Count == 0 { return }
+    if r.HeightRows <= 0 || titleCount() == 0 { return }
     let lefts = starts()
     let off = offset(r, lefts)
     let selectedStyle = SelectedStyle.MergedOver(ink)
 
-    for i in 0 ... Titles.Count {
-      let x = lefts[i] - off
-      screen.WriteClipped(r, x, 0, Titles[i], i == SelectedIndex ? selectedStyle : ink)
+    for i in 0 ... titleCount() {
+      var x = lefts[i] - off
+      let style = i == SelectedIndex ? selectedStyle : ink
+      if TitleRuns.Count == 0 {
+        screen.WriteClipped(r, x, 0, Titles[i], style)
+      } else {
+        let runs = TitleRuns[i]
+        for j in 0 ... runs.Count {
+          let run = runs[j]
+          screen.WriteClipped(r, x, 0, TextRun(run.Text, run.Style.MergedOver(style), run.Hyperlink))
+          x = x + Glyph.WidthOf(run.Text)
+        }
+      }
     }
   }
 
@@ -115,24 +136,24 @@ public open class Tabs : Box {
   }
 
   private func moveTo(want int32) bool {
-    if Titles.Count == 0 { return false }
-    return selection.Set(Selection.ClampIndex(Titles.Count, want), true)
+    if titleCount() == 0 { return false }
+    return selection.Set(Selection.ClampIndex(titleCount(), want), true)
   }
 
   /// Left edge of each title, laid end to end with Gap between.
   private func starts() List[int32] {
     titleStarts.Clear()
     var x = 0
-    for t in Titles {
+    for i in 0 ... titleCount() {
       titleStarts.Add(x)
-      x = x + Glyph.WidthOf(t) + Gap
+      x = x + titleWidth(i) + Gap
     }
     return titleStarts
   }
 
   private func titleAt(x int32, lefts List[int32]) int32 {
-    for i in 0 ... Titles.Count {
-      let w = Glyph.WidthOf(Titles[i])
+    for i in 0 ... titleCount() {
+      let w = titleWidth(i)
       if x >= lefts[i] && x < lefts[i] + w { return i }
     }
     return -1
@@ -140,14 +161,14 @@ public open class Tabs : Box {
 
   /// Horizontal scroll so the active title stays fully on screen.
   private func offset(bounds CellRect, lefts List[int32]) int32 {
-    if Titles.Count == 0 { return 0 }
-    let lastW = Glyph.WidthOf(Titles[Titles.Count - 1])
+    if titleCount() == 0 { return 0 }
+    let lastW = titleWidth(titleCount() - 1)
     let total = lefts[lefts.Count - 1] + lastW
     var max = total - bounds.WidthCells
     if max < 0 { max = 0 }
 
     let activeStart = lefts[SelectedIndex]
-    let activeW = Glyph.WidthOf(Titles[SelectedIndex])
+    let activeW = titleWidth(SelectedIndex)
     var off = 0
     if activeStart + activeW > bounds.WidthCells { off = activeStart + activeW - bounds.WidthCells }
     if activeStart < off { off = activeStart }
@@ -157,12 +178,22 @@ public open class Tabs : Box {
   }
 
   private func normalizedSelectedIndex() int32 {
-    let normalized = Selection.ClampIndex(Titles.Count, selection.Index)
+    let normalized = Selection.ClampIndex(titleCount(), selection.Index)
     if normalized != selection.Index {
       selection.Index = normalized
       selection.Change = nil
     }
     return selection.Index
+  }
+
+  private func titleCount() int32 -> TitleRuns.Count > 0 ? TitleRuns.Count : Titles.Count
+
+  private func titleWidth(index int32) int32 {
+    if TitleRuns.Count == 0 { return Glyph.WidthOf(Titles[index]) }
+    let runs = TitleRuns[index]
+    var width = 0
+    for i in 0 ... runs.Count { width = width + Glyph.WidthOf(runs[i].Text) }
+    return width
   }
 
 
@@ -228,6 +259,9 @@ public open class StatusBar : Box {
     }
   }
 
+  /// Ends clipped segment text with an ellipsis.
+  public prop Ellipsis bool { get; set; }
+
   /// Creates a bar with empty left, center, and right text.
   public init() {
     LeftText = ""
@@ -250,10 +284,12 @@ public open class StatusBar : Box {
     let middleWidth = segmentWidth(CenterText, CenterRuns)
     let rightWidth = segmentWidth(RightText, RightRuns)
     var width = leftWidth + rightWidth
-    let centeredLeft = leftWidth + leftWidth + middleWidth
-    let centeredRight = rightWidth + rightWidth + middleWidth
-    if centeredLeft > width { width = centeredLeft }
-    if centeredRight > width { width = centeredRight }
+    if middleWidth > 0 {
+      let centeredLeft = leftWidth + leftWidth + middleWidth
+      let centeredRight = rightWidth + rightWidth + middleWidth
+      if centeredLeft > width { width = centeredLeft }
+      if centeredRight > width { width = centeredRight }
+    }
     return CellSize{ WidthCells: width, HeightRows: 1 }
   }
 
@@ -268,37 +304,56 @@ public open class StatusBar : Box {
     let rightX = r.WidthCells - rightW
     let showRight = rightX >= leftW
 
-    drawSegment(screen, r, 0, LeftText, LeftRuns, ink)
-    if showRight { drawSegment(screen, r, rightX, RightText, RightRuns, ink) }
+    drawSegment(screen, r, 0, LeftText, LeftRuns, leftW, ink)
+    if showRight { drawSegment(screen, r, rightX, RightText, RightRuns, rightW, ink) }
 
     let midW = segmentWidth(CenterText, CenterRuns)
     let midX = (r.WidthCells - midW) / 2
     let bound = showRight ? rightX : r.WidthCells
-    // Clip the centered notice into the free region instead of dropping it when
-    // it is wider than the gap: WriteClipped truncates at the rect's right edge.
     let availL = leftW > midX ? leftW : midX
     if availL < bound {
       let clip = CellRect{ Column: r.Column + availL, Row: r.Row,
         WidthCells: bound - availL, HeightRows: r.HeightRows }
-      drawSegment(screen, clip, midX - availL, CenterText, CenterRuns, ink)
+      drawSegment(screen, clip, midX - availL, CenterText, CenterRuns, midW, ink)
     }
   }
 
   private func segmentWidth(text string, runs List[TextRun]) int32 {
     if runs.Count == 0 { return Glyph.WidthOf(text) }
     var width = 0
-    for run in runs { width = width + Glyph.WidthOf(run.Text) }
+    for i in 0 ... runs.Count { width = width + Glyph.WidthOf(runs[i].Text) }
     return width
   }
 
-  private func drawSegment(screen Screen, bounds CellRect, x int32, text string, runs List[TextRun], ink Style) {
+  private func drawSegment(screen Screen, bounds CellRect, x int32, text string,
+      runs List[TextRun], width int32, ink Style) {
+    var clip = bounds
+    if Ellipsis && bounds.WidthCells > 0 && x + width > bounds.WidthCells {
+      let available = bounds.WidthCells - x - 1
+      var fit = 0
+      if runs.Count == 0 {
+        fit = Glyph.FitWidth(text, available)
+      } else {
+        for i in 0 ... runs.Count {
+          let run = runs[i]
+          let part = Glyph.FitWidth(run.Text, available - fit)
+          fit = fit + part
+          if part < Glyph.WidthOf(run.Text) { break }
+        }
+      }
+      let end = x + fit
+      clip = CellRect{ Column: bounds.Column, Row: bounds.Row,
+        WidthCells: end > 0 ? end : 0, HeightRows: bounds.HeightRows }
+      screen.WriteClipped(bounds, end, 0, "…", ink)
+    }
     if runs.Count == 0 {
-      screen.WriteClipped(bounds, x, 0, text, ink)
+      screen.WriteClipped(clip, x, 0, text, ink)
       return
     }
     var offset = x
-    for run in runs {
-      screen.WriteClipped(bounds, offset, 0,
+    for i in 0 ... runs.Count {
+      let run = runs[i]
+      screen.WriteClipped(clip, offset, 0,
         TextRun(run.Text, run.Style.MergedOver(ink), run.Hyperlink))
       offset = offset + Glyph.WidthOf(run.Text)
     }

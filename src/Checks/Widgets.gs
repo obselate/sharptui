@@ -828,10 +828,116 @@ public class WidgetCheck {
       failed = failed + Checks.Expect(cjk.Text == "日!本", "the caret indexes clusters, not bytes")
 
       failed = failed + runWidgetScenario()
+      failed = failed + runTextOverflowChecks()
       failed = failed + runChartChecks()
       return failed
     }
   }
+}
+
+private func runTextOverflowChecks() int32 {
+  var failed = 0
+  let clusters = List[string]{ "a", "中", "é", "👩‍💻" }
+  for cluster in clusters {
+    let text = cluster + cluster + cluster + cluster + cluster + cluster
+      + cluster + cluster + cluster + cluster + cluster
+    let clusterWidth = CellText.MeasureWidth(cluster)
+    for width in 1 ... 11 {
+      let label = Label{ Text: text, Ellipsis: true, Width: CellLength.Cells(width) }
+      let plain = StatusBar{ LeftText: text, Ellipsis: true, Width: CellLength.Cells(width) }
+      let styled = StatusBar{
+        LeftRuns: { TextRun(cluster, Style{ Foreground: Color.Indexed(1) }),
+          TextRun(text.Substring(cluster.Length), Style{ Foreground: Color.Indexed(2) }) },
+        Ellipsis: true, Width: CellLength.Cells(width),
+      }
+      let root = Column{ Children: { label, plain, styled } }
+      let screen = Screen(40, 12)
+      root.Draw(screen)
+      let end = ((width - 1) / clusterWidth) * clusterWidth
+      for row in 0 ... 3 {
+        failed += Checks.Expect(screen.Probe(end, row) == "…"
+          && screen.Probe(width, row) == " ", "ellipsis stays within widths 1 through 10")
+        for column in 0 ... end {
+          let expected = column % clusterWidth == 0 ? cluster : ""
+          failed += Checks.Expect(screen.Probe(column, row) == expected,
+            "ellipsis preserves whole graphemes and double-width cells")
+        }
+      }
+      screen.ColorMode = TerminalColorMode.NoColor
+      root.Draw(screen)
+      let noColor = screen.Flush()
+      failed += Checks.Expect(noColor.Contains("…") && !noColor.Contains("[38;")
+        && !noColor.Contains("[48;"), "ellipsis preserves text in NoColor mode")
+      for pass in 0 ... 64 { root.Draw(screen) }
+      let before = GC.GetAllocatedBytesForCurrentThread()
+      for pass in 0 ... 32 { root.Draw(screen) }
+      failed += Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == before,
+        "ellipsis repaint allocates zero bytes")
+    }
+  }
+
+  let left = StatusBar{ LeftText: "中文" }
+  let right = StatusBar{ RightText: "right" }
+  let flanks = StatusBar{ LeftText: "left", RightText: "right" }
+  let middle = StatusBar{ CenterText: "center" }
+  let measure = Row{ Children: { left, right, flanks, middle } }
+  measure.Compute(40, 12)
+  failed += Checks.Expect(left.Bounds.WidthCells == 4 && right.Bounds.WidthCells == 5
+    && flanks.Bounds.WidthCells == 9 && middle.Bounds.WidthCells == 6,
+    "StatusBar intrinsic width uses only non-empty segment content")
+  left.LeftRuns = List[TextRun]{ TextRun("ready", Style()) }
+  measure.Compute(40, 12)
+  failed += Checks.Expect(left.Bounds.WidthCells == 5,
+    "StatusBar styled segment replacement updates intrinsic width")
+
+  let center = StatusBar{ LeftText: "L", CenterText: "abcdefghijk", RightText: "R",
+    Ellipsis: true, Width: CellLength.Cells(7) }
+  let centerRoot = Box{ Children: { center } }
+  let centerScreen = Screen(40, 12)
+  centerRoot.Draw(centerScreen)
+  failed += Checks.Expect(centerScreen.Probe(0, 0) == "L"
+    && centerScreen.Probe(1, 0) == "d" && centerScreen.Probe(5, 0) == "…"
+    && centerScreen.Probe(6, 0) == "R", "center ellipsis fits between the flanking segments")
+
+  let accent = Style{ Foreground: Color.Rgb(229, 72, 77), Attributes: TextAttributes.Bold }
+  let tabs = Tabs{
+    Titles: { "plain" },
+    TitleRuns: {
+      List[TextRun]{ TextRun("1", accent), TextRun("中文", Style()) },
+      List[TextRun]{ TextRun("2", accent), TextRun("next", Style()) },
+    },
+    SelectedStyle: Style{ Attributes: TextAttributes.Underline },
+    Width: CellLength.Cells(9),
+  }
+  let tabRoot = Box{ Children: { tabs } }
+  let tabScreen = Screen(40, 12)
+  tabRoot.Draw(tabScreen)
+  failed += Checks.Expect(tabScreen.Probe(0, 0) == "1" && tabScreen.Probe(1, 0) == "中"
+    && tabScreen.Probe(3, 0) == "文" && tabScreen.Probe(7, 0) == "2",
+    "Tabs draws styled runs using their full cell widths")
+  failed += Checks.Expect(tabScreen.Flush().Contains("[38;2;229;72;77m"),
+    "Tabs emits styled title run colors")
+  tabRoot.Handle(mouseEv(7, 0))
+  failed += Checks.Expect(tabs.SelectedIndex == 1, "styled tab hit testing matches the drawn title")
+  tabRoot.Draw(tabScreen)
+  failed += Checks.Expect(tabScreen.Probe(4, 0) == "2", "styled tab scrolling uses run widths")
+  tabRoot.Handle(mouseEv(0, 0))
+  failed += Checks.Expect(tabs.SelectedIndex == 0, "scrolled styled tab hit testing selects visible content")
+  tabScreen.ColorMode = TerminalColorMode.NoColor
+  tabRoot.Draw(tabScreen)
+  let noColor = tabScreen.Flush()
+  failed += Checks.Expect(!noColor.Contains("[38;") && !noColor.Contains("[48;")
+    && noColor.Contains("1"), "styled titles preserve text in NoColor mode")
+  for pass in 0 ... 64 { tabRoot.Draw(tabScreen) }
+  let before = GC.GetAllocatedBytesForCurrentThread()
+  for pass in 0 ... 64 { tabRoot.Draw(tabScreen) }
+  failed += Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == before,
+    "styled title repaint allocates zero bytes")
+  tabs.TitleRuns = List[List[TextRun]]()
+  tabRoot.Draw(tabScreen)
+  failed += Checks.Expect(tabScreen.Probe(0, 0) == "p" && tabs.SelectedIndex == 0,
+    "clearing styled titles restores plain Titles")
+  return failed
 }
 
 private func rejectsNumericRange(minimum float64, maximum float64) bool {

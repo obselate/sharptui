@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `2992d55030d391c05a7e4ff0bb2049b38c695c9ec5efbaba1c53420f6e55cd0d`.
+Public-symbol SHA-256: `e55d6b9190354581f86f0c5974b303337b57cb996ca74bcf7d60b7ae1defb334`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -1211,6 +1211,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop Alignment HorizontalAlignment { get; set; }` — How Text is positioned within the box when the box is wider than the text.
+- `prop Ellipsis bool { get; set; }` — Ends text with an ellipsis when it exceeds the box width.
 - `prop Text string { get; set; }` — The text to display.
 
 ## SharpTui.ListItem
@@ -1917,6 +1918,7 @@ Inherits `Box`; see that type for inherited members.
 
 - `prop CenterRuns List[TextRun] { get; set; }` — Styled content drawn in the center. When non-empty, this takes precedence over CenterText.
 - `prop CenterText string { get; set; }` — Text drawn centered in the bar when there is room for it and the flanking text.
+- `prop Ellipsis bool { get; set; }` — Ends clipped segment text with an ellipsis.
 - `prop LeftRuns List[TextRun] { get; set; }` — Styled content drawn at the left edge. When non-empty, this takes precedence over LeftText.
 - `prop LeftText string { get; set; }` — Text drawn at the left edge of the bar.
 - `prop RightRuns List[TextRun] { get; set; }` — Styled content drawn at the right edge. When non-empty, this takes precedence over RightText.
@@ -2081,11 +2083,12 @@ Inherits `Box`; see that type for inherited members.
 - `prop OnChange Action[SelectionChange] { get; set; }` — Receives each user selection change after navigation completes. Programmatic selection is silent.
 - `prop SelectedIndex int32 { get; set; }` — Index of the active tab. Setting it selects programmatically and does not emit a SelectionChange; the value must not be negative.
 - `prop SelectedStyle Style { get; set; }` — Style merged over the active tab's inherited style.
+- `prop TitleRuns List[List[TextRun]] { get; set; }` — Styled titles in display order. A non-empty list takes precedence over Titles.
 - `prop Titles List[string] { get; set; }` — Tab titles in display order; setting it replaces all titles and re-resolves the selection via Refresh.
 
 ### Methods
 
-- `func Refresh()` — Re-resolves selection after direct Titles mutation.
+- `func Refresh()` — Re-resolves selection after direct Titles or TitleRuns mutation.
 
 ## SharpTui.TerminalColorMode
 
