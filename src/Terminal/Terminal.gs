@@ -158,7 +158,10 @@ internal class Terminal {
     if activeReader != nil && activeReader.ManagedThreadId != Environment.CurrentManagedThreadId {
       activeReader.Join()
     }
-    writer?.Stop()
+    var disconnected = IsDisconnected
+    writer?.Stop(disconnected)
+    disconnected = IsDisconnected
+    if disconnected { Interlocked.Exchange(ref readerFault, 1) }
     writer = nil
     reserved = nil
     deferred = false
@@ -167,14 +170,18 @@ internal class Terminal {
         if let screen = presentedScreen {
           frame.Reset()
           screen.ReleaseGraphics(frame)
-          frame.WriteTo(host.Output())
           presentedScreen = nil
+          if !disconnected { frame.WriteTo(host.Output()) }
         }
-        writeText(GraphicsRestore)
-        if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
-        writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
-          + Ansi.AltScreenOff + Ansi.Reset)
-        restoreBackground()
+        if !disconnected {
+          writeText(GraphicsRestore)
+          if kittyEnabled { writeText(Ansi.KittyKeyboardDisable) }
+          writeText(Ansi.BracketedPasteOff + Ansi.MouseOff + Ansi.CursorShow
+            + Ansi.AltScreenOff + Ansi.Reset)
+          restoreBackground()
+        }
+      } catch (error IOException) {
+        Interlocked.Exchange(ref readerFault, 1)
       } finally {
         host.Restore()
         input = nil
@@ -292,9 +299,12 @@ internal class Terminal {
   }
 
   /// Reports whether the host requested exit or the background reader thread
-  /// faulted, clearing both flags as it does.
+  /// faulted. Host exit requests are consumed; terminal faults remain latched until Enter.
   public func ConsumeExit() bool -> host.ConsumeExit()
-    || Interlocked.Exchange(ref readerFault, 0) != 0 || writer?.Error != nil
+    || Interlocked.CompareExchange(ref readerFault, 0, 0) != 0 || writer?.Error != nil
+
+  internal prop IsDisconnected bool -> Interlocked.CompareExchange(ref readerFault, 0, 0) != 0
+    || host.IsDisconnected() || writer?.Error != nil
 
   internal func ConsumeOutputProgress() bool {
     if !deferred { return false }

@@ -110,6 +110,9 @@ public class App {
   /// A clipboard that stores text locally and publishes writes through OSC 52 while the app runs.
   public prop Clipboard Clipboard -> clipboard
 
+  /// Whether the terminal disconnected during the current or most recent Run.
+  public prop IsTerminalDisconnected bool -> term.IsDisconnected
+
   internal prop IsDrawRequested bool -> invalidated != 0
 
   /// Creates an app with terminal-default colors, no ticking, drag mouse tracking, and
@@ -173,7 +176,7 @@ public class App {
     try {
       loop(root)
     } catch (e IOException) {
-      Console.Error.WriteLine("sharptui: lost the terminal: " + e.Message)
+      if !term.IsDisconnected { Console.Error.WriteLine("sharptui: lost the terminal: " + e.Message) }
     } finally {
       root.TreeClipboard = nil
     }

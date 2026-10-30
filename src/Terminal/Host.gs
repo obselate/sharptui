@@ -12,6 +12,7 @@ internal interface TerminalHost {
   func Rows() int32;
   func ConsumeResize() bool;
   func ConsumeExit() bool;
+  func IsDisconnected() bool;
   func WakeReader();
   func Read(buffer []uint8, timeoutMilliseconds int32) int32;
   func Output() Stream;
@@ -42,6 +43,7 @@ internal class TerminalStreamHost : TerminalHost {
   public func Rows() int32 -> 24
   public func ConsumeResize() bool -> false
   public func ConsumeExit() bool -> false
+  public func IsDisconnected() bool -> false
   public func WakeReader() {}
   public func Read(buffer []uint8, timeoutMilliseconds int32) int32 -> -1
   public func Output() Stream -> stream

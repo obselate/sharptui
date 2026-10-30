@@ -14,6 +14,7 @@ internal class TerminalOutput {
     private let output Stream
     private let wake AutoResetEvent
     internal var Error Exception?
+    private var discardOutput int32
 
     internal init(output Stream, wake AutoResetEvent, first TerminalBuffer) {
         this.output = output
@@ -44,7 +45,8 @@ internal class TerminalOutput {
         }
     }
 
-    internal func Stop() {
+    internal func Stop(discard bool = false) {
+        if discard { Interlocked.Exchange(ref discardOutput, 1) }
         ChannelOps.Send[TerminalBuffer?](frames, nil, CancellationToken.None)
         ChannelOps.Receive[bool](stopped, CancellationToken.None)
     }
@@ -55,6 +57,7 @@ internal class TerminalOutput {
             var control string?
             var available bool
             while controls.TryReceive(out control, out available) && available {
+                if Interlocked.CompareExchange(ref discardOutput, 0, 0) != 0 || Error != nil { continue }
                 if let text = control {
                     try {
                         let bytes = Encoding.UTF8.GetBytes(text)
@@ -62,6 +65,7 @@ internal class TerminalOutput {
                         output.Flush()
                     } catch (error Exception) {
                         Error = error
+                        wake.Set()
                     }
                 }
             }
@@ -75,11 +79,13 @@ internal class TerminalOutput {
             guard let frame = next else {
                 break
             }
-            try {
-                frame.WriteTo(output)
-                output.Flush()
-            } catch (error Exception) {
-                Error = error
+            if Interlocked.CompareExchange(ref discardOutput, 0, 0) == 0 && Error == nil {
+                try {
+                    frame.WriteTo(output)
+                    output.Flush()
+                } catch (error Exception) {
+                    Error = error
+                }
             }
             free.TrySend(frame)
             wake.Set()

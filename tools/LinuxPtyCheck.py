@@ -122,7 +122,7 @@ def assert_running_state(slave):
         raise RuntimeError("SharpTui left ECHO or ICANON enabled while running")
 
 
-def run_session(name, reply=None):
+def run_session(name, reply=None, exit_signal=None):
     master, slave, before, pid = spawn()
     reaped = False
     output = bytearray()
@@ -168,12 +168,17 @@ def run_session(name, reply=None):
                 if b"git" not in endpoint_output or b"motion" not in endpoint_output:
                     raise RuntimeError(f"{name}: {sequence!r} did not move between picker endpoints")
 
-        os.write(master, ESC)
+        if exit_signal is None:
+            os.write(master, ESC)
+        else:
+            os.kill(pid, exit_signal)
         status = wait_exit(pid, 2.0)
         reaped = True
         output.extend(collect(master, 0.2))
         if not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
             raise RuntimeError(f"{name}: SharpTui exited with status {status}")
+        if any(ESC + mode not in output for mode in (b"[?1049l", b"[?25h", b"[?2004l")):
+            raise RuntimeError(f"{name}: SharpTui did not restore screen, cursor, and paste modes")
 
         values = osc11_values(bytes(output))
         if reply is None:
@@ -202,18 +207,52 @@ def run_session(name, reply=None):
         os.close(slave)
 
 
+def run_disconnect(close_master):
+    master, slave, before, pid = spawn()
+    reaped = False
+    try:
+        if not collect(master, 0.65):
+            raise RuntimeError("disconnect: SharpTui did not paint in the PTY")
+        assert_running_state(slave)
+        if close_master:
+            os.close(master)
+            master = None
+        else:
+            os.kill(pid, signal.SIGHUP)
+        status = wait_exit(pid, 1.0)
+        reaped = True
+        if not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
+            raise RuntimeError(f"disconnect: SharpTui did not return normally: {status}")
+        if not close_master and termios.tcgetattr(slave) != before:
+            raise RuntimeError("SIGHUP: SharpTui did not restore the exact PTY termios state")
+        if not close_master and ESC + b"[?80;1004r" in collect(master, 0.1):
+            raise RuntimeError("SIGHUP: SharpTui wrote terminal mode restoration after hangup")
+    finally:
+        if not reaped:
+            done, _ = exited(pid)
+            if not done:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+        if master is not None:
+            os.close(master)
+        os.close(slave)
+
+
 def run():
     if not DLL.is_file():
         raise FileNotFoundError(f"build Release first: {DLL}")
     run_session("no-reply")
     run_session("BEL-reply", ORIGINAL_REPLY_BEL)
     run_session("ST-reply", ORIGINAL_REPLY_ST)
+    run_session("SIGTERM", exit_signal=signal.SIGTERM)
+    run_disconnect(True)
+    run_disconnect(False)
 
 
 if __name__ == "__main__":
     try:
         run()
-        print("linux PTY check: ok (no-reply, BEL, ST, Home/End tilde keys)")
+        print("linux PTY check: ok (no-reply, BEL, ST, Home/End tilde keys, SIGTERM, closed PTY, SIGHUP)")
     except Exception as error:
         print(f"linux PTY check FAILED: {error}", file=sys.stderr)
         sys.exit(1)

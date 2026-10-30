@@ -1,7 +1,7 @@
 # SharpTUI public API
 
 Generated from `SharpTui.Framework.dll` plus compiler-emitted and supplemental XML documentation by the API-surface tool.
-Public-symbol SHA-256: `057655b817c38d566f4739cfd4f4af8d3ebb55ef7eec4bdb95f5f5abc794405f`.
+Public-symbol SHA-256: `37f1393391865853e9094628ccdd81d42f8b7f89588dd205388c23b227d0fb2d`.
 
 Inherited members are documented on their declaring type. Types and members absent from this document are not part of the exported API.
 
@@ -258,6 +258,7 @@ G# kind: `class`.
 - `prop DefaultStyle Style { get; set; }` — The style used for unstyled drawing in the application.
 - `prop Graphics GraphicsProtocol { get; set; }` — The image backend. Auto probes Kitty, then Sixel, then uses colored half blocks.
 - `prop HyperlinksEnabled bool { get; set; }` — Whether semantic TextRun hyperlinks are emitted with OSC 8.
+- `prop IsTerminalDisconnected bool { get; }` — Whether the terminal disconnected during the current or most recent Run.
 - `prop Keys Keymap { get; set; }` — Application bindings offered before and after tree event handling.
 - `prop MouseTracking MouseTracking { get; set; }` — Terminal mouse reporting selected when Run enters the terminal.
 - `prop OnFocus Action[bool] { get; set; }` — Receives terminal focus changes on the UI thread, including while an overlay owns input focus.
