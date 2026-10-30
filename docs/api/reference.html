@@ -329,6 +329,7 @@
 <li><a href="#sharptuimousebutton">SharpTui.MouseButton</a></li>
 <li><a href="#sharptuimousekind">SharpTui.MouseKind</a></li>
 <li><a href="#sharptuimousetracking">SharpTui.MouseTracking</a></li>
+<li><a href="#sharptuinumberinput">SharpTui.NumberInput</a></li>
 <li><a href="#sharptuinumericdisplay">SharpTui.NumericDisplay</a></li>
 <li><a href="#sharptuinumericrange">SharpTui.NumericRange</a></li>
 <li><a href="#sharptuioverlay">SharpTui.Overlay</a></li>
@@ -1813,7 +1814,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>31-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuidialog" data-search="sharptui.dialog a centered, dimmed modal overlay showing a message and a row of action buttons. g# kind: class .
+<section class="sheet api-type" aria-labelledby="sharptuidialog" data-search="sharptui.dialog a centered, dimmed modal overlay with a wrapped message and adaptive action buttons. stacked actions that exceed the available content rows are clipped. g# kind: class .
 inherits overlay ; see that type for inherited members. constructors init() — creates a centered, dimmed, bordered dialog with no message or actions. properties prop actions list[dialogaction] { get; set; } — the actions offered as buttons, in display order. setting it rebuilds the dialog&#x27;s children. prop message string { get; set; } — the wrapped body text. setting it rebuilds the dialog&#x27;s children. prop onresult action[dialogaction] { get; set; } — work invoked with the selected action.">
   <header class="running-head">
   <span>SharpTUI public API</span>
@@ -1828,7 +1829,7 @@ inherits overlay ; see that type for inherited members. constructors init() — 
       </div>
     </div>
     <div class="chapter-copy">
-      <p>A centered, dimmed modal overlay showing a message and a row of action buttons.</p>
+      <p>A centered, dimmed modal overlay with a wrapped message and adaptive action buttons. Stacked actions that exceed the available content rows are clipped.</p>
 <p>G# kind: <code>class</code>.
 Inherits <code>Overlay</code>; see that type for inherited members.</p>
 <h3 id="constructors-10">Constructors</h3>
@@ -2542,7 +2543,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 </footer>
 </section>
 <section class="sheet api-type" aria-labelledby="sharptuilabel" data-search="sharptui.label a single line of text, clipped to its box. g# kind: class .
-inherits box ; see that type for inherited members. constructors init() — creates an empty, left-aligned label. properties prop alignment horizontalalignment { get; set; } — how text is positioned within the box when the box is wider than the text. prop text string { get; set; } — the text to display. setting it rebuilds the grapheme cluster cache when the value changes.">
+inherits box ; see that type for inherited members. constructors init() — creates an empty, left-aligned label. properties prop alignment horizontalalignment { get; set; } — how text is positioned within the box when the box is wider than the text. prop text string { get; set; } — the text to display.">
   <header class="running-head">
   <span>SharpTUI public API</span>
   <span>STUI-REF / Revision A</span>
@@ -2566,7 +2567,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="properties-29">Properties</h3>
 <ul>
 <li><code>prop Alignment HorizontalAlignment { get; set; }</code> — How Text is positioned within the box when the box is wider than the text.</li>
-<li><code>prop Text string { get; set; }</code> — The text to display. Setting it rebuilds the grapheme cluster cache when the value changes.</li>
+<li><code>prop Text string { get; set; }</code> — The text to display.</li>
 </ul>
     </div>
   </div>
@@ -3666,7 +3667,7 @@ Inherits <code>Box</code>; see that type for inherited members.</p>
   <span>75-1</span>
 </footer>
 </section>
-<section class="sheet api-type" aria-labelledby="sharptuiselect" data-search="sharptui.select a dropdown select. opens a floating option list below itself. add a select late among its siblings so the open list paints over them. g# kind: class .
+<section class="sheet api-type" aria-labelledby="sharptuiselect" data-search="sharptui.select a dropdown select with a bounded floating option list. add a select late among its siblings so the open list paints over them. g# kind: class .
 inherits box ; see that type for inherited members. constructors init() — creates a closed select with no options and the placeholder &quot;select&quot;. properties prop isopen bool { get; } — whether the floating option list is currently shown. prop onchange action[selectionchange] { get; set; } — receives each user selection change after navigation completes. programmatic selection is silent. prop options list[string] { get; set; } — selectable option strings; setting it replaces all options and re-resolves the selection via refresh. prop placeholder string { get; set; } — text shown in the closed control when options is empty. prop selectedindex int32 { get; set; } — index of the selected option, clamped to the current options range. setting it selects programmatically and does not emit a selectionchange. prop selectedstyle style { get; set; } — style merged over the highlighted option&#x27;s inherited style in the open list. methods func refresh() — re-resolves selection after direct options mutation.">
   <header class="running-head">
   <span>SharpTUI public API</span>
@@ -3681,7 +3682,7 @@ inherits box ; see that type for inherited members. constructors init() — crea
       </div>
     </div>
     <div class="chapter-copy">
-      <p>A dropdown select. Opens a floating option list below itself. Add a Select late among its siblings so the open list paints over them.</p>
+      <p>A dropdown select with a bounded floating option list. Add a Select late among its siblings so the open list paints over them.</p>
 <p>G# kind: <code>class</code>.
 Inherits <code>Box</code>; see that type for inherited members.</p>
 <h3 id="constructors-35">Constructors</h3>

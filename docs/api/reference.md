@@ -67,6 +67,7 @@ Inherited members are documented on their declaring type. Types and members abse
 - [SharpTui.MouseButton](#sharptuimousebutton)
 - [SharpTui.MouseKind](#sharptuimousekind)
 - [SharpTui.MouseTracking](#sharptuimousetracking)
+- [SharpTui.NumberInput](#sharptuinumberinput)
 - [SharpTui.NumericDisplay](#sharptuinumericdisplay)
 - [SharpTui.NumericRange](#sharptuinumericrange)
 - [SharpTui.Overlay](#sharptuioverlay)
@@ -833,7 +834,7 @@ G# kind: `struct`.
 
 ## SharpTui.Dialog
 
-A centered, dimmed modal overlay showing a message and a row of action buttons.
+A centered, dimmed modal overlay with a wrapped message and adaptive action buttons. Stacked actions that exceed the available content rows are clipped.
 
 G# kind: `class`.
 Inherits `Overlay`; see that type for inherited members.
@@ -1206,7 +1207,7 @@ Inherits `Box`; see that type for inherited members.
 ### Properties
 
 - `prop Alignment HorizontalAlignment { get; set; }` — How Text is positioned within the box when the box is wider than the text.
-- `prop Text string { get; set; }` — The text to display. Setting it rebuilds the grapheme cluster cache when the value changes.
+- `prop Text string { get; set; }` — The text to display.
 
 ## SharpTui.ListItem
 
@@ -1759,7 +1760,7 @@ G# kind: `enum`.
 
 ## SharpTui.Select
 
-A dropdown select. Opens a floating option list below itself. Add a Select late among its siblings so the open list paints over them.
+A dropdown select with a bounded floating option list. Add a Select late among its siblings so the open list paints over them.
 
 G# kind: `class`.
 Inherits `Box`; see that type for inherited members.
