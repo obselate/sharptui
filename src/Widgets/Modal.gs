@@ -97,7 +97,7 @@ public class DialogAction {
   }
 }
 
-/// A centered, dimmed modal overlay showing a message and a row of action buttons.
+/// A centered, dimmed modal overlay with a wrapped message and adaptive action buttons.
 public open class Dialog : Overlay {
   private var message string
   private var actions List[DialogAction]
@@ -182,8 +182,14 @@ public open class Dialog : Overlay {
       wrappedMessage = Message
     }
     var totalWidth = 0
-    for button in actionButtons { totalWidth = totalWidth + Glyph.WidthOf(button.Text) + 2 }
+    var actionIndex = 0
+    while actionIndex < actionButtons.Count {
+      totalWidth = totalWidth + Glyph.WidthOf(actionButtons[actionIndex].Text) + 2
+      actionIndex = actionIndex + 1
+    }
     if actionButtons.Count > 1 { totalWidth = totalWidth + (actionButtons.Count - 1) * 2 }
+    let wasStacked = stacked
+    let previousRows = actionRows
     stacked = totalWidth > contentWidth
     let wantedActions = stacked ? actionButtons.Count : (actionButtons.Count > 0 ? 1 : 0)
     actionRows = Math.Min(wantedActions, Math.Max(0, availableRows - (messageRows > 0 ? 1 : 0)))
@@ -197,7 +203,7 @@ public open class Dialog : Overlay {
     var i = 0
     while i < actionButtons.Count {
       let button = actionButtons[i]
-      if button.IsFocused && !Object.ReferenceEquals(lastFocused, button) {
+      if button.IsFocused && (!Object.ReferenceEquals(lastFocused, button) || previousRows != actionRows || wasStacked != stacked) {
         actionTop = Selection.ScrollIntoView(actionButtons.Count, i, actionTop, actionRows)
         lastFocused = button
       }
@@ -210,7 +216,7 @@ public open class Dialog : Overlay {
       let button = actionButtons[i]
       let row = stacked ? i - actionTop : 0
       let x = stacked ? 0 : column
-      let y = Math.Max(0, row)
+      let y = row >= 0 && row < actionRows ? row : 0
       if button.Placement.IsInFlow || button.Placement.Point.Column != x || button.Placement.Point.Row != y {
         button.Placement = Placement.At(CellPoint{ Column: x, Row: y })
       }

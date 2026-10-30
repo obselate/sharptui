@@ -200,6 +200,7 @@ internal class OverlayCheck {
         let width = widths[size]
         let height = heights[size]
         let screen = Screen(width, height)
+        screen.ColorMode = TerminalColorMode.NoColor
         let chooser = Select{
           Width: CellLength.Cells(width + 10),
           Height: CellLength.Cells(1),
@@ -257,12 +258,13 @@ internal class OverlayCheck {
         failed = failed + Checks.Expect(bounds.Column >= 0 && bounds.Row >= 0
             && bounds.Column + bounds.WidthCells <= width && bounds.Row + bounds.HeightRows <= height,
           "Dialog bounds include its border and padding inside the viewport")
+        dialogRoot.Focus(dialog.Children[0])
         i = 0
         while i < dialog.Actions.Count {
           let button = dialog.Children[1].Children[i]
-          dialogRoot.Focus(button)
+          dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Tab })
           dialogRoot.Draw(screen)
-          failed = failed + Checks.Expect(button.Bounds.HeightRows == 1
+          failed = failed + Checks.Expect(button.IsFocused && button.Bounds.HeightRows == 1
               && button.Bounds.Row >= bounds.Row && button.Bounds.Row < bounds.Row + bounds.HeightRows,
             "Dialog brings every focused action into its local viewport")
           dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
@@ -279,25 +281,36 @@ internal class OverlayCheck {
         dialogRoot.Draw(screen)
         failed = failed + Checks.Expect(dialog.Children[0].Bounds.HeightRows == 0,
           "Dialog empty message consumes no row")
+        for action in dialog.Actions { action.Text = "English action" }
+        i = 0
+        while i < chooser.Options.Count {
+          chooser.Options[i] = "English option"
+          i = i + 1
+        }
+        chooser.Refresh()
+        dialog.Message = "A long message that wraps to the actual content width and scrolls locally."
         dialogRoot.Draw(screen)
         root.Draw(screen)
+        dialogRoot.Draw(screen)
+        root.Draw(screen)
+        dialogRoot.Focus(dialog.Children[0])
         let before = GC.GetAllocatedBytesForCurrentThread()
         dialogRoot.Draw(screen)
-        let afterDialog = GC.GetAllocatedBytesForCurrentThread()
         root.Draw(screen)
-        let afterSelect = GC.GetAllocatedBytesForCurrentThread()
         dialogRoot.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.PageDown })
-        let afterPage = GC.GetAllocatedBytesForCurrentThread()
         root.Handle(UiEvent{ Kind: UiEventKind.Key, Key: Key.Enter })
         root.Handle(UiEvent{ Kind: UiEventKind.Mouse, Mouse: MouseKind.ScrollDown,
           Position: CellPoint{ Column: 1, Row: height - 8 } })
-        let afterInput = GC.GetAllocatedBytesForCurrentThread()
-        Console.WriteLine(afterDialog - before)
-        Console.WriteLine(afterSelect - afterDialog)
-        Console.WriteLine(afterPage - afterSelect)
-        Console.WriteLine(afterInput - afterPage)
         failed = failed + Checks.Expect(GC.GetAllocatedBytesForCurrentThread() == before,
           "Bounded dialog paint and popup wheel routing allocate no managed memory after warmup")
+        dialog.Message = ""
+        dialog.Actions = List[DialogAction]{
+          DialogAction{ Text: "Accept" }, DialogAction{ Text: "取消", IsCancel: true },
+        }
+        dialogRoot.Draw(screen)
+        failed = failed + Checks.Expect(dialog.Children[1].Children[0].Bounds.Row
+            == dialog.Children[1].Children[1].Bounds.Row && dialog.Bounds.HeightRows == 5,
+          "Dialog places fitting actions in one row without an empty message row")
         size = size + 1
       }
       return failed
