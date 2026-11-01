@@ -147,6 +147,7 @@ public open class ChartView : Box {
         set;
     }
 
+    /// The subcell packing for multi-row charts. Defaults to Braille.
     public prop PackingMode CanvasMode {
         get -> surface.Mode
         set {

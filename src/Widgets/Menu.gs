@@ -51,6 +51,7 @@ public open class Select : Box {
     }
   }
 
+  /// The glyph shown after the selected option. Defaults to a downward triangle.
   public prop IndicatorGlyph string {
     get -> indicatorGlyph
     set {
