@@ -11,6 +11,7 @@ public open class Select : Box {
   private var options List[string]
   private var selection SelectionState
   private var placeholder string
+  private var indicatorGlyph string
 
   /// Receives each user selection change after navigation completes. Programmatic selection is silent.
   public prop OnChange Action[SelectionChange]? {
@@ -50,6 +51,15 @@ public open class Select : Box {
     }
   }
 
+  public prop IndicatorGlyph string {
+    get -> indicatorGlyph
+    set {
+      if indicatorGlyph == value { return }
+      indicatorGlyph = value
+      MarkMeasureDirty()
+    }
+  }
+
   /// Creates a closed select with no options and the placeholder "select".
   public init() {
     options = List[string]()
@@ -58,6 +68,7 @@ public open class Select : Box {
     highlightIndex = 0
     SelectedStyle = Style()
     Placeholder = "select"
+    IndicatorGlyph = "▾"
     CanFocus = true
     top = 0
   }
@@ -84,7 +95,7 @@ public open class Select : Box {
       let optionWidth = Glyph.WidthOf(option)
       if optionWidth > width { width = optionWidth }
     }
-    return CellSize{ WidthCells: width + 2, HeightRows: 1 }
+    return CellSize{ WidthCells: width + 1 + Glyph.WidthOf(IndicatorGlyph), HeightRows: 1 }
   }
 
   /// Paints the closed control's selected text and dropdown arrow, then the floating option list with the highlighted row when open.
@@ -99,7 +110,7 @@ public open class Select : Box {
     let textWidth = Glyph.WidthOf(text)
     screen.WriteClipped(r, 0, 0, text, show)
     screen.WriteClipped(r, textWidth, 0, " ", show)
-    screen.WriteClipped(r, textWidth + 1, 0, "▾", show)
+    screen.WriteClipped(r, textWidth + 1, 0, IndicatorGlyph, show)
 
     if !IsOpen { return }
     let list = listRect()

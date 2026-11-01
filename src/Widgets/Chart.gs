@@ -147,6 +147,15 @@ public open class ChartView : Box {
         set;
     }
 
+    public prop PackingMode CanvasMode {
+        get -> surface.Mode
+        set {
+            if surface.Mode == value { return }
+            surface = CanvasSurface(0, 0, value)
+            Refresh()
+        }
+    }
+
     /// Creates an empty chart with automatic ranges.
     public init() { }
 
