@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "StbImageSharp": {
+        "type": "Transitive",
+        "resolved": "2.30.16",
+        "contentHash": "qg1i+NHihXVKLKYacGKrauhSQIGL31eBWcTC4Vc7jnGmBFj87LkRuCdXB5aDZisWMRnB6x2mcfwYXQxMWEG/lw=="
+      },
+      "sharptui.framework": {
+        "type": "Project",
+        "dependencies": {
+          "StbImageSharp": "[2.30.16, )",
+          "Yoga.Net": "[3.2.3, )"
+        }
+      },
+      "yoga.net": {
+        "type": "Project"
+      }
+    }
+  }
+}

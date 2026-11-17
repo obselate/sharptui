@@ -41,7 +41,7 @@ internal open class TextIntrinsicProbe : Box {
   protected override func MeasureIntrinsic(availableWidth int32?, availableHeight int32?) CellSize {
     SeenWidth = availableWidth
     let natural = CellText.MeasureWidth(Content)
-    let width = availableWidth == nil ? natural : availableWidth!!
+    let width = availableWidth == nil ? natural : availableWidth
     let lines = width > 0 && natural > width ? CellText.Wrap(Content, width) : List[string]{ Content }
     MeasuredRows = lines.Count
     var measuredWidth = natural

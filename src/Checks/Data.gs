@@ -421,7 +421,7 @@ public class DataCheck {
           && styledScreen.Probe(2, 1) == "4"
           && styledWire.Contains("[38;2;180;127;209m")
           && styledWire.Contains("[38;2;209;160;71m")
-          && caretPoint != nil && caretPoint!!.Column == 2 && caretPoint!!.Row == 1,
+          && caretPoint != nil && caretPoint.Column == 2 && caretPoint.Row == 1,
         "TextArea preserves styled runs and exposes its visible caret through wrapping")
       styled.Text = "plain"
       let staleStyleScreen = Screen(8, 3)

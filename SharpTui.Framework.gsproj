@@ -1,8 +1,9 @@
-<Project Sdk="Gsharp.NET.Sdk/0.5.212">
+<Project Sdk="Gsharp.NET.Sdk/0.5.698">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <NuGetLockFilePath>packages.$(MSBuildProjectName).lock.json</NuGetLockFilePath>
     <RootNamespace>SharpTui</RootNamespace>
     <PackageId>SharpTui.Framework</PackageId>
     <Version>0.2.0</Version>
